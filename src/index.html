@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>كثيب | متابعة الإيجارات وإدارة الأملاك</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><img src="assets/logo.svg" alt="كثيب"></div>
+    <nav id="nav"></nav>
+    <div class="sidefoot" id="sidefoot"></div>
+  </aside>
+  <main>
+    <button id="upd" hidden></button>
+    <div id="view"></div>
+  </main>
+</div>
+<div id="printarea"></div>
+<dialog id="det"></dialog>
+<dialog id="frm"></dialog>
+<dialog id="imp"></dialog>
+<dialog id="stm"></dialog>
+<div id="toast" role="status"></div>
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="core.js"></script>
+<script src="importer.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

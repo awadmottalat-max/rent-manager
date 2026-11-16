@@ -1,0 +1,522 @@
+'use strict';
+const {pd,iso,edate,r2,normU,calc,renewals,ownerStatements,DAY}=Core;
+const {parseWb,applyImp,ensureUnit,buildWorkbook,uid}=Importer;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const fm=n=>n==null||n===''||isNaN(n)?'—':Number(n).toLocaleString('en-US',{maximumFractionDigits:2});
+const fd=t=>t==null?'—':'<bdi>'+iso(t)+'</bdi>';
+const fs_=s=>s?'<bdi>'+esc(s)+'</bdi>':'—';
+const todayNow=()=>{const d=new Date();return Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())};
+let TODAY=todayNow();
+window.addEventListener('focus',()=>{const t=todayNow();if(t!==TODAY){TODAY=t;render()}});
+const sum=(a,f)=>a.reduce((s,x)=>s+f(x),0);
+const S={db:{v:1,projects:{},settings:{mode:'total'}},view:'dash',f:{p:'',s:'',q:''},due:{p:'',cs:'',mode:'exp',s:'open',from:'',to:'',m:'',g:'month',q:''},ren:{p:'',win:'all90',q:''},ow:{q:''},pr:{q:''},cur:null,ed:null,imp:null,dir:'',pm:null};
+let tt;const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(tt);tt=setTimeout(()=>t.style.display='none',3200)};
+function arm(b,fn){if(b.dataset.armed){fn();return}b.dataset.t=b.textContent;b.dataset.armed=1;b.textContent='اضغط للتأكيد';setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent=b.dataset.t}},3000)}
+
+/* ---------- التخزين ---------- */
+let dirty=false,st=null;
+function persist(){dirty=true;clearTimeout(st);st=setTimeout(flush,250)}
+async function flush(){if(!dirty)return;dirty=false;try{await native.save(S.db)}catch(e){dirty=true;toast('تعذّر الحفظ على القرص: '+(e.message||e))}}
+window.addEventListener('beforeunload',()=>{if(dirty){clearTimeout(st);native.saveSync(S.db);dirty=false}});
+const P=()=>S.db.projects;
+function mutate(pid,fn){const p=structuredClone(P()[pid]);fn(p);P()[pid]=p;persist();render()}
+
+/* ---------- بيانات مشتقة ---------- */
+const MODE=()=>S.db.settings.mode||'total';
+function rows(){const o=[];for(const[pid,p]of Object.entries(P()))for(const c of p.contracts||[])o.push({pid,pn:p.name,c,r:calc(c,MODE(),TODAY)});return o}
+const key=x=>x.r.late_n?0:x.r.soon?1:2;
+const sorted=a=>a.sort((a,b)=>key(a)-key(b)||((a.r.next?.date??9e15)-(b.r.next?.date??9e15))||a.pn.localeCompare(b.pn,'ar')||String(a.c.unit).localeCompare(String(b.c.unit),'ar',{numeric:true}));
+const projOpts=(sel,all)=>(all?'<option value="">كل المشاريع</option>':'')+Object.entries(P()).sort((a,b)=>a[1].name.localeCompare(b[1].name,'ar')).map(([k,p])=>`<option value="${esc(k)}"${k===sel?' selected':''}>${esc(p.name)}</option>`).join('');
+const pname=id=>P()[id]?.name||'';
+const txt=(...a)=>a.join(' ').toLowerCase();
+function passC(x){
+  const{p,s,q}=S.f,r=x.r;
+  if(p&&x.pid!==p)return false;
+  if(s==='late'&&!r.late_n)return false;if(s==='soon'&&!r.soon)return false;
+  if(s==='active'&&r.st!=='ساري')return false;if(s==='ended'&&r.st!=='منتهي')return false;if(s==='future'&&r.st!=='لم يبدأ')return false;
+  if(s==='issues'&&!r.iss.length)return false;if(s==='open'&&!(r.rem>0.005))return false;
+  if(q&&!txt(x.c.unit,x.c.tenant,x.c.owner,x.pn).includes(q.toLowerCase()))return false;
+  return true;
+}
+const chip=i=>i.status==='paid'?'<span class="ch ok">مسدد</span>':i.late?'<span class="ch late">متأخر</span>':i.soon?'<span class="ch warn">خلال 30 يومًا</span>':i.status==='partial'?'<span class="ch warn">جزئي</span>':i.date==null?'<span class="ch">بلا تاريخ</span>':'<span class="ch">قادم</span>';
+const stChip=x=>{const r=x.r;return r.late_n?`<span class="ch late">متأخر ${r.late_n}</span>`:`<span class="ch ${r.st==='ساري'?'ok':r.st==='منتهي'||r.st==='لم يبدأ'?'':'warn'}">${r.st}</span>`};
+const ud=x=>`<b>${esc(x.c.unit)||'—'}</b><small>${esc(x.pn)}</small>`;
+
+/* ---------- جدول موحّد: كل عنوان بنفس محاذاة بياناته ---------- */
+/* cols: {h,k:'t'|'n'|'d'|'x'} ; rows: {cls,attrs,span,cells} */
+function T(cols,rws,o={}){
+  const pr=o.print,cs=pr?cols.filter(c=>c.k!=='ac'):cols,N=cs.length;
+  const cell=(c,h,i)=>`<td class="${c.k||''}">${h}</td>`;
+  const body=rws.map(r=>{
+    let cells=r.cells;const sp=r.span||0;
+    if(pr)cells=cells.slice(0,N-(sp?sp-1:0));
+    const out=cells.map((h,i)=>sp&&i===0?`<td colspan="${sp}">${h}</td>`:cell(cs[i+(sp?sp-1:0)],h,i)).join('');
+    return `<tr class="${r.cls||''}"${pr?'':(r.attrs||'')}>${out}</tr>`}).join('');
+  const foot=o.foot?`<tfoot><tr>${(pr?o.foot.slice(0,N-(o.footSpan?o.footSpan-1:0)):o.foot).map((h,i)=>o.footSpan&&i===0?`<td colspan="${o.footSpan}">${h}</td>`:`<td class="${cs[i+(o.footSpan?o.footSpan-1:0)]?.k||''}">${h}</td>`).join('')}</tr></tfoot>`:'';
+  return `<div class="${pr?'':'tw'}"><table><thead><tr>${cs.map(c=>`<th class="${c.k||''}">${c.h}</th>`).join('')}</tr></thead><tbody>${rws.length?body:`<tr><td colspan="${N}" class="empty">لا توجد بيانات مطابقة.</td></tr>`}</tbody>${foot}</table></div>`;
+}
+const open_=x=>` data-a="open" data-p="${esc(x.pid)}" data-c="${esc(x.c.id)}"`;
+
+/* ---------- الطباعة بالشعار ---------- */
+function docHtml({title,sub,body,land}){
+  const now=new Date(),dt=iso(todayNow())+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  return `<div class="doc ${land?'land':''}"><div class="lh"><img src="assets/logo.svg" alt="كثيب"><div class="tt"><h1>${title}</h1>${sub?`<p>${sub}</p>`:''}</div><div class="meta">${dt}</div></div>${body}<div class="pf">Kathib Property &amp; Facilities mng. — ${dt}</div></div>`;
+}
+async function printArea(html,pdfName){
+  const done=()=>{document.body.classList.remove('pr');$('#printarea').innerHTML=''};
+  $('#printarea').innerHTML=html;document.body.classList.add('pr');
+  if(pdfName){try{const f=await native.pdf(pdfName);if(f)toast('تم الحفظ')}finally{done()}}
+  else{window.addEventListener('afterprint',done,{once:true});setTimeout(done,180000);await native.print()}
+}
+const safe=s=>String(s).replace(/[\\/:*?"<>|]/g,'_');
+const pbtn=k=>`<button class="btn" data-a="print" data-k="${k}">طباعة</button><button class="btn" data-a="pdf" data-k="${k}">حفظ PDF</button>`;
+function listDoc(){const m=S.pm;return docHtml({title:m.title,sub:m.sub,land:true,body:T(m.cols,m.rows,{print:true,foot:m.foot,footSpan:m.footSpan})})}
+
+/* ---------- التنقل ---------- */
+const VIEWS=[['dash','لوحة التحكم'],['contracts','العقود'],['due','المستحقات والتدفقات'],['renew','التجديدات'],['props','المشاريع والوحدات'],['owners','الملاك'],['settings','البيانات والنسخ الاحتياطي']];
+function go(v){S.view=v;render();$('main').scrollTop=0}
+function renderNav(all){
+  const late=all.filter(x=>x.r.late_n).length,ren=renewals(all,TODAY,90).length;
+  const bd={contracts:late?`<span class="bd">${late}</span>`:'',renew:ren?`<span class="bd">${ren}</span>`:''};
+  $('#nav').innerHTML=VIEWS.map(([k,l])=>`<button data-a="go" data-v="${k}" class="${S.view===k?'on':''}"><span>${l}</span>${bd[k]||''}</button>`).join('');
+  $('#sidefoot').innerHTML='التاريخ المعتمد: <bdi>'+iso(TODAY)+'</bdi>';
+}
+function render(){
+  const all=rows();renderNav(all);
+  const v=$('#view'),kf=document.activeElement&&document.activeElement.id;
+  S.pm=null;
+  v.innerHTML=({dash:vDash,contracts:vContracts,due:vDue,renew:vRenew,props:vProps,owners:vOwners,settings:vSettings}[S.view])(all);
+  if(kf){const el=document.getElementById(kf);if(el&&el.matches('input[type=search]')){el.focus();const l=el.value.length;try{el.setSelectionRange(l,l)}catch{}}}
+  if(S.cur&&$('#det').open)fillDet();
+}
+const J={
+  active:()=>{S.f={p:'',q:'',s:'active'};go('contracts')},ended:()=>{S.f={p:'',q:'',s:'ended'};go('contracts')},
+  open:()=>{S.f={p:'',q:'',s:'open'};go('contracts')},issues:()=>{S.f={p:'',q:'',s:'issues'};go('contracts')},
+  late:()=>{Object.assign(S.due,{p:'',cs:'',mode:'exp',s:'late',from:'',to:'',m:'',g:'month',q:''});go('due')},
+  soon:()=>{Object.assign(S.due,{p:'',cs:'',mode:'exp',s:'open',from:iso(TODAY),to:iso(TODAY+30*DAY),m:'',g:'day',q:''});go('due')},
+  exp:()=>{Object.assign(S.ren,{p:'',q:'',win:'u90'});go('renew')},endedR:()=>{Object.assign(S.ren,{p:'',q:'',win:'ended'});go('renew')}
+};
+
+/* ---------- لوحة التحكم ---------- */
+const TOP=8;
+function more(j,n,shown){return n>shown?`<button class="link" data-a="jump" data-j="${j}">عرض الكل (${n}) ←</button>`:`<button class="link" data-a="jump" data-j="${j}">فتح التفاصيل ←</button>`}
+function secDash(title,j,n,body){return `<div class="sec"><div class="sech"><h3>${title}</h3>${more(j,n,TOP)}</div>${body}</div>`}
+const RCOLS=[{h:'الوحدة / المشروع',k:'t'},{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'بداية الإيجار',k:'d'},{h:'نهاية الإيجار',k:'d'},{h:'الموقف',k:'d'},{h:'إجمالي العقد',k:'n'},{h:'المتبقي',k:'n'}];
+const rRow=x=>({attrs:open_(x),cells:[ud(x),esc(x.c.owner)||'—',esc(x.c.tenant)||'—',fs_(x.c.start),fs_(x.c.end),x.days<0?`<span class="ch late">انتهى منذ ${-x.days} يوم</span>`:`<span class="ch warn">بعد ${x.days} يوم</span>`,fm(x.r.total),fm(x.r.rem>0?x.r.rem:0)]});
+function vDash(all){
+  const late=sum(all,x=>x.r.late),soon=sum(all,x=>sum(x.r.inst.filter(i=>i.soon),i=>i.due));
+  const rn=renewals(all,TODAY,90),exp=rn.filter(x=>x.days>=0),endd=rn.filter(x=>x.days<0).sort((a,b)=>b.endT-a.endT);
+  const endedAll=all.filter(x=>x.r.st==='منتهي').length;
+  const kp=(cls,j,l,v,i)=>`<button class="kp ${cls}" data-a="jump" data-j="${j}"><span>${l}</span><b>${v}</b><i>${i}</i></button>`;
+  const byP=Object.entries(P()).map(([pid,p])=>{const rs=all.filter(x=>x.pid===pid);return{n:p.name,tot:sum(rs,x=>x.r.total||0),paid:sum(rs,x=>x.r.paid||0),rem:sum(rs,x=>x.r.rem>0?x.r.rem:0),late:sum(rs,x=>x.r.late)}}).sort((a,b)=>b.tot-a.tot);
+  const maxT=Math.max(1,...byP.map(x=>x.tot));
+  const lateList=all.filter(x=>x.r.late_n).sort((a,b)=>b.r.late-a.r.late);
+  const upc=[];for(const x of all)for(const i of x.r.inst)if(i.soon)upc.push({x,i});upc.sort((a,b)=>a.i.date-b.i.date);
+  const lateT=T([{h:'الوحدة / المشروع',k:'t'},{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'أقدم استحقاق متأخر',k:'d'},{h:'الأقساط المتأخرة',k:'d'},{h:'المبلغ المتأخر',k:'n'},{h:'المتبقي الكلي',k:'n'}],
+    lateList.slice(0,TOP).map(x=>({cls:'late',attrs:open_(x),cells:[ud(x),esc(x.c.owner)||'—',esc(x.c.tenant)||'—',fd(x.r.inst.find(i=>i.late)?.date),x.r.late_n,'<b>'+fm(x.r.late)+'</b>',fm(x.r.rem)]})));
+  const upT=T([{h:'تاريخ الاستحقاق',k:'d'},{h:'الوحدة / المشروع',k:'t'},{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'القسط',k:'d'},{h:'المبلغ',k:'n'}],
+    upc.slice(0,TOP).map(({x,i})=>({attrs:open_(x),cells:[fd(i.date),ud(x),esc(x.c.owner)||'—',esc(x.c.tenant)||'—',i.n+' / '+x.r.k,'<b>'+fm(i.due)+'</b>']})));
+  return `<h1>لوحة التحكم</h1><p class="sub">${all.length} عقدًا في ${Object.keys(P()).length} مشاريع — اضغط على أي بطاقة أو «عرض الكل» لفتح التفاصيل الكاملة.</p>
+<div class="kpis">
+${kp('','active','عقود سارية',all.filter(x=>x.r.st==='ساري').length,'من '+all.length)}
+${kp('','ended','عقود منتهية',endedAll,'منها '+endd.length+' بلا تجديد')}
+${kp('','open','إجمالي المتبقي',fm(sum(all,x=>x.r.rem>0?x.r.rem:0)),'على العقود المكتملة البيانات')}
+${kp('l','late','متأخر',fm(late),all.filter(x=>x.r.late_n).length+' عقدًا')}
+${kp('','soon','يستحق خلال 30 يومًا',fm(soon),all.filter(x=>x.r.soon).length+' عقدًا')}
+${kp('','exp','تنتهي خلال 90 يومًا',exp.length,'تحتاج متابعة التجديد')}
+${kp('','issues','بيانات ناقصة',all.filter(x=>x.r.iss.length).length,'تحتاج استكمالًا')}
+</div>
+${secDash('أكبر المتأخرات','late',lateList.length,lateList.length?lateT:'<div class="card empty">لا توجد متأخرات.</div>')}
+${secDash('أقساط الـ 30 يومًا القادمة','soon',upc.length,upc.length?upT:'<div class="card empty">لا أقساط قادمة.</div>')}
+${secDash('عقود تنتهي خلال 90 يومًا','exp',exp.length,exp.length?T(RCOLS,exp.slice(0,TOP).map(rRow)):'<div class="card empty">لا عقود تنتهي قريبًا.</div>')}
+${secDash('العقود المنتهية (بلا تجديد)','endedR',endd.length,endd.length?T(RCOLS,endd.slice(0,TOP).map(rRow)):'<div class="card empty">لا توجد عقود منتهية بلا تجديد.</div>')}
+<div class="card"><h3>التحصيل حسب المشروع</h3>${byP.length?byP.map(p=>`<div class="pr-row"><div class="t"><b>${esc(p.n)}</b><span class="num">${fm(p.paid)} / ${fm(p.tot)}</span></div><div class="pb"><i style="width:${p.tot?Math.min(100,p.paid/p.tot*100):0}%"></i></div><small>المتبقي <bdi>${fm(p.rem)}</bdi>${p.late?' · متأخر <bdi>'+fm(p.late)+'</bdi>':''}</small></div>`).join(''):'<p class="empty">لا توجد بيانات. استورد ملف Excel من «البيانات والنسخ الاحتياطي».</p>'}</div>`;
+}
+
+/* ---------- العقود ---------- */
+const CCOLS=[{h:'الوحدة / المشروع',k:'t'},{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'بداية الإيجار',k:'d'},{h:'نهاية الإيجار',k:'d'},{h:'إجمالي العقد',k:'n'},{h:'المسدد',k:'n'},{h:'المتبقي',k:'n'},{h:'القسط القادم',k:'d'},{h:'الحالة',k:'t'}];
+const SLAB={'':'كل الحالات',late:'متأخرة',soon:'تستحق خلال 30 يومًا',open:'عليها متبقٍ',active:'سارية',ended:'منتهية',future:'لم تبدأ',issues:'بياناتها ناقصة'};
+function vContracts(all){
+  const list=sorted(all.filter(passC));
+  const rws=list.map(x=>{const{c,r}=x;return{cls:r.late_n?'late':r.soon?'soon':'',attrs:open_(x),cells:[ud(x),esc(c.owner)||'—',esc(c.tenant)||'—',fs_(c.start),fs_(c.end),fm(r.total),fm(r.paid),'<b>'+fm(r.rem)+'</b>',r.next?fd(r.next.date)+'<small class="num">'+fm(r.next.due)+'</small>':'—',stChip(x)+(r.iss.length?` <span class="ch warn" title="${esc(r.iss.join('، '))}">ناقص</span>`:'')]}});
+    S.pm={title:'قائمة العقود',sub:'المشروع: '+(S.f.p?esc(pname(S.f.p)):'الكل')+' — الحالة: '+SLAB[S.f.s]+(S.f.q?' — بحث: '+esc(S.f.q):''),cols:CCOLS,rows:rws};
+  S.pm.foot=[list.length+' عقدًا','','','','',fm(sum(list,x=>x.r.total||0)),fm(sum(list,x=>x.r.paid||0)),fm(sum(list,x=>x.r.rem>0?x.r.rem:0)),'',''];S.pm.footSpan=0;
+  return `<h1>العقود</h1><p class="sub">انقر على أي عقد لعرض ملفه الكامل وأقساطه ودفعاته. يُخصَّص المسدد للأقساط الأقدم أولًا.</p>
+<div class="bar"><select id="fp" aria-label="المشروع">${projOpts(S.f.p,true)}</select>
+<select id="fs" aria-label="الحالة">${Object.entries(SLAB).map(([v,l])=>`<option value="${v}"${S.f.s===v?' selected':''}>${l}</option>`).join('')}</select>
+<input type="search" id="fq" placeholder="بحث: وحدة، مستأجر، مالك" value="${esc(S.f.q)}" aria-label="بحث">
+<button class="btn p" data-a="new">+ عقد جديد</button>${pbtn('list')}<button class="btn" data-a="csv">تصدير CSV</button></div>
+${T(CCOLS,rws,{foot:S.pm.foot})}`;
+}
+const cur=()=>{const p=P()[S.cur?.pid];const c=p?.contracts.find(c=>c.id===S.cur.cid);return c?{pid:S.cur.pid,pn:p.name,c,r:calc(c,MODE(),TODAY)}:null};
+function infoGrid(x){
+  const{c,r}=x,i=(l,v)=>`<div><span>${l}</span><b>${v||'—'}</b></div>`;
+  return `<div class="info">${i('المشروع',esc(x.pn))}${i('رقم الوحدة',esc(c.unit))}${i('المالك',esc(c.owner))}${i('المستأجر',esc(c.tenant))}${i('بداية الإيجار',fs_(c.start))}${i('نهاية الإيجار',fs_(c.end))}
+${i('مدة العقد',r.m?r.m+' شهرًا':esc(c.period))}${i('قيمة الإيجار المسجلة',fm(c.rent))}${i('عدد الأقساط',r.k?r.k+' قسطًا':esc(c.count))}${i('رسوم الأملاك',fm(c.fee))}${i('المتبقي المسجل قبل التعديل',fm(c.prevRemaining))}${i('الحالة',r.late_n?'متأخر ('+r.late_n+' قسط)':r.st)}</div>`;
+}
+function instTable(x,print){
+  const r=x.r;
+  return T([{h:'#',k:'d'},{h:'الاستحقاق',k:'d'},{h:'المبلغ',k:'n'},{h:'المسدد',k:'n'},{h:'المتبقي',k:'n'},{h:'الحالة',k:'t'}],
+    r.inst.map(i=>({cls:i.late?'late':i.soon?'soon':'',cells:[i.n,fd(i.date),fm(i.amount),fm(i.paid),fm(i.status==='paid'?0:i.due),chip(i)]})),{print});
+}
+function payTable(c,print,del){
+  const ps=[...(c.payments||[])].sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+  return T([{h:'تاريخ الدفعة',k:'d'},{h:'المبلغ',k:'n'},{h:'ملاحظة',k:'t'},...(del?[{h:'',k:'ac'}]:[])],ps.map(p=>({cells:[p.date?fs_(p.date):'غير محدد',fm(p.amount),esc(p.note)||'—',...(del?[`<button class="btn dng sm" data-a="delPay" data-i="${esc(p.id)}">حذف</button>`]:[])]})),{print,foot:[ 'الإجمالي',fm(sum(ps,p=>+p.amount||0)+(+c.extra||0)),+c.extra?'يشمل سداد إضافي '+fm(c.extra):'',...(del?['']:[])]});
+}
+function fillDet(){
+  const x=cur();if(!x){$('#det').close();return}
+  const{c,r,pn}=x;
+  $('#det').innerHTML=`<div class="dh"><div><h2>الوحدة ${esc(c.unit)||'—'} <small style="display:inline">— ${esc(pn)}</small></h2><p>المستأجر: ${esc(c.tenant)||'—'} · المالك: ${esc(c.owner)||'—'}</p></div><button class="x" data-a="close" aria-label="إغلاق">✕</button></div>
+<div class="db"><div class="sum"><div><span>إجمالي العقد</span><b>${fm(r.total)}</b></div><div><span>المسدد</span><b>${fm(r.paid)}</b></div>
+<div><span>المتبقي</span><b>${fm(r.rem)}</b></div><div><span>المتأخر</span><b>${fm(r.late)}</b></div><div><span>الأقساط</span><b>${r.k?r.k+' × '+fm(r.M):'—'}</b></div></div>
+${r.iss.length?'<p class="warnbox">يلزم استكمال: '+r.iss.map(esc).join('، ')+'</p>':''}
+<div class="acts"><button class="btn" data-a="edit">تعديل بيانات العقد</button><button class="btn" data-a="renewC">تجديد العقد</button><button class="btn p" data-a="print" data-k="contract">طباعة ملف العقد</button><button class="btn" data-a="pdf" data-k="contract">حفظ PDF</button><button class="btn dng" data-a="delC">حذف العقد</button></div>
+<h3>بيانات العقد</h3>${infoGrid(x)}${c.notes?`<p style="margin:6px 0;font-size:13.5px"><b>ملاحظات:</b> ${esc(c.notes)}</p>`:''}
+${(c.oldDates||[]).length?`<small>تواريخ مسجلة سابقًا: ${c.oldDates.map(d=>'<bdi>'+esc(d)+'</bdi>').join('، ')}</small>`:''}
+<h3>جدول الأقساط</h3>${r.inst.length?instTable(x):'<p class="empty">يظهر الجدول بعد استكمال القيمة والتواريخ وعدد الأقساط.</p>'}
+<h3>الدفعات المسجلة</h3>
+<div class="pay"><input type="date" id="pd" value="${iso(TODAY)}" aria-label="تاريخ الدفعة"><input type="number" id="pa" min="0" step="0.01" placeholder="المبلغ" value="${r.next?r.next.due:''}" aria-label="المبلغ">
+<input id="pt" placeholder="ملاحظة (رقم حوالة، طريقة الدفع…)" aria-label="ملاحظة"><button class="btn p" data-a="addPay">تسجيل دفعة</button></div>
+${(c.payments||[]).length||+c.extra?payTable(c,false,true):'<div class="tw"><p class="empty">لا توجد دفعات مسجلة.</p></div>'}</div>`;
+}
+function openDet(pid,cid){S.cur={pid,cid};fillDet();if(!$('#det').open)$('#det').showModal()}
+function contractDoc(x){
+  const{c,r}=x;
+  return docHtml({title:'ملف عقد إيجار — الوحدة '+esc(c.unit),sub:esc(x.pn)+' · المستأجر: '+esc(c.tenant),body:
+  `<h3>بيانات العقد</h3>${infoGrid(x)}
+  <h3>الملخص المالي</h3><div class="sum"><div><span>إجمالي العقد</span><b>${fm(r.total)}</b></div><div><span>المسدد</span><b>${fm(r.paid)}</b></div><div><span>المتبقي</span><b>${fm(r.rem)}</b></div><div><span>المتأخر</span><b>${fm(r.late)}</b></div></div>
+  ${r.inst.length?`<h3>جدول الأقساط</h3>${instTable(x,true)}`:''}
+  <h3>سجل الدفعات</h3>${(c.payments||[]).length||+c.extra?payTable(c,true,false):'<p>لا توجد دفعات مسجلة.</p>'}
+  ${c.notes?`<h3>ملاحظات</h3><p>${esc(c.notes)}</p>`:''}
+  ${r.iss.length?`<h3>بيانات ناقصة</h3><p>${r.iss.map(esc).join('، ')}</p>`:''}
+  <div class="sign"><div>المالك / ممثله</div><div>المستأجر</div><div>إدارة الأملاك</div></div>`});
+}
+
+/* ---------- نموذج عام ---------- */
+function formDlg({title,fields,vals={},save,onSave}){
+  const fl=f=>{const v=vals[f.k]??f.def??'';let el;
+    if(f.t==='select')el=`<select id="ff_${f.k}">${f.opts.map(([a,b])=>`<option value="${esc(a)}"${String(a)===String(v)?' selected':''}>${esc(b)}</option>`).join('')}</select>`;
+    else if(f.t==='area')el=`<textarea id="ff_${f.k}" rows="2">${esc(v)}</textarea>`;
+    else el=`<input id="ff_${f.k}" type="${f.t||'text'}" ${f.t==='number'?'step="0.01"':''} value="${esc(v)}" ${f.ph?`placeholder="${esc(f.ph)}"`:''}>`;
+    return `<label class="${f.full?'full':''}">${f.l}${el}</label>`};
+  $('#frm').innerHTML=`<div class="dh"><h2>${title}</h2><button class="x" data-a="fclose" aria-label="إغلاق">✕</button></div><div class="fg">${fields.map(fl).join('')}</div><div class="ft"><button class="btn p" id="fsave">${save||'حفظ'}</button><button class="btn" data-a="fclose">إلغاء</button></div>`;
+  $('#fsave').onclick=()=>{const o={};for(const f of fields)o[f.k]=document.getElementById('ff_'+f.k).value.trim();const err=onSave(o);if(err)toast(err);else $('#frm').close()};
+  if(!$('#frm').open)$('#frm').showModal();
+}
+const numOk=s=>s===''||!isNaN(Number(s));
+function contractForm(ed,pre){
+  const x=ed?cur():null,c=x?x.c:(pre||{}),pid=x?x.pid:(pre?.pid||S.f.p||Object.keys(P())[0]||'__new');
+  const opts=Object.entries(P()).map(([k,p])=>[k,p.name]).concat([['__new','+ مشروع جديد']]);
+  formDlg({title:ed?'تعديل العقد':(pre?'تجديد العقد':'عقد جديد'),vals:c,fields:[
+    {k:'pid',l:'المشروع',t:'select',opts,def:pid},{k:'pname',l:'اسم المشروع الجديد',ph:'يُستخدم عند اختيار مشروع جديد'},
+    {k:'unit',l:'رقم الوحدة'},{k:'tenant',l:'اسم المستأجر'},{k:'owner',l:'اسم المالك'},{k:'fee',l:'رسوم الأملاك',t:'number'},
+    {k:'rent',l:'قيمة الإيجار',t:'number'},{k:'count',l:'عدد الأقساط في السنة (رقم، شهري، دفعتين…)'},
+    {k:'start',l:'بداية الإيجار',t:'date'},{k:'end',l:'نهاية الإيجار',t:'date'},
+    {k:'period',l:'فترة العقد نصًّا (تُستخدم إذا غابت التواريخ، مثل: سنة، 3 شهور)',full:1},{k:'notes',l:'ملاحظات',t:'area',full:1}],
+    onSave:o=>{
+      let pid=o.pid,pn='';
+      if(pid==='__new'){pn=o.pname;if(!pn)return 'أدخل اسم المشروع الجديد';pid=Object.keys(P()).find(k=>P()[k].name===pn)||'p'+uid()}
+      if(!numOk(o.rent)||!numOk(o.fee))return 'تحقق من الأرقام المدخلة';
+      if(!o.unit&&!o.tenant)return 'أدخل رقم الوحدة أو اسم المستأجر';
+      const d={unit:o.unit,tenant:o.tenant,owner:o.owner,rent:o.rent===''?'':Number(o.rent),fee:o.fee===''?'':Number(o.fee),start:o.start,end:o.end,period:o.period,count:/^\d+(\.\d+)?$/.test(o.count)?Number(o.count):o.count,notes:o.notes};
+      const put=(pid,c)=>{if(!P()[pid])P()[pid]={name:pn,no:'',contracts:[],units:[]};const p=structuredClone(P()[pid]);ensureUnit(p,c);p.contracts.push(c);P()[pid]=p};
+      if(ed){
+        const old=P()[ed.pid].contracts.find(c=>c.id===ed.cid),m={...old,...d};
+        if(pid===ed.pid)mutate(pid,p=>{p.contracts=p.contracts.map(c=>c.id===ed.cid?m:c);ensureUnit(p,m)});
+        else{mutate(ed.pid,p=>{p.contracts=p.contracts.filter(c=>c.id!==ed.cid)});put(pid,m);persist()}
+        S.cur={pid,cid:ed.cid};
+      }else{const c={id:'c'+uid(),oldDates:[],prevRemaining:'',extra:0,payments:[],...d};put(pid,c);persist();S.cur={pid,cid:c.id}}
+      render();openDet(S.cur.pid,S.cur.cid);
+    }});
+}
+function renewForm(pid,c){
+  const m=Core.months(c)||12,s=c.end?iso(pd(c.end)+DAY):iso(TODAY);
+  contractForm(false,{pid,unit:c.unit,tenant:c.tenant,owner:c.owner,fee:c.fee,rent:c.rent,count:c.count,start:s,end:iso(edate(pd(s),m)-DAY),period:c.period,notes:''});
+}
+function quickPay(pid,cid,amount){
+  const c=P()[pid]?.contracts.find(c=>c.id===cid);if(!c)return;
+  formDlg({title:'تسجيل دفعة — '+esc(c.unit)+' / '+esc(c.tenant),save:'تسجيل',vals:{date:iso(TODAY),amount:amount||''},fields:[{k:'date',l:'تاريخ الدفعة',t:'date'},{k:'amount',l:'المبلغ',t:'number'},{k:'note',l:'ملاحظة (رقم حوالة، طريقة الدفع…)',full:1}],
+    onSave:o=>{const a=+o.amount;if(!(a>0))return 'أدخل مبلغًا صحيحًا';mutate(pid,p=>p.contracts.find(c=>c.id===cid).payments.push({id:'i'+uid(),date:o.date,amount:a,note:o.note}));toast('تم تسجيل الدفعة')}});
+}
+
+/* ---------- المستحقات والتدفقات النقدية ---------- */
+const mEnd=m=>{const[y,mo]=m.split('-').map(Number);return iso(Date.UTC(y,mo,0))};
+function dueList(all){
+  const D=S.due,from=pd(D.from),to=pd(D.to),q=D.q.toLowerCase(),L=[];
+  const inR=t=>(from==null||(t!=null&&t>=from))&&(to==null||(t!=null&&t<=to));
+  for(const x of all){
+    if(D.p&&x.pid!==D.p)continue;
+    if(D.cs==='active'&&x.r.st!=='ساري')continue;if(D.cs==='ended'&&x.r.st!=='منتهي')continue;if(D.cs==='future'&&x.r.st!=='لم يبدأ')continue;
+    if(q&&!txt(x.c.unit,x.c.tenant,x.c.owner,x.pn).includes(q))continue;
+    if(D.mode==='act'){
+      for(const pm of x.c.payments||[]){const t=pd(pm.date);if(t==null&&(from!=null||to!=null))continue;if(inR(t))L.push({x,t,amount:+pm.amount||0,paid:+pm.amount||0,due:0,note:pm.note,n:''})}
+    }else{
+      for(const i of x.r.inst){
+        const ok=D.s==='late'?i.late:D.s==='open'?i.status!=='paid':D.s==='paid'?i.status==='paid':true;
+        if(ok&&inR(i.date))L.push({x,i,t:i.date,amount:i.amount,paid:i.paid,due:i.status==='paid'?0:i.due,n:i.n+' / '+x.r.k})
+      }
+    }
+  }
+  L.sort((a,b)=>(a.t??9e15)-(b.t??9e15)||a.x.pn.localeCompare(b.x.pn,'ar')||String(a.x.c.unit).localeCompare(String(b.x.c.unit),'ar',{numeric:true}));return L;
+}
+const DS_LAB={late:'أقساط متأخرة',open:'كل غير المسدد',paid:'المسددة',all:'كل الأقساط'},DCS_LAB={'':'كل حالات العقد',active:'عقود سارية',ended:'عقود منتهية',future:'لم تبدأ'};
+function dueModel(all){
+  const D=S.due,L=dueList(all),act=D.mode==='act';
+  const cols=act?[{h:'تاريخ الدفعة',k:'d'},{h:'الوحدة / المشروع',k:'t'},{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'المبلغ',k:'n'},{h:'ملاحظة',k:'t'}]
+   :[{h:'الاستحقاق',k:'d'},{h:'الوحدة / المشروع',k:'t'},{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'القسط',k:'d'},{h:'مبلغ القسط',k:'n'},{h:'المسدد',k:'n'},{h:'المتبقي',k:'n'},{h:'الحالة',k:'t'},{h:'',k:'ac'}];
+  const gk=o=>o.t==null?'بلا تاريخ':D.g==='month'?iso(o.t).slice(0,7):D.g==='day'?iso(o.t):'';
+  const rws=[],lim=D.print?1e9:800;let last=null,gi=null,shown=0;const G=[];
+  const lineRow=o=>{const x=o.x,u=`<td></td>`;
+    return act?{attrs:open_(x),cells:[o.t==null?'بلا تاريخ':fd(o.t),ud(x),esc(x.c.owner)||'—',esc(x.c.tenant)||'—','<b>'+fm(o.amount)+'</b>',esc(o.note)||'—']}
+    :{cls:o.i.late?'late':o.i.soon?'soon':'',attrs:open_(x),cells:[fd(o.t),ud(x),esc(x.c.owner)||'—',esc(x.c.tenant)||'—',o.n,fm(o.amount),fm(o.paid),'<b>'+fm(o.due)+'</b>',chip(o.i),o.i.status!=='paid'?`<button class="btn sm p" data-a="qpay" data-p="${esc(x.pid)}" data-c="${esc(x.c.id)}" data-v="${o.due}">دفعة</button>`:'']}};
+  if(D.g!=='none'){for(const o of L){const k=gk(o);if(k!==last){gi={k,n:0,amount:0,paid:0,due:0};G.push(gi);last=k}gi.n++;gi.amount+=o.amount;gi.paid+=o.paid;gi.due+=o.due}
+    let idx=-1;last=null;
+    for(const o of L){if(shown>=lim)break;const k=gk(o);if(k!==last){idx++;const g=G[idx];last=k;
+      rws.push({cls:'grp',span:4,cells:[`${D.g==='month'?'شهر':'يوم'} <bdi>${g.k}</bdi> — ${g.n} بندًا`,...(act?[fm(g.amount),'']:['',fm(g.amount),fm(g.paid),fm(g.due),'',''])]})}
+      rws.push(lineRow(o));shown++}
+  }else for(const o of L){if(shown>=lim)break;rws.push(lineRow(o));shown++}
+  const lab='الإجمالي ('+L.length+' بندًا)',foot=act?[lab,fm(sum(L,o=>o.amount)),'']:[lab,'',fm(sum(L,o=>o.amount)),fm(sum(L,o=>o.paid)),fm(sum(L,o=>o.due)),'',''];
+  const period=D.from||D.to?' — الفترة: '+(D.from||'…')+' إلى '+(D.to||'…'):'';
+  return{L,cols,rows:rws,foot,footSpan:4,title:act?'تقرير التحصيل الفعلي':'تقرير المستحقات والتدفقات النقدية',sub:(D.p?'المشروع: '+esc(pname(D.p))+' — ':'')+(DCS_LAB[D.cs])+(act?'':' — '+DS_LAB[D.s])+period,truncated:shown<L.length};
+}
+function vDue(all){
+  const D=S.due,m=dueModel(all),act=D.mode==='act',L=m.L;
+  S.pm={...m};
+  const sel=(id,arr,v)=>`<select id="${id}">${arr.map(([a,b])=>`<option value="${a}"${String(v)===String(a)?' selected':''}>${b}</option>`).join('')}</select>`;
+  return `<h1>المستحقات والتدفقات النقدية</h1><p class="sub">${act?'الدفعات المحصَّلة فعليًا حسب تاريخ تسجيلها.':'الأقساط المتوقعة حسب تاريخ الاستحقاق.'} حدّد الفترة بشهر أو من يوم إلى يوم، وجمّع حسب اليوم أو الشهر لقراءة التدفق النقدي. كل سطر يعرض المشروع والوحدة والمالك والمستأجر.</p>
+<div class="bar"><select id="dp">${projOpts(D.p,true)}</select>
+${sel('dmode',[['exp','المتوقع (الأقساط)'],['act','المحصَّل فعليًا (الدفعات)']],D.mode)}
+${sel('dcs',Object.entries(DCS_LAB),D.cs)}
+${act?'':sel('ds',Object.entries(DS_LAB),D.s)}
+<input type="search" id="dq" placeholder="بحث: وحدة، مستأجر، مالك" value="${esc(D.q)}"></div>
+<div class="bar"><label>الشهر <input type="month" id="dm" value="${esc(D.m)}"></label>
+<label>من <input type="date" id="dfrom" value="${esc(D.from)}"></label><label>إلى <input type="date" id="dto" value="${esc(D.to)}"></label>
+${sel('dg',[['month','تجميع شهري'],['day','تجميع يومي'],['none','بدون تجميع']],D.g)}
+<button class="btn" data-a="dueClear">مسح التاريخ</button>${pbtn('list')}<button class="btn" data-a="dueCsv">تصدير CSV</button></div>
+<div class="kpis"><div class="kp static"><span>عدد البنود</span><b>${L.length}</b></div>
+<div class="kp static"><span>${act?'إجمالي المحصَّل':'إجمالي الأقساط'}</span><b>${fm(sum(L,o=>o.amount))}</b></div>
+${act?'':`<div class="kp static"><span>المسدد منها</span><b>${fm(sum(L,o=>o.paid))}</b></div><div class="kp l static"><span>المتبقي غير المسدد</span><b>${fm(sum(L,o=>o.due))}</b></div>`}</div>
+${T(m.cols,m.rows,{foot:m.foot,footSpan:m.footSpan})}${m.truncated?'<p class="sub" style="margin-top:8px">يُعرض أول 800 بند فقط؛ الإجماليات تشمل الكل. ضيّق الفترة أو استخدم الطباعة/CSV للكل.</p>':''}`;
+}
+
+/* ---------- التجديدات ---------- */
+const RW=[['all90','منتهية + تنتهي خلال 90 يومًا'],['ended','المنتهية فقط'],['u30','تنتهي خلال 30 يومًا'],['u60','تنتهي خلال 60 يومًا'],['u90','تنتهي خلال 90 يومًا'],['u180','تنتهي خلال 180 يومًا']];
+function renList(all){
+  const R=S.ren,w=R.win,days=w==='ended'?0:w==='all90'?90:+w.slice(1);
+  return renewals(all,TODAY,days).filter(x=>(w==='ended'?x.days<0:w[0]==='u'?x.days>=0:true)&&(!R.p||x.pid===R.p)&&(!R.q||txt(x.c.unit,x.c.tenant,x.c.owner,x.pn).includes(R.q.toLowerCase())));
+}
+function vRenew(all){
+  const R=S.ren,list=renList(all);
+  const cols=[...RCOLS,{h:'',k:'ac'}];
+  const rws=list.map(x=>{const r=rRow(x);r.cls=x.days<0?'':'soon';r.cells.push(`<button class="btn sm p" data-a="renewQ" data-p="${esc(x.pid)}" data-c="${esc(x.c.id)}">تجديد</button>`);return r});
+  S.pm={title:'تقرير التجديدات',sub:(R.p?'المشروع: '+esc(pname(R.p))+' — ':'')+RW.find(o=>o[0]===R.win)[1],cols,rows:rws};
+  return `<h1>التجديدات</h1><p class="sub">آخر عقد لكل وحدة، إذا انتهى أو سينتهي ولا يوجد عقد أحدث لنفس الوحدة.</p>
+<div class="bar"><select id="rp">${projOpts(R.p,true)}</select>
+<select id="rw">${RW.map(([v,l])=>`<option value="${v}"${R.win===v?' selected':''}>${l}</option>`).join('')}</select>
+<input type="search" id="rq" placeholder="بحث: وحدة، مستأجر، مالك" value="${esc(R.q)}">${pbtn('list')}</div>
+${T(cols,rws)}`;
+}
+
+/* ---------- المشاريع والوحدات ---------- */
+function unitStatus(p,u){
+  const k=normU(u.no),cs=(p.contracts||[]).filter(c=>normU(c.unit)===k).map(c=>({c,r:calc(c,MODE(),TODAY)}));
+  const act=cs.find(o=>o.r.st==='ساري');return{act,last:[...cs].sort((a,b)=>(pd(b.c.end)||0)-(pd(a.c.end)||0))[0]};
+}
+function vProps(all){
+  const q=S.pr.q.toLowerCase();
+  const list=Object.entries(P()).filter(([,p])=>!q||txt(p.name,p.no,p.address).includes(q)).sort((a,b)=>a[1].name.localeCompare(b[1].name,'ar')).map(([pid,p])=>{
+    const rs=all.filter(x=>x.pid===pid),us=p.units||[],occ=us.filter(u=>unitStatus(p,u).act).length;
+    return{pid,p,units:us.length,occ,act:rs.filter(x=>x.r.st==='ساري').length,tot:sum(rs,x=>x.r.total||0),rem:sum(rs,x=>x.r.rem>0?x.r.rem:0),late:sum(rs,x=>x.r.late)}});
+  const cols=[{h:'المشروع',k:'t'},{h:'رقم المشروع',k:'d'},{h:'الوحدات',k:'n'},{h:'مؤجرة',k:'n'},{h:'شاغرة',k:'n'},{h:'الإشغال',k:'n'},{h:'عقود سارية',k:'n'},{h:'إجمالي العقود',k:'n'},{h:'المتبقي',k:'n'},{h:'المتأخر',k:'n'}];
+  const rws=list.map(o=>({attrs:` data-a="projOpen" data-p="${esc(o.pid)}"`,cells:['<b>'+esc(o.p.name)+'</b>'+(o.p.address?`<small>${esc(o.p.address)}</small>`:''),esc(o.p.no)||'—',o.units,o.occ,o.units-o.occ,o.units?Math.round(o.occ/o.units*100)+'%':'—',o.act,fm(o.tot),fm(o.rem),o.late?fm(o.late):'—']}));
+  const foot=['الإجمالي ('+list.length+')','',sum(list,o=>o.units),sum(list,o=>o.occ),sum(list,o=>o.units-o.occ),'',sum(list,o=>o.act),fm(sum(list,o=>o.tot)),fm(sum(list,o=>o.rem)),fm(sum(list,o=>o.late))];
+  S.pm={title:'تقرير المشاريع والوحدات',sub:'حالة الإشغال والتحصيل',cols,rows:rws,foot};
+  return `<h1>المشاريع والوحدات</h1><p class="sub">سجل الأملاك: المشاريع ووحداتها وحالة الإشغال. تُضاف الوحدات تلقائيًا من العقود، ويمكنك إضافة وحدات شاغرة يدويًا.</p>
+<div class="bar"><button class="btn p" data-a="newProj">+ مشروع جديد</button><input type="search" id="pq" placeholder="بحث باسم المشروع" value="${esc(S.pr.q)}">${pbtn('list')}</div>${T(cols,rws,{foot})}`;
+}
+function projUnits(pid,print){
+  const p=P()[pid],us=[...(p.units||[])].sort((a,b)=>String(a.no).localeCompare(String(b.no),'ar',{numeric:true}));
+  return T([{h:'الوحدة',k:'t'},{h:'المالك',k:'t'},{h:'النوع',k:'t'},{h:'المساحة',k:'t'},{h:'الحالة',k:'t'},{h:'المستأجر الحالي',k:'t'},{h:'نهاية العقد',k:'d'},{h:'',k:'ac'}],
+    us.map(u=>{const s=unitStatus(p,u);return{cells:['<b>'+esc(u.no)+'</b>',esc(u.owner)||'—',esc(u.type)||'—',esc(u.area)||'—',s.act?'<span class="ch ok">مؤجرة</span>':s.last?'<span class="ch warn">شاغرة</span>':'<span class="ch">شاغرة</span>',s.act?esc(s.act.c.tenant):'—',s.act?fs_(s.act.c.end):'—',`<button class="btn sm" data-a="editUnit" data-i="${esc(u.id)}">تعديل</button> <button class="btn sm dng" data-a="delUnit" data-i="${esc(u.id)}">حذف</button>`]}}),{print});
+}
+function projDlg(pid){
+  S.pj=pid;const p=P()[pid];if(!p){$('#stm').close();return}
+  $('#stm').innerHTML=`<div class="dh"><div><h2>${esc(p.name)}</h2><p>${esc(p.address||'')} ${p.notes?'· '+esc(p.notes):''}</p></div><button class="x" data-a="sclose" aria-label="إغلاق">✕</button></div>
+<div class="db"><div class="acts"><button class="btn p" data-a="newUnit">+ وحدة</button><button class="btn" data-a="editProj">تعديل المشروع</button>${pbtn('proj')}<button class="btn dng" data-a="delProj">حذف المشروع وكل عقوده</button></div>${projUnits(pid)}</div>`;
+  if(!$('#stm').open)$('#stm').showModal();
+}
+function projForm(pid){
+  const p=pid?P()[pid]:{};
+  formDlg({title:pid?'تعديل المشروع':'مشروع جديد',vals:p,fields:[{k:'name',l:'اسم المشروع'},{k:'no',l:'رقم المشروع'},{k:'address',l:'الموقع / العنوان',full:1},{k:'notes',l:'ملاحظات',t:'area',full:1}],
+    onSave:o=>{if(!o.name)return 'أدخل اسم المشروع';
+      if(Object.entries(P()).some(([k,q])=>k!==pid&&q.name===o.name))return 'يوجد مشروع بنفس الاسم';
+      if(pid)mutate(pid,q=>Object.assign(q,{name:o.name,no:o.no,address:o.address,notes:o.notes}));
+      else{const id='p'+uid();P()[id]={name:o.name,no:o.no,address:o.address,notes:o.notes,contracts:[],units:[]};persist();render()}
+      if(pid&&$('#stm').open)projDlg(pid)}});
+}
+function unitForm(pid,uid_){
+  const p=P()[pid],u=uid_?p.units.find(u=>u.id===uid_):{};
+  formDlg({title:uid_?'تعديل الوحدة':'وحدة جديدة',vals:u,fields:[{k:'no',l:'رقم الوحدة'},{k:'owner',l:'المالك'},{k:'type',l:'النوع (شقة، فيلا، معرض…)'},{k:'area',l:'المساحة'},{k:'notes',l:'ملاحظات',t:'area',full:1}],
+    onSave:o=>{if(!o.no)return 'أدخل رقم الوحدة';
+      if((p.units||[]).some(x=>x.id!==uid_&&normU(x.no)===normU(o.no)))return 'الوحدة موجودة مسبقًا';
+      mutate(pid,q=>{q.units=q.units||[];if(uid_)Object.assign(q.units.find(x=>x.id===uid_),o);else q.units.push({id:'u'+uid(),...o})});projDlg(pid)}});
+}
+
+/* ---------- الملاك ---------- */
+function vOwners(all){
+  const q=S.ow.q.toLowerCase(),list=ownerStatements(all).filter(o=>!q||o.name.toLowerCase().includes(q));
+  const cols=[{h:'المالك',k:'t'},{h:'المشاريع',k:'t'},{h:'وحدات',k:'n'},{h:'عقود',k:'n'},{h:'إجمالي الإيجار',k:'n'},{h:'المحصَّل',k:'n'},{h:'المتبقي',k:'n'},{h:'المتأخر',k:'n'},{h:'رسوم الأملاك',k:'n'},{h:'صافي المحصَّل',k:'n'}];
+  const rws=list.map(o=>({attrs:` data-a="ownOpen" data-n="${esc(o.name)}"`,cells:['<b>'+esc(o.name)+'</b>',esc(o.projects.join('، ')),o.units,o.contracts,fm(o.total),fm(o.paid),fm(o.rem),o.late?fm(o.late):'—',fm(o.fees),'<b>'+fm(o.net)+'</b>']}));
+  const foot=['الإجمالي ('+list.length+' مالكًا)','','','',fm(sum(list,o=>o.total)),fm(sum(list,o=>o.paid)),fm(sum(list,o=>o.rem)),fm(sum(list,o=>o.late)),fm(sum(list,o=>o.fees)),fm(sum(list,o=>o.net))];
+  S.pm={title:'تقرير الملاك',sub:'المحصَّل ورسوم الأملاك وصافي المحصَّل لكل مالك',cols,rows:rws,foot,footSpan:0};
+  return `<h1>الملاك</h1><p class="sub">كشف حساب لكل مالك: المحصَّل من الإيجارات ناقصًا رسوم الأملاك. انقر على المالك لعرض الكشف وطباعته.</p>
+<div class="bar"><input type="search" id="oq" placeholder="بحث باسم المالك" value="${esc(S.ow.q)}">${pbtn('list')}</div>${T(cols,rws,{foot})}`;
+}
+const ownerRows=name=>rows().filter(x=>(String(x.c.owner||'').trim()||'(بدون مالك)')===name).sort((a,b)=>a.pn.localeCompare(b.pn,'ar')||String(a.c.unit).localeCompare(String(b.c.unit),'ar',{numeric:true}));
+function ownerBody(name,print){
+  const all=ownerRows(name),o=ownerStatements(all)[0]||{total:0,paid:0,rem:0,late:0,fees:0,net:0};
+  return `<div class="sum"><div><span>إجمالي الإيجار</span><b>${fm(o.total)}</b></div><div><span>المحصَّل</span><b>${fm(o.paid)}</b></div><div><span>المتبقي</span><b>${fm(o.rem)}</b></div><div><span>المتأخر</span><b>${fm(o.late)}</b></div><div><span>رسوم الأملاك</span><b>${fm(o.fees)}</b></div><div><span>صافي المحصَّل</span><b>${fm(o.net)}</b></div></div>
+<h3>عقود المالك</h3>${T([{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المستأجر',k:'t'},{h:'بداية الإيجار',k:'d'},{h:'نهاية الإيجار',k:'d'},{h:'الإجمالي',k:'n'},{h:'المسدد',k:'n'},{h:'المتبقي',k:'n'},{h:'الرسوم',k:'n'}],
+  all.map(x=>({attrs:'',cells:[esc(x.pn),'<b>'+esc(x.c.unit)+'</b>',esc(x.c.tenant)||'—',fs_(x.c.start),fs_(x.c.end),fm(x.r.total),fm(x.r.paid),fm(x.r.rem),fm(x.c.fee)]})),{print,foot:['الإجمالي','','','','',fm(sum(all,x=>x.r.total||0)),fm(sum(all,x=>x.r.paid||0)),fm(sum(all,x=>x.r.rem>0?x.r.rem:0)),fm(sum(all,x=>+x.c.fee||0))],footSpan:0})}`;
+}
+function ownerDlg(name){
+  S.on=name;
+  $('#stm').innerHTML=`<div class="dh"><div><h2>${esc(name)}</h2><p>كشف حساب مالك</p></div><button class="x" data-a="sclose" aria-label="إغلاق">✕</button></div><div class="db"><div class="acts">${pbtn('owner')}<button class="btn" data-a="xlsOwner">تصدير Excel</button></div>${ownerBody(name)}</div>`;
+  if(!$('#stm').open)$('#stm').showModal();
+}
+
+/* ---------- الإعدادات ---------- */
+function vSettings(){
+  return `<h1>البيانات والنسخ الاحتياطي</h1><p class="sub">تُحفظ البيانات تلقائيًا بعد كل تعديل داخل التطبيق على هذا الجهاز.</p>
+<div class="set">
+<div class="card"><h3>استيراد وتصدير Excel</h3><p>الاستيراد يقرأ ورقة «ورقه المعالجة» (نموذج الإدخال المعتمد). التصدير ينتج ملفًا بنفس التخطيط مع ورقة «الدفعات» ليعود الاستيراد دقيقًا.</p>
+<div class="row"><button class="btn p" data-a="imp">استيراد من Excel</button><button class="btn" data-a="expX">تصدير كل العقود (Excel)</button><button class="btn" data-a="tpl">تنزيل نموذج إدخال فارغ</button></div></div>
+<div class="card"><h3>طريقة احتساب العقود التي تزيد مدتها عن سنة</h3><div class="row"><label>قيمة الإيجار تمثل <select id="mode"><option value="total"${MODE()==='total'?' selected':''}>إجمالي قيمة العقد</option><option value="annual"${MODE()==='annual'?' selected':''}>إيجار سنة واحدة</option></select></label></div></div>
+<div class="card"><h3>النسخ الاحتياطي</h3><p>تؤخذ نسخة تلقائية كل 6 ساعات عند الحفظ، ونسخة قبل كل استيراد أو استعادة.</p>
+<div class="row"><button class="btn p" data-a="bkNow">نسخة احتياطية الآن</button><button class="btn" data-a="bkList">استعادة من نسخة سابقة</button></div><div id="bklist"></div></div>
+<div class="card"><h3>إصدار التطبيق</h3><p>الإصدار الحالي: <b class="num">${esc(S.ver||'')}</b> — يتحقق التطبيق من التحديثات تلقائيًا عند التشغيل.</p><div class="row"><button class="btn" data-a="chkUpd">التحقق من التحديثات الآن</button></div></div>
+<div class="card"><h3>موقع التخزين</h3><p class="num" id="dirp" style="direction:ltr;text-align:end">${esc(S.dir)}</p><div class="row"><button class="btn" data-a="openDir">فتح المجلد</button><button class="btn" data-a="chDir">تغيير المجلد (مثلًا OneDrive أو مجلد مشترك)</button></div></div>
+</div>`;
+}
+
+/* ---------- الاستيراد ---------- */
+function impStats(){
+  const I=S.imp;if(!I)return'';const m=$('#imode').value;let hit=0;
+  if(m==='merge'){hit=applyImp(P(),I,'merge').stats.updated}
+  return 'الورقة المقروءة: «'+esc(I.sn)+'». عدد العقود: '+I.n+' في '+Object.keys(I.P).length+' مشاريع.'+(I.authN?' (ملف مُصدَّر من التطبيق: الدفعات بتواريخها ستُستعاد).':'')+(m==='merge'?' سيُحدَّث '+hit+' عقدًا مطابقًا وتُضاف '+(I.n-hit)+' عقدًا جديدًا. الدفعات المسجلة داخل التطبيق بتواريخها تبقى ولا تتكرر.':' ستُحذف عقود المشاريع الحالية ويُستبدل بها محتوى الملف.');
+}
+function openImp(){
+  S.imp=null;
+  $('#imp').innerHTML=`<div class="dh"><h2>استيراد من ملف Excel</h2><button class="x" data-a="iclose" aria-label="إغلاق">✕</button></div>
+<div class="fg"><div class="full"><p style="margin:0 0 8px;color:var(--mut);font-size:13.5px">اختر ملفًا بنفس تنسيق ورقة «ورقه المعالجة» والعقود في الصفوف.</p><button class="btn" data-a="ipick">اختيار ملف…</button> <span id="iname"></span></div>
+<label class="full">طريقة الاستيراد<select id="imode"><option value="merge">دمج: تحديث العقود المطابقة (الوحدة + المستأجر + البداية) وإضافة الجديد</option><option value="replace">استبدال كل بيانات العقود الحالية</option></select></label>
+<div class="full" id="ipv" style="font-size:13.5px"></div></div>
+<div class="ft"><button class="btn p" id="iapply" data-a="iapply" disabled>تطبيق الاستيراد</button><button class="btn" data-a="iclose">إلغاء</button></div>`;
+  $('#imode').onchange=()=>{$('#ipv').innerHTML=impStats()};
+  $('#imp').showModal();
+}
+async function pickImp(){
+  const f=await native.openFile([{name:'Excel',extensions:['xlsx','xlsm','xls']}]);if(!f)return;
+  try{S.imp=parseWb(XLSX,XLSX.read(f.bytes,{type:'array'}))}catch(x){S.imp=null;toast('تعذّرت قراءة الملف')}
+  $('#iname').textContent=f.name;
+  $('#ipv').innerHTML=S.imp&&S.imp.n?impStats():'<span class="warnbox" style="display:block">لم أجد عقودًا في الملف. تأكد أن الأعمدة بنفس ترتيب ورقة المعالجة.</span>';
+  $('#iapply').disabled=!(S.imp&&S.imp.n);
+}
+async function applyBtn(b){
+  const mode=$('#imode').value;
+  const run=async()=>{
+    await flush();await native.backupPre('import');
+    const{next,stats}=applyImp(P(),S.imp,mode);
+    S.db.projects=next;S.imp=null;persist();$('#imp').close();render();
+    toast('تم الاستيراد: '+(mode==='merge'?stats.updated+' محدَّث، '+stats.added+' جديد':stats.added+' عقدًا'));
+  };
+  mode==='replace'?arm(b,run):run();
+}
+
+/* ---------- التصدير ---------- */
+const csvq=s=>'"'+String(s??'').replace(/"/g,'""')+'"';
+async function saveText(name,txt){const f=await native.saveFile(name,new TextEncoder().encode('﻿'+txt));if(f)toast('تم الحفظ')}
+async function saveWb(name,wb){const b=XLSX.write(wb,{type:'array',bookType:'xlsx'});const f=await native.saveFile(name,new Uint8Array(b));if(f)toast('تم الحفظ')}
+function contractsCsv(){
+  const h=['المشروع','الوحدة','المالك','المستأجر','بداية الإيجار','نهاية الإيجار','إجمالي العقد','المسدد','المتبقي','الاستحقاق القادم','مبلغ القادم','المتأخر','الحالة'];
+  const l=sorted(rows().filter(passC)).map(({pn,c,r})=>[pn,c.unit,c.owner,c.tenant,c.start,c.end,r.total,r.paid,r.rem,r.next?iso(r.next.date):'',r.next?r.next.due:'',r.late,r.st].map(csvq).join(','));
+  return[h.map(csvq).join(','),...l].join('\r\n');
+}
+function printDoc(k,pdf){
+  let html,name;
+  if(k==='list'){if(S.view==='due'){S.due.print=true;S.pm=dueModel(rows());S.due.print=false}html=listDoc();name=safe(S.pm.title)+'.pdf'}
+  else if(k==='contract'){const x=cur();if(!x)return;html=contractDoc(x);name='contract-'+safe(x.c.unit)+'.pdf'}
+  else if(k==='owner'){html=docHtml({title:'كشف حساب مالك: '+esc(S.on),sub:'بتاريخ '+iso(TODAY),body:ownerBody(S.on,true)});name='statement-'+safe(S.on)+'.pdf'}
+  else if(k==='proj'){const p=P()[S.pj];html=docHtml({title:'وحدات مشروع: '+esc(p.name),sub:esc(p.address||''),body:projUnits(S.pj,true)});name='units-'+safe(p.name)+'.pdf'}
+  printArea(html,pdf?name:null);
+}
+
+/* ---------- الأحداث ---------- */
+const act={
+  go:b=>go(b.dataset.v),jump:b=>J[b.dataset.j](),
+  open:b=>openDet(b.dataset.p,b.dataset.c),close:()=>$('#det').close(),fclose:()=>$('#frm').close(),sclose:()=>$('#stm').close(),
+  new:()=>contractForm(false),edit:()=>contractForm(true),
+  renewC:()=>{const x=cur();if(x)renewForm(x.pid,x.c)},renewQ:b=>{const c=P()[b.dataset.p].contracts.find(c=>c.id===b.dataset.c);renewForm(b.dataset.p,c)},
+  qpay:b=>quickPay(b.dataset.p,b.dataset.c,b.dataset.v),
+  print:b=>printDoc(b.dataset.k,false),pdf:b=>printDoc(b.dataset.k,true),
+  csv:()=>saveText('rent-contracts.csv',contractsCsv()),
+  dueCsv:()=>{const act=S.due.mode==='act',L=dueList(rows());
+    const h=act?['التاريخ','المشروع','الوحدة','المالك','المستأجر','المبلغ','ملاحظة']:['الاستحقاق','المشروع','الوحدة','المالك','المستأجر','القسط','مبلغ القسط','المسدد','المتبقي'];
+    const out=[h.map(csvq).join(','),...L.map(o=>(act?[o.t?iso(o.t):'',o.x.pn,o.x.c.unit,o.x.c.owner,o.x.c.tenant,o.amount,o.note]:[o.t?iso(o.t):'',o.x.pn,o.x.c.unit,o.x.c.owner,o.x.c.tenant,o.n,o.amount,o.paid,o.due]).map(csvq).join(','))];
+    saveText('cashflow.csv',out.join('\r\n'))},
+  dueClear:()=>{Object.assign(S.due,{from:'',to:'',m:''});render()},
+  delC:b=>arm(b,()=>{const{pid,cid}=S.cur;$('#det').close();mutate(pid,p=>{p.contracts=p.contracts.filter(c=>c.id!==cid)})}),
+  addPay:()=>{const a=+$('#pa').value;if(!(a>0))return toast('أدخل مبلغًا صحيحًا');
+    const p={id:'i'+uid(),date:$('#pd').value,amount:a,note:$('#pt').value.trim()};
+    mutate(S.cur.pid,pr=>pr.contracts.find(c=>c.id===S.cur.cid).payments.push(p));toast('تم تسجيل الدفعة')},
+  delPay:b=>arm(b,()=>mutate(S.cur.pid,pr=>{const c=pr.contracts.find(c=>c.id===S.cur.cid);c.payments=c.payments.filter(p=>p.id!==b.dataset.i)})),
+  newProj:()=>projForm(null),projOpen:b=>projDlg(b.dataset.p),editProj:()=>projForm(S.pj),
+  delProj:b=>arm(b,()=>{delete P()[S.pj];persist();$('#stm').close();render()}),
+  newUnit:()=>unitForm(S.pj,null),editUnit:b=>unitForm(S.pj,b.dataset.i),
+  delUnit:b=>arm(b,()=>{mutate(S.pj,p=>{p.units=p.units.filter(u=>u.id!==b.dataset.i)});projDlg(S.pj)}),
+  ownOpen:b=>ownerDlg(b.dataset.n),
+  xlsOwner:()=>{const all=ownerRows(S.on);
+    const aoa=[['المشروع','الوحدة','المستأجر','بداية الإيجار','نهاية الإيجار','الإجمالي','المسدد','المتبقي','الرسوم'],...all.map(x=>[x.pn,x.c.unit,x.c.tenant,x.c.start,x.c.end,x.r.total,x.r.paid,x.r.rem,x.c.fee])];
+    const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(aoa);ws['!views']=[{rightToLeft:true}];XLSX.utils.book_append_sheet(wb,ws,'كشف الحساب');saveWb('statement.xlsx',wb)},
+  imp:openImp,iclose:()=>$('#imp').close(),ipick:pickImp,iapply:applyBtn,
+  expX:()=>saveWb('rent-contracts-export.xlsx',buildWorkbook(XLSX,P(),MODE(),TODAY)),
+  tpl:()=>saveWb('نموذج-الإدخال.xlsx',buildWorkbook(XLSX,{},MODE(),TODAY,false)),
+  bkNow:async()=>{await flush();const f=await native.backupNow();toast(f?'تم إنشاء نسخة احتياطية':'لا توجد بيانات بعد')},
+  bkList:async()=>{const l=await native.backups();$('#bklist').innerHTML=l.length?'<div class="tw it" style="margin-top:8px;max-height:260px"><table><tbody>'+l.map(b=>`<tr><td class="n">${esc(b.name)}</td><td class="n">${Math.round(b.size/1024)} KB</td><td class="ac"><button class="btn sm" data-a="restore" data-n="${esc(b.name)}">استعادة</button></td></tr>`).join('')+'</tbody></table></div>':'<p>لا توجد نسخ.</p>'},
+  restore:b=>arm(b,async()=>{await flush();await native.backupPre('restore');try{const d=await native.readBackup(b.dataset.n);normalize(d);S.db=d;persist();render();toast('تمت الاستعادة')}catch{toast('تعذّرت الاستعادة')}}),
+  chkUpd:async()=>{const r=await native.checkUpdate();toast(r.dev?'التحديث التلقائي يعمل في النسخة المثبّتة فقط':r.err?'تعذّر التحقق: '+r.err:(r.v&&r.v!==S.ver?'يوجد إصدار جديد '+r.v+' وجارٍ تنزيله':'أنت على أحدث إصدار'))},
+  openDir:()=>native.openDir(),
+  chDir:async()=>{const d=await native.changeDir();if(!d)return;S.dir=d;const r=await native.load();if(r.data){normalize(r.data);S.db=r.data}else persist();render();toast('تم تغيير موقع التخزين')}
+};
+document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b||!act[b.dataset.a])return;if(b.tagName==='TR'&&e.target.closest('button'))return;act[b.dataset.a](b)});
+document.addEventListener('input',e=>{
+  const id=e.target.id,v=e.target.value.trim();
+  if(id==='fq'){S.f.q=v;render()}else if(id==='dq'){S.due.q=v;render()}else if(id==='rq'){S.ren.q=v;render()}
+  else if(id==='oq'){S.ow.q=v;render()}else if(id==='pq'){S.pr.q=v;render()}
+});
+document.addEventListener('change',e=>{
+  const id=e.target.id,v=e.target.value;
+  if(id==='fp'){S.f.p=v;render()}else if(id==='fs'){S.f.s=v;render()}
+  else if(id==='dp'){S.due.p=v;render()}else if(id==='ds'){S.due.s=v;render()}
+  else if(id==='dcs'){S.due.cs=v;render()}else if(id==='dmode'){S.due.mode=v;render()}else if(id==='dg'){S.due.g=v;render()}
+  else if(id==='dfrom'){S.due.from=v;S.due.m='';render()}else if(id==='dto'){S.due.to=v;S.due.m='';render()}
+  else if(id==='dm'){S.due.m=v;S.due.from=v?v+'-01':'';S.due.to=v?mEnd(v):'';render()}
+  else if(id==='rp'){S.ren.p=v;render()}else if(id==='rw'){S.ren.win=v;render()}
+  else if(id==='mode'){S.db.settings.mode=v;persist();render();toast('تم حفظ الإعداد')}
+});
+function normalize(d){d.projects=d.projects||{};delete d.maint;d.settings=d.settings||{mode:'total'};d.v=1;
+  for(const p of Object.values(d.projects)){p.contracts=p.contracts||[];p.units=p.units||[];for(const c of p.contracts){c.payments=c.payments||[];ensureUnit(p,c)}}return d}
+native.onUpdate(d=>{
+  const b=$('#upd');if(!b)return;
+  if(d.t==='available'){b.hidden=false;b.textContent='جارٍ تنزيل التحديث '+d.v+'…'}
+  else if(d.t==='progress'){b.hidden=false;b.textContent='تنزيل التحديث '+d.pct+'%'}
+  else if(d.t==='ready'){b.hidden=false;b.innerHTML='تحديث جاهز ('+d.v+') — <b>اضغط لإعادة التشغيل والتثبيت</b>';b.onclick=async()=>{await flush();native.installUpdate()}}
+});
+(async()=>{
+  try{S.ver=await native.version()}catch{}
+  try{const r=await native.load();S.dir=r.dir;
+    if(r.data){S.db=normalize(r.data);if(r.recovered)toast('الملف الرئيسي تالف، استُعيدت آخر نسخة سليمة: '+r.recovered)}}
+  catch(e){toast('تعذّر تحميل البيانات')}
+  render();
+})();

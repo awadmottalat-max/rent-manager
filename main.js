@@ -1,0 +1,103 @@
+const{app,BrowserWindow,ipcMain,dialog,shell,Menu}=require('electron');
+const path=require('path'),fs=require('fs');
+let autoUpdater=null;try{autoUpdater=require('electron-updater').autoUpdater}catch{}
+let win=null,cfgPath,dataDir,lastBackup=0;
+const FILE='rent-data.json',MAXB=40;
+const exists=p=>{try{fs.accessSync(p);return true}catch{return false}};
+function readCfg(){try{return JSON.parse(fs.readFileSync(cfgPath,'utf8'))}catch{return{}}}
+function init(){
+  cfgPath=path.join(app.getPath('userData'),'config.json');
+  const c=readCfg();dataDir=c.dataDir&&exists(c.dataDir)?c.dataDir:path.join(app.getPath('userData'),'data');
+  fs.mkdirSync(path.join(dataDir,'backups'),{recursive:true});
+}
+const dataFile=()=>path.join(dataDir,FILE),bdir=()=>path.join(dataDir,'backups');
+function atomicWrite(file,txt){const t=file+'.tmp';const fd=fs.openSync(t,'w');fs.writeSync(fd,txt);fs.fsyncSync(fd);fs.closeSync(fd);fs.renameSync(t,file)}
+const stamp=()=>{const d=new Date(),p=n=>String(n).padStart(2,'0');return`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`};
+function backup(tag){
+  if(!exists(dataFile()))return null;
+  const f=path.join(bdir(),`rent-${stamp()}${tag?'-'+tag:''}.json`);fs.copyFileSync(dataFile(),f);lastBackup=Date.now();
+  const all=fs.readdirSync(bdir()).filter(n=>/^rent-.*\.json$/.test(n)).sort();
+  // لا نحذف نسخ ما قبل الاستيراد/الاستعادة تلقائيًا إلا إذا زادت كثيرًا
+  const auto=all.filter(n=>!/-(import|restore|manual)\.json$/.test(n));
+  while(auto.length>MAXB)fs.unlinkSync(path.join(bdir(),auto.shift()));
+  return f;
+}
+function load(){
+  const f=dataFile();
+  const tryRead=p=>{try{const j=JSON.parse(fs.readFileSync(p,'utf8'));return j&&j.projects?j:null}catch{return null}};
+  let d=exists(f)?tryRead(f):null,recovered=false;
+  if(!d&&exists(f)){ // الملف تالف: نحاول آخر نسخة سليمة
+    const bs=fs.readdirSync(bdir()).filter(n=>/\.json$/.test(n)).sort().reverse();
+    for(const n of bs){d=tryRead(path.join(bdir(),n));if(d){recovered=n;break}}
+    fs.renameSync(f,f+'.corrupt-'+stamp());
+  }
+  return{data:d,recovered,dir:dataDir};
+}
+function save(data){
+  if(Date.now()-lastBackup>6*3600e3)backup('auto');
+  atomicWrite(dataFile(),JSON.stringify(data));return true;
+}
+function createWindow(){
+  win=new BrowserWindow({width:1360,height:860,minWidth:980,minHeight:600,title:'متابعة الإيجارات وإدارة الأملاك',backgroundColor:'#edf0f3',icon:path.join(__dirname,'build','icon.png'),
+    webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true,spellcheck:false}});
+  Menu.setApplicationMenu(null);
+  win.loadFile(path.join(__dirname,'src','index.html'));
+  win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
+  win.webContents.on('will-navigate',e=>e.preventDefault());
+}
+const lock=app.requestSingleInstanceLock();
+if(!lock)app.quit();else{
+  app.on('second-instance',()=>{if(win){if(win.isMinimized())win.restore();win.focus()}});
+  app.whenReady().then(()=>{init();
+    ipcMain.handle('data:load',()=>load());
+    ipcMain.handle('data:save',(_e,d)=>save(d));
+    ipcMain.on('data:saveSync',(e,d)=>{try{save(d);e.returnValue=true}catch{e.returnValue=false}});
+    ipcMain.handle('backup:now',()=>backup('manual'));
+    ipcMain.handle('backup:pre',(_e,tag)=>backup(tag));
+    ipcMain.handle('backup:list',()=>fs.readdirSync(bdir()).filter(n=>/\.json$/.test(n)).sort().reverse().slice(0,60).map(n=>({name:n,size:fs.statSync(path.join(bdir(),n)).size,time:fs.statSync(path.join(bdir(),n)).mtimeMs})));
+    ipcMain.handle('backup:read',(_e,n)=>{if(n!==path.basename(n))throw new Error('bad');return JSON.parse(fs.readFileSync(path.join(bdir(),n),'utf8'))});
+    ipcMain.handle('dir:open',()=>shell.openPath(dataDir));
+    ipcMain.handle('dir:info',()=>dataDir);
+    ipcMain.handle('dir:change',async()=>{
+      const r=await dialog.showOpenDialog(win,{title:'اختر مجلد التخزين',properties:['openDirectory','createDirectory']});
+      if(r.canceled)return null;const nd=r.filePaths[0];
+      fs.mkdirSync(path.join(nd,'backups'),{recursive:true});
+      if(!exists(path.join(nd,FILE))&&exists(dataFile()))fs.copyFileSync(dataFile(),path.join(nd,FILE));
+      fs.writeFileSync(cfgPath,JSON.stringify({dataDir:nd}));dataDir=nd;return nd;
+    });
+    ipcMain.handle('file:open',async(_e,filters)=>{
+      const r=await dialog.showOpenDialog(win,{properties:['openFile'],filters});
+      if(r.canceled)return null;const b=fs.readFileSync(r.filePaths[0]);
+      return{name:path.basename(r.filePaths[0]),bytes:new Uint8Array(b)};
+    });
+    ipcMain.handle('file:save',async(_e,name,bytes)=>{
+      const ext=path.extname(name).slice(1);
+      const r=await dialog.showSaveDialog(win,{defaultPath:name,filters:[{name:ext.toUpperCase(),extensions:[ext]}]});
+      if(r.canceled)return null;fs.writeFileSync(r.filePath,Buffer.from(bytes));return r.filePath;
+    });
+    ipcMain.handle('print:pdf',async(_e,name)=>{
+      const r=await dialog.showSaveDialog(win,{defaultPath:name,filters:[{name:'PDF',extensions:['pdf']}]});
+      if(r.canceled)return null;
+      const pdf=await win.webContents.printToPDF({printBackground:true,preferCSSPageSize:true});
+      fs.writeFileSync(r.filePath,pdf);return r.filePath;
+    });
+    ipcMain.handle('print:now',()=>{win.webContents.print({printBackground:true})});
+    ipcMain.handle('path:show',(_e,p)=>shell.showItemInFolder(p));
+    ipcMain.handle('app:version',()=>app.getVersion());
+    ipcMain.handle('upd:check',()=>{if(!app.isPackaged||!autoUpdater)return{dev:true};return autoUpdater.checkForUpdates().then(r=>({ok:true,v:r?.updateInfo?.version})).catch(e=>({err:String(e.message||e)}))});
+    ipcMain.handle('upd:install',()=>{if(autoUpdater)autoUpdater.quitAndInstall()});
+    createWindow();
+    if(app.isPackaged&&autoUpdater){
+      const send=(t,d)=>{try{win&&win.webContents.send('upd',{t,...d})}catch{}};
+      autoUpdater.autoDownload=true;autoUpdater.autoInstallOnAppQuit=true;
+      autoUpdater.on('update-available',i=>send('available',{v:i.version}));
+      autoUpdater.on('download-progress',p=>send('progress',{pct:Math.round(p.percent)}));
+      autoUpdater.on('update-downloaded',i=>send('ready',{v:i.version}));
+      autoUpdater.on('error',e=>send('error',{m:String(e.message||e)}));
+      win.webContents.once('did-finish-load',()=>setTimeout(()=>autoUpdater.checkForUpdates().catch(()=>{}),4000));
+      setInterval(()=>autoUpdater.checkForUpdates().catch(()=>{}),4*3600e3);
+    }
+    app.on('activate',()=>{if(!BrowserWindow.getAllWindows().length)createWindow()});
+  });
+  app.on('window-all-closed',()=>app.quit());
+}

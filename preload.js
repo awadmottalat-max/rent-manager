@@ -1,0 +1,22 @@
+const{contextBridge,ipcRenderer:ipc}=require('electron');
+contextBridge.exposeInMainWorld('native',{
+  load:()=>ipc.invoke('data:load'),
+  save:d=>ipc.invoke('data:save',d),
+  saveSync:d=>ipc.sendSync('data:saveSync',d),
+  backupNow:()=>ipc.invoke('backup:now'),
+  backupPre:t=>ipc.invoke('backup:pre',t),
+  backups:()=>ipc.invoke('backup:list'),
+  readBackup:n=>ipc.invoke('backup:read',n),
+  openDir:()=>ipc.invoke('dir:open'),
+  dirInfo:()=>ipc.invoke('dir:info'),
+  changeDir:()=>ipc.invoke('dir:change'),
+  openFile:f=>ipc.invoke('file:open',f),
+  saveFile:(n,b)=>ipc.invoke('file:save',n,b),
+  pdf:n=>ipc.invoke('print:pdf',n),
+  print:()=>ipc.invoke('print:now'),
+  show:p=>ipc.invoke('path:show',p),
+  version:()=>ipc.invoke('app:version'),
+  checkUpdate:()=>ipc.invoke('upd:check'),
+  installUpdate:()=>ipc.invoke('upd:install'),
+  onUpdate:cb=>ipc.on('upd',(_e,d)=>cb(d))
+});
