@@ -41,9 +41,9 @@ input,select,textarea{font:inherit;font-size:14px;color:var(--ink);background:va
 .link{all:unset;cursor:pointer;color:var(--gold-d);font-size:13.5px;font-weight:600}.link:hover{text-decoration:underline}
 .tw{overflow:auto;background:var(--sf);border:1px solid var(--line);border-radius:10px}
 table{border-collapse:collapse;width:100%}
-th{font-weight:600;font-size:13px;color:var(--acc);padding:10px;border-bottom:2px solid var(--gold);white-space:nowrap;position:sticky;top:0;background:#faf6f3;text-align:start}
-td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle;font-size:13.5px}
-td.t{min-width:120px}
+th{font-weight:600;font-size:13px;color:var(--acc);padding:10px 8px;border-bottom:2px solid var(--gold);white-space:nowrap;position:sticky;top:0;background:#faf6f3;text-align:start}
+td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:middle;font-size:13.5px}
+td.t{min-width:92px}
 th.n,td.n{text-align:left;direction:ltr;font-variant-numeric:tabular-nums;white-space:nowrap}
 th.d,td.d{text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}
 th.ac,td.ac{text-align:center;width:1%;white-space:nowrap}

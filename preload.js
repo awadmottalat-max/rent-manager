@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('native',{
   pdf:n=>ipc.invoke('print:pdf',n),
   print:()=>ipc.invoke('print:now'),
   show:p=>ipc.invoke('path:show',p),
+  saveTemplate:()=>ipc.invoke('template:save'),
   version:()=>ipc.invoke('app:version'),
   checkUpdate:()=>ipc.invoke('upd:check'),
   installUpdate:()=>ipc.invoke('upd:install'),

@@ -83,6 +83,11 @@ if(!lock)app.quit();else{
     });
     ipcMain.handle('print:now',()=>{win.webContents.print({printBackground:true})});
     ipcMain.handle('path:show',(_e,p)=>shell.showItemInFolder(p));
+    ipcMain.handle('template:save',async()=>{
+      const buf=await require('./src/template.js').build();
+      const r=await dialog.showSaveDialog(win,{defaultPath:'قالب-استيراد-العقود.xlsx',filters:[{name:'Excel',extensions:['xlsx']}]});
+      if(r.canceled)return null;fs.writeFileSync(r.filePath,buf);return r.filePath;
+    });
     ipcMain.handle('app:version',()=>app.getVersion());
     ipcMain.handle('upd:check',()=>{if(!app.isPackaged||!autoUpdater)return{dev:true};return autoUpdater.checkForUpdates().then(r=>({ok:true,v:r?.updateInfo?.version})).catch(e=>({err:String(e.message||e)}))});
     ipcMain.handle('upd:install',()=>{if(autoUpdater)autoUpdater.quitAndInstall()});

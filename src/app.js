@@ -41,7 +41,7 @@ function passC(x){
 }
 const chip=i=>i.status==='paid'?'<span class="ch ok">مسدد</span>':i.late?'<span class="ch late">متأخر</span>':i.soon?'<span class="ch warn">خلال 30 يومًا</span>':i.status==='partial'?'<span class="ch warn">جزئي</span>':i.date==null?'<span class="ch">بلا تاريخ</span>':'<span class="ch">قادم</span>';
 const stChip=x=>{const r=x.r;return r.late_n?`<span class="ch late">متأخر ${r.late_n}</span>`:`<span class="ch ${r.st==='ساري'?'ok':r.st==='منتهي'||r.st==='لم يبدأ'?'':'warn'}">${r.st}</span>`};
-const ud=x=>`<b>${esc(x.c.unit)||'—'}</b><small>${esc(x.pn)}</small>`;
+const pu=x=>[esc(x.pn),'<b>'+(esc(x.c.unit)||'—')+'</b>'];
 
 /* ---------- جدول موحّد: كل عنوان بنفس محاذاة بياناته ---------- */
 /* cols: {h,k:'t'|'n'|'d'|'x'} ; rows: {cls,attrs,span,cells} */
@@ -102,8 +102,8 @@ const J={
 const TOP=8;
 function more(j,n,shown){return n>shown?`<button class="link" data-a="jump" data-j="${j}">عرض الكل (${n}) ←</button>`:`<button class="link" data-a="jump" data-j="${j}">فتح التفاصيل ←</button>`}
 function secDash(title,j,n,body){return `<div class="sec"><div class="sech"><h3>${title}</h3>${more(j,n,TOP)}</div>${body}</div>`}
-const RCOLS=[{h:'الوحدة / المشروع',k:'t'},{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'بداية الإيجار',k:'d'},{h:'نهاية الإيجار',k:'d'},{h:'الموقف',k:'d'},{h:'إجمالي العقد',k:'n'},{h:'المتبقي',k:'n'}];
-const rRow=x=>({attrs:open_(x),cells:[ud(x),esc(x.c.owner)||'—',esc(x.c.tenant)||'—',fs_(x.c.start),fs_(x.c.end),x.days<0?`<span class="ch late">انتهى منذ ${-x.days} يوم</span>`:`<span class="ch warn">بعد ${x.days} يوم</span>`,fm(x.r.total),fm(x.r.rem>0?x.r.rem:0)]});
+const RCOLS=[{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'بداية الإيجار',k:'d'},{h:'نهاية الإيجار',k:'d'},{h:'الموقف',k:'d'},{h:'إجمالي العقد',k:'n'},{h:'المتبقي',k:'n'}];
+const rRow=x=>({attrs:open_(x),cells:[...pu(x),esc(x.c.owner)||'—',esc(x.c.tenant)||'—',fs_(x.c.start),fs_(x.c.end),x.days<0?`<span class="ch late">انتهى منذ ${-x.days} يوم</span>`:`<span class="ch warn">بعد ${x.days} يوم</span>`,fm(x.r.total),fm(x.r.rem>0?x.r.rem:0)]});
 function vDash(all){
   const late=sum(all,x=>x.r.late),soon=sum(all,x=>sum(x.r.inst.filter(i=>i.soon),i=>i.due));
   const rn=renewals(all,TODAY,90),exp=rn.filter(x=>x.days>=0),endd=rn.filter(x=>x.days<0).sort((a,b)=>b.endT-a.endT);
@@ -113,10 +113,10 @@ function vDash(all){
   const maxT=Math.max(1,...byP.map(x=>x.tot));
   const lateList=all.filter(x=>x.r.late_n).sort((a,b)=>b.r.late-a.r.late);
   const upc=[];for(const x of all)for(const i of x.r.inst)if(i.soon)upc.push({x,i});upc.sort((a,b)=>a.i.date-b.i.date);
-  const lateT=T([{h:'الوحدة / المشروع',k:'t'},{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'أقدم استحقاق متأخر',k:'d'},{h:'الأقساط المتأخرة',k:'d'},{h:'المبلغ المتأخر',k:'n'},{h:'المتبقي الكلي',k:'n'}],
-    lateList.slice(0,TOP).map(x=>({cls:'late',attrs:open_(x),cells:[ud(x),esc(x.c.owner)||'—',esc(x.c.tenant)||'—',fd(x.r.inst.find(i=>i.late)?.date),x.r.late_n,'<b>'+fm(x.r.late)+'</b>',fm(x.r.rem)]})));
-  const upT=T([{h:'تاريخ الاستحقاق',k:'d'},{h:'الوحدة / المشروع',k:'t'},{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'القسط',k:'d'},{h:'المبلغ',k:'n'}],
-    upc.slice(0,TOP).map(({x,i})=>({attrs:open_(x),cells:[fd(i.date),ud(x),esc(x.c.owner)||'—',esc(x.c.tenant)||'—',i.n+' / '+x.r.k,'<b>'+fm(i.due)+'</b>']})));
+  const lateT=T([{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'أقدم استحقاق متأخر',k:'d'},{h:'الأقساط المتأخرة',k:'d'},{h:'المبلغ المتأخر',k:'n'},{h:'المتبقي الكلي',k:'n'}],
+    lateList.slice(0,TOP).map(x=>({cls:'late',attrs:open_(x),cells:[...pu(x),esc(x.c.owner)||'—',esc(x.c.tenant)||'—',fd(x.r.inst.find(i=>i.late)?.date),x.r.late_n,'<b>'+fm(x.r.late)+'</b>',fm(x.r.rem)]})));
+  const upT=T([{h:'تاريخ الاستحقاق',k:'d'},{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'القسط',k:'d'},{h:'المبلغ',k:'n'}],
+    upc.slice(0,TOP).map(({x,i})=>({attrs:open_(x),cells:[fd(i.date),...pu(x),esc(x.c.owner)||'—',esc(x.c.tenant)||'—',i.n+' / '+x.r.k,'<b>'+fm(i.due)+'</b>']})));
   return `<h1>لوحة التحكم</h1><p class="sub">${all.length} عقدًا في ${Object.keys(P()).length} مشاريع — اضغط على أي بطاقة أو «عرض الكل» لفتح التفاصيل الكاملة.</p>
 <div class="kpis">
 ${kp('','active','عقود سارية',all.filter(x=>x.r.st==='ساري').length,'من '+all.length)}
@@ -135,13 +135,13 @@ ${secDash('العقود المنتهية (بلا تجديد)','endedR',endd.leng
 }
 
 /* ---------- العقود ---------- */
-const CCOLS=[{h:'الوحدة / المشروع',k:'t'},{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'بداية الإيجار',k:'d'},{h:'نهاية الإيجار',k:'d'},{h:'إجمالي العقد',k:'n'},{h:'المسدد',k:'n'},{h:'المتبقي',k:'n'},{h:'القسط القادم',k:'d'},{h:'الحالة',k:'t'}];
+const CCOLS=[{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'بداية الإيجار',k:'d'},{h:'نهاية الإيجار',k:'d'},{h:'إجمالي العقد',k:'n'},{h:'المسدد',k:'n'},{h:'المتبقي',k:'n'},{h:'القسط القادم',k:'d'},{h:'الحالة',k:'t'}];
 const SLAB={'':'كل الحالات',late:'متأخرة',soon:'تستحق خلال 30 يومًا',open:'عليها متبقٍ',active:'سارية',ended:'منتهية',future:'لم تبدأ',issues:'بياناتها ناقصة'};
 function vContracts(all){
   const list=sorted(all.filter(passC));
-  const rws=list.map(x=>{const{c,r}=x;return{cls:r.late_n?'late':r.soon?'soon':'',attrs:open_(x),cells:[ud(x),esc(c.owner)||'—',esc(c.tenant)||'—',fs_(c.start),fs_(c.end),fm(r.total),fm(r.paid),'<b>'+fm(r.rem)+'</b>',r.next?fd(r.next.date)+'<small class="num">'+fm(r.next.due)+'</small>':'—',stChip(x)+(r.iss.length?` <span class="ch warn" title="${esc(r.iss.join('، '))}">ناقص</span>`:'')]}});
+  const rws=list.map(x=>{const{c,r}=x;return{cls:r.late_n?'late':r.soon?'soon':'',attrs:open_(x),cells:[...pu(x),esc(c.owner)||'—',esc(c.tenant)||'—',fs_(c.start),fs_(c.end),fm(r.total),fm(r.paid),'<b>'+fm(r.rem)+'</b>',r.next?fd(r.next.date)+'<small class="num">'+fm(r.next.due)+'</small>':'—',stChip(x)+(r.iss.length?` <span class="ch warn" title="${esc(r.iss.join('، '))}">ناقص</span>`:'')]}});
     S.pm={title:'قائمة العقود',sub:'المشروع: '+(S.f.p?esc(pname(S.f.p)):'الكل')+' — الحالة: '+SLAB[S.f.s]+(S.f.q?' — بحث: '+esc(S.f.q):''),cols:CCOLS,rows:rws};
-  S.pm.foot=[list.length+' عقدًا','','','','',fm(sum(list,x=>x.r.total||0)),fm(sum(list,x=>x.r.paid||0)),fm(sum(list,x=>x.r.rem>0?x.r.rem:0)),'',''];S.pm.footSpan=0;
+  S.pm.foot=[list.length+' عقدًا','','','','','',fm(sum(list,x=>x.r.total||0)),fm(sum(list,x=>x.r.paid||0)),fm(sum(list,x=>x.r.rem>0?x.r.rem:0)),'',''];S.pm.footSpan=0;
   return `<h1>العقود</h1><p class="sub">انقر على أي عقد لعرض ملفه الكامل وأقساطه ودفعاته. يُخصَّص المسدد للأقساط الأقدم أولًا.</p>
 <div class="bar"><select id="fp" aria-label="المشروع">${projOpts(S.f.p,true)}</select>
 <select id="fs" aria-label="الحالة">${Object.entries(SLAB).map(([v,l])=>`<option value="${v}"${S.f.s===v?' selected':''}>${l}</option>`).join('')}</select>
@@ -263,22 +263,22 @@ function dueList(all){
 const DS_LAB={late:'أقساط متأخرة',open:'كل غير المسدد',paid:'المسددة',all:'كل الأقساط'},DCS_LAB={'':'كل حالات العقد',active:'عقود سارية',ended:'عقود منتهية',future:'لم تبدأ'};
 function dueModel(all){
   const D=S.due,L=dueList(all),act=D.mode==='act';
-  const cols=act?[{h:'تاريخ الدفعة',k:'d'},{h:'الوحدة / المشروع',k:'t'},{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'المبلغ',k:'n'},{h:'ملاحظة',k:'t'}]
-   :[{h:'الاستحقاق',k:'d'},{h:'الوحدة / المشروع',k:'t'},{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'القسط',k:'d'},{h:'مبلغ القسط',k:'n'},{h:'المسدد',k:'n'},{h:'المتبقي',k:'n'},{h:'الحالة',k:'t'},{h:'',k:'ac'}];
+  const cols=act?[{h:'تاريخ الدفعة',k:'d'},{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'المبلغ',k:'n'},{h:'ملاحظة',k:'t'}]
+   :[{h:'الاستحقاق',k:'d'},{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'القسط',k:'d'},{h:'مبلغ القسط',k:'n'},{h:'المسدد',k:'n'},{h:'المتبقي',k:'n'},{h:'الحالة',k:'t'},{h:'',k:'ac'}];
   const gk=o=>o.t==null?'بلا تاريخ':D.g==='month'?iso(o.t).slice(0,7):D.g==='day'?iso(o.t):'';
   const rws=[],lim=D.print?1e9:800;let last=null,gi=null,shown=0;const G=[];
   const lineRow=o=>{const x=o.x,u=`<td></td>`;
-    return act?{attrs:open_(x),cells:[o.t==null?'بلا تاريخ':fd(o.t),ud(x),esc(x.c.owner)||'—',esc(x.c.tenant)||'—','<b>'+fm(o.amount)+'</b>',esc(o.note)||'—']}
-    :{cls:o.i.late?'late':o.i.soon?'soon':'',attrs:open_(x),cells:[fd(o.t),ud(x),esc(x.c.owner)||'—',esc(x.c.tenant)||'—',o.n,fm(o.amount),fm(o.paid),'<b>'+fm(o.due)+'</b>',chip(o.i),o.i.status!=='paid'?`<button class="btn sm p" data-a="qpay" data-p="${esc(x.pid)}" data-c="${esc(x.c.id)}" data-v="${o.due}">دفعة</button>`:'']}};
+    return act?{attrs:open_(x),cells:[o.t==null?'بلا تاريخ':fd(o.t),...pu(x),esc(x.c.owner)||'—',esc(x.c.tenant)||'—','<b>'+fm(o.amount)+'</b>',esc(o.note)||'—']}
+    :{cls:o.i.late?'late':o.i.soon?'soon':'',attrs:open_(x),cells:[fd(o.t),...pu(x),esc(x.c.owner)||'—',esc(x.c.tenant)||'—',o.n,fm(o.amount),fm(o.paid),'<b>'+fm(o.due)+'</b>',chip(o.i),o.i.status!=='paid'?`<button class="btn sm p" data-a="qpay" data-p="${esc(x.pid)}" data-c="${esc(x.c.id)}" data-v="${o.due}">دفعة</button>`:'']}};
   if(D.g!=='none'){for(const o of L){const k=gk(o);if(k!==last){gi={k,n:0,amount:0,paid:0,due:0};G.push(gi);last=k}gi.n++;gi.amount+=o.amount;gi.paid+=o.paid;gi.due+=o.due}
     let idx=-1;last=null;
     for(const o of L){if(shown>=lim)break;const k=gk(o);if(k!==last){idx++;const g=G[idx];last=k;
-      rws.push({cls:'grp',span:4,cells:[`${D.g==='month'?'شهر':'يوم'} <bdi>${g.k}</bdi> — ${g.n} بندًا`,...(act?[fm(g.amount),'']:['',fm(g.amount),fm(g.paid),fm(g.due),'',''])]})}
+      rws.push({cls:'grp',span:5,cells:[`${D.g==='month'?'شهر':'يوم'} <bdi>${g.k}</bdi> — ${g.n} بندًا`,...(act?[fm(g.amount),'']:['',fm(g.amount),fm(g.paid),fm(g.due),'',''])]})}
       rws.push(lineRow(o));shown++}
   }else for(const o of L){if(shown>=lim)break;rws.push(lineRow(o));shown++}
   const lab='الإجمالي ('+L.length+' بندًا)',foot=act?[lab,fm(sum(L,o=>o.amount)),'']:[lab,'',fm(sum(L,o=>o.amount)),fm(sum(L,o=>o.paid)),fm(sum(L,o=>o.due)),'',''];
   const period=D.from||D.to?' — الفترة: '+(D.from||'…')+' إلى '+(D.to||'…'):'';
-  return{L,cols,rows:rws,foot,footSpan:4,title:act?'تقرير التحصيل الفعلي':'تقرير المستحقات والتدفقات النقدية',sub:(D.p?'المشروع: '+esc(pname(D.p))+' — ':'')+(DCS_LAB[D.cs])+(act?'':' — '+DS_LAB[D.s])+period,truncated:shown<L.length};
+  return{L,cols,rows:rws,foot,footSpan:5,title:act?'تقرير التحصيل الفعلي':'تقرير المستحقات والتدفقات النقدية',sub:(D.p?'المشروع: '+esc(pname(D.p))+' — ':'')+(DCS_LAB[D.cs])+(act?'':' — '+DS_LAB[D.s])+period,truncated:shown<L.length};
 }
 function vDue(all){
   const D=S.due,m=dueModel(all),act=D.mode==='act',L=m.L;
@@ -390,8 +390,8 @@ function ownerDlg(name){
 function vSettings(){
   return `<h1>البيانات والنسخ الاحتياطي</h1><p class="sub">تُحفظ البيانات تلقائيًا بعد كل تعديل داخل التطبيق على هذا الجهاز.</p>
 <div class="set">
-<div class="card"><h3>استيراد وتصدير Excel</h3><p>الاستيراد يقرأ ورقة «ورقه المعالجة» (نموذج الإدخال المعتمد). التصدير ينتج ملفًا بنفس التخطيط مع ورقة «الدفعات» ليعود الاستيراد دقيقًا.</p>
-<div class="row"><button class="btn p" data-a="imp">استيراد من Excel</button><button class="btn" data-a="expX">تصدير كل العقود (Excel)</button><button class="btn" data-a="tpl">تنزيل نموذج إدخال فارغ</button></div></div>
+<div class="card"><h3>استيراد وتصدير Excel</h3><p>الاستيراد يقبل «قالب الاستيراد» الفارغ (المشروع والوحدة في عمودين منفصلين) أو ورقة «ورقه المعالجة» المعتمدة. التصدير ينتج ملفًا بنفس التخطيط مع ورقة «الدفعات» ليعود الاستيراد دقيقًا.</p>
+<div class="row"><button class="btn p" data-a="imp">استيراد من Excel</button><button class="btn" data-a="expX">تصدير كل العقود (Excel)</button><button class="btn" data-a="tpl">تنزيل قالب الاستيراد الفارغ</button></div></div>
 <div class="card"><h3>طريقة احتساب العقود التي تزيد مدتها عن سنة</h3><div class="row"><label>قيمة الإيجار تمثل <select id="mode"><option value="total"${MODE()==='total'?' selected':''}>إجمالي قيمة العقد</option><option value="annual"${MODE()==='annual'?' selected':''}>إيجار سنة واحدة</option></select></label></div></div>
 <div class="card"><h3>النسخ الاحتياطي</h3><p>تؤخذ نسخة تلقائية كل 6 ساعات عند الحفظ، ونسخة قبل كل استيراد أو استعادة.</p>
 <div class="row"><button class="btn p" data-a="bkNow">نسخة احتياطية الآن</button><button class="btn" data-a="bkList">استعادة من نسخة سابقة</button></div><div id="bklist"></div></div>
@@ -481,7 +481,7 @@ const act={
     const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(aoa);ws['!views']=[{rightToLeft:true}];XLSX.utils.book_append_sheet(wb,ws,'كشف الحساب');saveWb('statement.xlsx',wb)},
   imp:openImp,iclose:()=>$('#imp').close(),ipick:pickImp,iapply:applyBtn,
   expX:()=>saveWb('rent-contracts-export.xlsx',buildWorkbook(XLSX,P(),MODE(),TODAY)),
-  tpl:()=>saveWb('نموذج-الإدخال.xlsx',buildWorkbook(XLSX,{},MODE(),TODAY,false)),
+  tpl:async()=>{const f=await native.saveTemplate();if(f)toast('تم حفظ القالب')},
   bkNow:async()=>{await flush();const f=await native.backupNow();toast(f?'تم إنشاء نسخة احتياطية':'لا توجد بيانات بعد')},
   bkList:async()=>{const l=await native.backups();$('#bklist').innerHTML=l.length?'<div class="tw it" style="margin-top:8px;max-height:260px"><table><tbody>'+l.map(b=>`<tr><td class="n">${esc(b.name)}</td><td class="n">${Math.round(b.size/1024)} KB</td><td class="ac"><button class="btn sm" data-a="restore" data-n="${esc(b.name)}">استعادة</button></td></tr>`).join('')+'</tbody></table></div>':'<p>لا توجد نسخ.</p>'},
   restore:b=>arm(b,async()=>{await flush();await native.backupPre('restore');try{const d=await native.readBackup(b.dataset.n);normalize(d);S.db=d;persist();render();toast('تمت الاستعادة')}catch{toast('تعذّرت الاستعادة')}}),

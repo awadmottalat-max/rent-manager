@@ -9,7 +9,25 @@ const sd=v=>typeof v==='number'&&v>20000&&v<80000?iso(Math.round((v-25569)*864e5
 const ukey=k=>normU(k.unit)+'|'+normU(k.tenant);
 const skey=k=>ukey(k)+'|'+(k.start||'');
 
+function parseTpl(XLSX,wb,sn){
+  const T=(typeof require!=='undefined'?require('./tplcols.js'):root.TplCols).cols;
+  const R=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:null}),P={};let n=0;
+  const hdr=(R[0]||[]).map(h=>tx(h).replace(/\s*\*$/,'').trim()),ix={};
+  for(const c of T){const i=hdr.indexOf(c.h);if(i>=0)ix[c.k]=i}
+  const g=(r,k)=>ix[k]==null?null:r[ix[k]];
+  const dt=v=>typeof v==='number'?sd(v):(/^\d{4}-\d{2}-\d{2}/.test(tx(v))?tx(v).slice(0,10):'');
+  for(const r of R.slice(1)){
+    const b=tx(g(r,'project')),unit=tx(g(r,'unit')),tenant=tx(g(r,'tenant'));
+    if(!b||(!unit&&!tenant))continue;
+    const pays=[];for(let i=1;i<=12;i++){const v=g(r,'pay'+i);if(typeof v==='number'&&v!==0)pays.push({id:'i'+uid(),date:'',amount:Math.round(v*1e4)/1e4,note:''})}
+    const L=g(r,'count');
+    const p=P[b]=P[b]||{no:'',contracts:[]};if(!p.no&&g(r,'pno')!=null)p.no=tx(g(r,'pno'));
+    p.contracts.push({id:'c'+uid(),unit,owner:tx(g(r,'owner')),tenant,rent:nm(g(r,'rent')),fee:nm(g(r,'fee')),start:dt(g(r,'start')),end:dt(g(r,'end')),period:tx(g(r,'period')),count:typeof L==='number'?L:tx(L),notes:tx(g(r,'notes')),prevRemaining:'',oldDates:[],extra:0,payments:pays});n++;
+  }
+  return{P,n,sn,authN:0};
+}
 function parseWb(XLSX,wb){
+  if(wb.Sheets['قالب الاستيراد'])return parseTpl(XLSX,wb,'قالب الاستيراد');
   const sn=wb.Sheets['ورقه المعالجة']?'ورقه المعالجة':wb.SheetNames[0],ws=wb.Sheets[sn];
   const R=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null}),D=XLSX.utils.decode_col,P={};let n=0;
   for(const r of R){
