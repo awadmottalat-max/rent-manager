@@ -3,6 +3,5 @@
 تطبيق ديسكتوب (Electron) لمتابعة العقود والأقساط والتدفقات النقدية وإدارة الأملاك.
 
 ## إصدار تحديث
-1. عدّل `version` في `package.json` (مثل 1.1.1).
-2. `git tag v1.1.1 && git push --tags`
-3. يبني GitHub Actions ملف `Setup.exe` وينشره في Releases، ويتحدّث التطبيق تلقائيًا عند المستخدمين.
+1. عدّل `version` في `package.json` (مثل 1.1.1) وارفعه إلى فرع main.
+2. يبني GitHub Actions ملف `Setup.exe` وينشره في Releases، ويتحدّث التطبيق تلقائيًا عند المستخدمين.

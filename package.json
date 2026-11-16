@@ -64,7 +64,8 @@
       {
         "provider": "github",
         "owner": "awadmottalat-max",
-        "repo": "rent-manager"
+        "repo": "rent-manager",
+        "releaseType": "release"
       }
     ],
     "nsis": {
