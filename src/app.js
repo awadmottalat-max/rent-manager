@@ -89,6 +89,7 @@ function render(){
   v.innerHTML=({dash:vDash,contracts:vContracts,due:vDue,renew:vRenew,props:vProps,owners:vOwners,settings:vSettings}[S.view])(all);
   if(kf){const el=document.getElementById(kf);if(el&&el.matches('input[type=search]')){el.focus();const l=el.value.length;try{el.setSelectionRange(l,l)}catch{}}}
   if(S.cur&&$('#det').open)fillDet();
+  if(S.view==='settings')native.getIcon().then(u=>{if(u&&$('#iconprev'))$('#iconprev').src=u}).catch(()=>{});
 }
 const J={
   active:()=>{S.f={p:'',q:'',s:'active'};go('contracts')},ended:()=>{S.f={p:'',q:'',s:'ended'};go('contracts')},
@@ -395,6 +396,8 @@ function vSettings(){
 <div class="card"><h3>طريقة احتساب العقود التي تزيد مدتها عن سنة</h3><div class="row"><label>قيمة الإيجار تمثل <select id="mode"><option value="total"${MODE()==='total'?' selected':''}>إجمالي قيمة العقد</option><option value="annual"${MODE()==='annual'?' selected':''}>إيجار سنة واحدة</option></select></label></div></div>
 <div class="card"><h3>النسخ الاحتياطي</h3><p>تؤخذ نسخة تلقائية كل 6 ساعات عند الحفظ، ونسخة قبل كل استيراد أو استعادة.</p>
 <div class="row"><button class="btn p" data-a="bkNow">نسخة احتياطية الآن</button><button class="btn" data-a="bkList">استعادة من نسخة سابقة</button></div><div id="bklist"></div></div>
+<div class="card"><h3>أيقونة التطبيق (سطح المكتب وشريط المهام)</h3><p>الأيقونة الافتراضية هي شعار كثيب. يمكنك رفع صورة أخرى (PNG أو JPG، يفضَّل مربعة وبحجم 256 بكسل فأكثر). قد يحتاج ويندوز لبضع ثوانٍ أو لإعادة تحميل سطح المكتب (F5) ليُظهر الأيقونة الجديدة.</p>
+<div class="row"><img id="iconprev" alt="" style="width:56px;height:56px;border:1px solid var(--line);border-radius:10px;object-fit:contain;background:#fff" src="assets/logo.svg"><button class="btn p" data-a="icoSet">رفع صورة الأيقونة…</button><button class="btn" data-a="icoReset">استعادة شعار كثيب</button></div></div>
 <div class="card"><h3>إصدار التطبيق</h3><p>الإصدار الحالي: <b class="num">${esc(S.ver||'')}</b> — يتحقق التطبيق من التحديثات تلقائيًا عند التشغيل.</p><div class="row"><button class="btn" data-a="chkUpd">التحقق من التحديثات الآن</button></div></div>
 <div class="card"><h3>موقع التخزين</h3><p class="num" id="dirp" style="direction:ltr;text-align:end">${esc(S.dir)}</p><div class="row"><button class="btn" data-a="openDir">فتح المجلد</button><button class="btn" data-a="chDir">تغيير المجلد (مثلًا OneDrive أو مجلد مشترك)</button></div></div>
 </div>`;
@@ -485,6 +488,19 @@ const act={
   bkNow:async()=>{await flush();const f=await native.backupNow();toast(f?'تم إنشاء نسخة احتياطية':'لا توجد بيانات بعد')},
   bkList:async()=>{const l=await native.backups();$('#bklist').innerHTML=l.length?'<div class="tw it" style="margin-top:8px;max-height:260px"><table><tbody>'+l.map(b=>`<tr><td class="n">${esc(b.name)}</td><td class="n">${Math.round(b.size/1024)} KB</td><td class="ac"><button class="btn sm" data-a="restore" data-n="${esc(b.name)}">استعادة</button></td></tr>`).join('')+'</tbody></table></div>':'<p>لا توجد نسخ.</p>'},
   restore:b=>arm(b,async()=>{await flush();await native.backupPre('restore');try{const d=await native.readBackup(b.dataset.n);normalize(d);S.db=d;persist();render();toast('تمت الاستعادة')}catch{toast('تعذّرت الاستعادة')}}),
+  icoSet:async()=>{
+    const f=await native.openFile([{name:'صور',extensions:['png','jpg','jpeg','ico','bmp','webp']}]);if(!f)return;
+    try{
+      const ext=f.name.split('.').pop().toLowerCase(),mime=ext==='ico'?'image/x-icon':ext==='jpg'?'image/jpeg':'image/'+ext;
+      const bm=await createImageBitmap(new Blob([f.bytes],{type:mime}));
+      const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');g.clearRect(0,0,256,256);
+      const k=Math.min(256/bm.width,256/bm.height),w=bm.width*k,h=bm.height*k;g.drawImage(bm,(256-w)/2,(256-h)/2,w,h);
+      const png=new Uint8Array(await new Promise(r=>c.toBlob(b=>b.arrayBuffer().then(r),'image/png')));
+      const r=await native.setIcon(png);const u=await native.getIcon();if(u)$('#iconprev').src=u;
+      toast(r.shortcuts?'تم تغيير الأيقونة واختصارات سطح المكتب':'تم تغيير أيقونة النافذة. تُحدَّث اختصارات سطح المكتب في النسخة المثبّتة');
+    }catch(e){toast('تعذّر استخدام الصورة')}
+  },
+  icoReset:async()=>{await native.resetIcon();$('#iconprev').src='assets/logo.svg';toast('عادت أيقونة كثيب')},
   chkUpd:async()=>{const r=await native.checkUpdate();toast(r.dev?'التحديث التلقائي يعمل في النسخة المثبّتة فقط':r.err?'تعذّر التحقق: '+r.err:(r.v&&r.v!==S.ver?'يوجد إصدار جديد '+r.v+' وجارٍ تنزيله':'أنت على أحدث إصدار'))},
   openDir:()=>native.openDir(),
   chDir:async()=>{const d=await native.changeDir();if(!d)return;S.dir=d;const r=await native.load();if(r.data){normalize(r.data);S.db=r.data}else persist();render();toast('تم تغيير موقع التخزين')}
@@ -519,4 +535,5 @@ native.onUpdate(d=>{
     if(r.data){S.db=normalize(r.data);if(r.recovered)toast('الملف الرئيسي تالف، استُعيدت آخر نسخة سليمة: '+r.recovered)}}
   catch(e){toast('تعذّر تحميل البيانات')}
   render();
+  try{const u=await native.getIcon();if(u&&$('#iconprev'))$('#iconprev').src=u}catch{}
 })();

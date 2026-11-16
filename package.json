@@ -1,6 +1,6 @@
 {
   "name": "rent-manager",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "متابعة الإيجارات وإدارة الأملاك",
   "main": "main.js",
   "scripts": {
@@ -45,8 +45,7 @@
             "x64"
           ]
         }
-      ],
-      "signAndEditExecutable": false
+      ]
     },
     "mac": {
       "icon": "build/icon.png",

@@ -1,7 +1,8 @@
-const{app,BrowserWindow,ipcMain,dialog,shell,Menu}=require('electron');
+const{app,BrowserWindow,ipcMain,dialog,shell,Menu,nativeImage}=require('electron');
 const path=require('path'),fs=require('fs');
 let autoUpdater=null;try{autoUpdater=require('electron-updater').autoUpdater}catch{}
 let win=null,cfgPath,dataDir,lastBackup=0;
+const{pngToIco}=require('./src/ico.js');
 const FILE='rent-data.json',MAXB=40;
 const exists=p=>{try{fs.accessSync(p);return true}catch{return false}};
 function readCfg(){try{return JSON.parse(fs.readFileSync(cfgPath,'utf8'))}catch{return{}}}
@@ -37,8 +38,23 @@ function save(data){
   if(Date.now()-lastBackup>6*3600e3)backup('auto');
   atomicWrite(dataFile(),JSON.stringify(data));return true;
 }
+/* ---------- أيقونة مخصصة ---------- */
+const iconPng=()=>path.join(app.getPath('userData'),'custom-icon.png'),iconIco=()=>path.join(app.getPath('userData'),'custom-icon.ico');
+function updateShortcuts(useCustom){
+  if(process.platform!=='win32'||!app.isPackaged)return 0;let n=0;
+  const dirs=[app.getPath('desktop'),path.join(app.getPath('appData'),'Microsoft','Windows','Start Menu','Programs')];
+  for(const d of dirs){let l;try{l=fs.readdirSync(d)}catch{continue}
+    for(const f of l){if(!/\.lnk$/i.test(f))continue;const p=path.join(d,f);
+      try{const o=shell.readShortcutLink(p);if(path.resolve(o.target||'').toLowerCase()!==path.resolve(process.execPath).toLowerCase())continue;
+        if(shell.writeShortcutLink(p,'update',{icon:useCustom?iconIco():process.execPath,iconIndex:0}))n++}catch{}}}
+  return n;
+}
+function applyWindowIcon(){
+  const f=exists(iconPng())?iconPng():path.join(__dirname,'build','icon.png');
+  try{win&&win.setIcon(nativeImage.createFromPath(f))}catch{}
+}
 function createWindow(){
-  win=new BrowserWindow({width:1360,height:860,minWidth:980,minHeight:600,title:'متابعة الإيجارات وإدارة الأملاك',backgroundColor:'#edf0f3',icon:path.join(__dirname,'build','icon.png'),
+  win=new BrowserWindow({width:1360,height:860,minWidth:980,minHeight:600,title:'متابعة الإيجارات وإدارة الأملاك',backgroundColor:'#edf0f3',icon:exists(iconPng())?iconPng():path.join(__dirname,'build','icon.png'),
     webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true,spellcheck:false}});
   Menu.setApplicationMenu(null);
   win.loadFile(path.join(__dirname,'src','index.html'));
@@ -88,10 +104,18 @@ if(!lock)app.quit();else{
       const r=await dialog.showSaveDialog(win,{defaultPath:'قالب-استيراد-العقود.xlsx',filters:[{name:'Excel',extensions:['xlsx']}]});
       if(r.canceled)return null;fs.writeFileSync(r.filePath,buf);return r.filePath;
     });
+    ipcMain.handle('icon:get',()=>exists(iconPng())?'data:image/png;base64,'+fs.readFileSync(iconPng()).toString('base64'):null);
+    ipcMain.handle('icon:set',(_e,bytes)=>{
+      const buf=Buffer.from(bytes);if(!nativeImage.createFromBuffer(buf).getSize().width)throw new Error('صورة غير صالحة');
+      fs.writeFileSync(iconPng(),buf);fs.writeFileSync(iconIco(),pngToIco(buf,256));
+      applyWindowIcon();return{shortcuts:updateShortcuts(true)};
+    });
+    ipcMain.handle('icon:reset',()=>{try{fs.unlinkSync(iconPng());fs.unlinkSync(iconIco())}catch{}applyWindowIcon();return{shortcuts:updateShortcuts(false)}});
     ipcMain.handle('app:version',()=>app.getVersion());
     ipcMain.handle('upd:check',()=>{if(!app.isPackaged||!autoUpdater)return{dev:true};return autoUpdater.checkForUpdates().then(r=>({ok:true,v:r?.updateInfo?.version})).catch(e=>({err:String(e.message||e)}))});
     ipcMain.handle('upd:install',()=>{if(autoUpdater)autoUpdater.quitAndInstall()});
     createWindow();
+    if(exists(iconIco()))updateShortcuts(true);
     if(app.isPackaged&&autoUpdater){
       const send=(t,d)=>{try{win&&win.webContents.send('upd',{t,...d})}catch{}};
       autoUpdater.autoDownload=true;autoUpdater.autoInstallOnAppQuit=true;
