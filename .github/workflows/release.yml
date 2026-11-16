@@ -21,6 +21,12 @@ jobs:
         run: |
           V=$(node -p "require('./package.json').version")
           gh api repos/${{ github.repository }}/git/refs -f ref="refs/tags/v$V" -f sha="${{ github.sha }}" || echo "tag exists"
-      - run: npx electron-builder --win --publish always
+      - run: npx electron-builder --win --publish never
+      - name: Publish release
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          V=$(node -p "require('./package.json').version")
+          gh release delete "v$V" --yes 2>/dev/null || true
+          gh release create "v$V" "dist/Rent-Manager-Setup-$V.exe" "dist/Rent-Manager-Setup-$V.exe.blockmap" dist/latest.yml --title "v$V" --notes "إصدار $V" --latest
