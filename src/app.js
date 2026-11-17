@@ -48,11 +48,12 @@ const pu=x=>[esc(x.pn),'<b>'+(esc(x.c.unit)||'—')+'</b>'];
 function T(cols,rws,o={}){
   const pr=o.print,cs=pr?cols.filter(c=>c.k!=='ac'):cols,N=cs.length;
   const cell=(c,h,i)=>`<td class="${c.k||''}">${h}</td>`;
+  let zi=0;
   const body=rws.map(r=>{
-    let cells=r.cells;const sp=r.span||0;
+    let cells=r.cells;const grp=(r.cls||'').includes('grp');if(grp)zi=0;const zc=grp?'':(zi++%2?' zb':' zw');const sp=r.span||0;
     if(pr)cells=cells.slice(0,N-(sp?sp-1:0));
     const out=cells.map((h,i)=>sp&&i===0?`<td colspan="${sp}">${h}</td>`:cell(cs[i+(sp?sp-1:0)],h,i)).join('');
-    return `<tr class="${r.cls||''}"${pr?'':(r.attrs||'')}>${out}</tr>`}).join('');
+    return `<tr class="${(r.cls||'')+zc}"${pr?'':(r.attrs||'')}>${out}</tr>`}).join('');
   const foot=o.foot?`<tfoot><tr>${(pr?o.foot.slice(0,N-(o.footSpan?o.footSpan-1:0)):o.foot).map((h,i)=>o.footSpan&&i===0?`<td colspan="${o.footSpan}">${h}</td>`:`<td class="${cs[i+(o.footSpan?o.footSpan-1:0)]?.k||''}">${h}</td>`).join('')}</tr></tfoot>`:'';
   return `<div class="${pr?'':'tw'}"><table><thead><tr>${cs.map(c=>`<th class="${c.k||''}">${c.h}</th>`).join('')}</tr></thead><tbody>${rws.length?body:`<tr><td colspan="${N}" class="empty">لا توجد بيانات مطابقة.</td></tr>`}</tbody>${foot}</table></div>`;
 }
