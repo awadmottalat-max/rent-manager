@@ -13,13 +13,22 @@ app.whenReady().then(async()=>{
   const b64=fs.readFileSync(process.argv.find(a=>a.endsWith('.xlsx'))).toString('base64');
   await ev(`(()=>{const bin=atob("${b64}");const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
     S.imp=parseWb(XLSX,XLSX.read(u,{type:'array'}));S.db.projects=applyImp(P(),S.imp,'replace').next;persist();render();})()`);
-  for(const v of ['dash','contracts','due','renew','props','owners','settings']){await ev(`go('${v}')`);await shot(v)}
+  for(const v of ['dash','avail','contracts','due','flow','renew','props','owners','agr','fin','settings']){await ev(`go('${v}')`);await shot(v)}
   await ev(`J.soon()`);await shot('due30');
   await ev(`go('contracts');const pid=Object.keys(P())[0];openDet(pid,P()[pid].contracts[3].id)`);await shot('detail');
   await pdf('contract',await ev(`contractDoc(cur())`));
   await ev(`document.getElementById('det').close();go('contracts')`);
   await pdf('list',await ev(`(()=>{S.pm=null;render();return listDoc()})()`));
   await ev(`J.soon()`);await pdf('cash',await ev(`(()=>{S.due.print=true;S.pm=dueModel(rows());S.due.print=false;return listDoc()})()`));
-  await ev(`go('owners');ownerDlg(ownerStatements(rows())[3].name)`);await shot('owner');
+  await ev(`go('owners');ownerDlg(ownerStatements(rows())[3].name)`);await shot('owner');await ev(`document.getElementById('stm').close()`);
+  await ev(`(()=>{const pid=Object.keys(P())[0],c=P()[pid].contracts[3];payForm(pid,c.id,1000);document.getElementById('ff_from').value='2026-01-01';document.getElementById('ff_to').value='2026-03-31';document.getElementById('fsave').click()})()`);await sleep(400);await shot('receipt_ask');
+  const rc=await ev(`(()=>{const{pid,cid,payId}=S.rc;return receiptDoc(pid,cid,payId).html})()`);await pdf('receipt',rc);
+  await ev(`document.getElementById('frm').close();go('flow')`);await shot('flow2');await ev(`S.flow.mode='act';render()`);await shot('flow_act');
+  await ev(`(()=>{const pid=Object.keys(P())[0],c=P()[pid].contracts[3];go('agr');agrForm(null);document.getElementById('ag_pick').value=pid+'|'+c.id;agrPick(pid+'|'+c.id);document.querySelector('.ai_m').checked=true;agrPreview()})()`);await shot('agr_form');
+  await ev(`document.getElementById('ag_save').click()`);await sleep(300);await shot('agr_list');
+  await pdf('agr',await ev(`agrDoc(S.db.agreements[0])`));
+  await ev(`(()=>{const pid=Object.keys(P())[0],c=P()[pid].contracts[3];go('fin');anForm(null);document.getElementById('an_pick').value=pid+'|'+c.id;document.getElementById('an_pick').dispatchEvent(new Event('change',{bubbles:true}));document.getElementById('an_maint').value=500;anPreview()})()`);await shot('fin_form');
+  await ev(`document.getElementById('an_save').click()`);await sleep(300);await shot('fin_list');
+  await pdf('ana',await ev(`anDoc(S.db.analyses[0])`));
   await sleep(500);console.log('ERRS',JSON.stringify(errs));app.exit(0);
 });
