@@ -236,66 +236,14 @@ function formDlg({title,fields,vals={},save,onSave}){
     else el=`<input id="ff_${f.k}" type="${f.t||'text'}" ${f.t==='number'?'step="0.01"':''} value="${esc(v)}" ${f.ph?`placeholder="${esc(f.ph)}"`:''}>`;
     return `<label class="${f.full?'full':''}">${f.l}${el}</label>`};
   $('#frm').innerHTML=`<div class="dh"><h2>${title}</h2><button class="x" data-a="fclose" aria-label="إغلاق">✕</button></div><div class="fg">${fields.map(fl).join('')}</div><div class="ft"><button class="btn p" id="fsave">${save||'حفظ'}</button><button class="btn" data-a="fclose">إلغاء</button></div>`;
-  $('#fsave').onclick=()=>{const o={};for(const f of fields)o[f.k]=document.getElementById('ff_'+f.k).value.trim();const err=onSave(o);if(err)toast(err);else $('#frm').close()};
+  $('#fsave').onclick=()=>{const o={};for(const f of fields)o[f.k]=document.getElementById('ff_'+f.k).value.trim();
+    document.querySelectorAll('#frm .bad').forEach(e=>e.classList.remove('bad'));
+    const err=onSave(o);if(err){toast(err);const m=fields.find(f=>err.includes(f.l.replace(/[ *].*$/,'').slice(0,6)));const el=document.getElementById('ff_'+(m?.k||fields[0].k));if(el){el.classList.add('bad');el.focus()}}else $('#frm').close()};
+  $('#frm').onkeydown=e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();$('#fsave')?.click()}};
   if(!$('#frm').open)$('#frm').showModal();
+  setTimeout(()=>{const f=$('#frm .fg input:not([type=hidden]),#frm .fg select');if(f&&!f.value)f.focus()},60);
 }
 const numOk=s=>s===''||!isNaN(Number(s));
-function contractForm(ed,pre){
-  const x=ed?cur():null,c=x?x.c:(pre||{}),pid=x?x.pid:(pre?.pid||S.f.p||Object.keys(P())[0]||'__new');
-  const opts=Object.entries(P()).map(([k,p])=>[k,p.name]).concat([['__new','+ مشروع جديد']]);
-  const PERS=[['شهر','شهر'],['3 أشهر','3 أشهر'],['6 أشهر','6 أشهر'],['9 أشهر','9 أشهر'],['سنة','سنة'],['سنتان','سنتان'],['3 سنوات','3 سنوات']],CNTS=[['12','شهري (12 قسطًا)'],['4','ربع سنوي (4 أقساط)'],['3','3 أقساط'],['2','دفعتان'],['1','دفعة واحدة'],['6','6 أقساط']];
-  const addv=(L,v)=>{v=String(v??'');return v&&!L.some(o=>o[0]===v)?[...L,[v,v]]:L};
-  const R=ed?'':' *';
-  formDlg({title:ed?'تعديل العقد':(pre?'تجديد العقد':'عقد جديد'),vals:c,fields:[
-    {k:'pid',l:'المشروع',t:'select',opts,def:pid},{k:'pname',l:'اسم المشروع الجديد',ph:'يُستخدم عند اختيار مشروع جديد'},
-    {k:'period',l:'فترة العقد'+R,t:'select',opts:ed||c.period?addv([['','— اختر —'],...PERS],c.period):[['','— اختر —'],...PERS]},{k:'start',l:'بداية الإيجار'+R,t:'date'},{k:'end',l:'نهاية الإيجار'+R+' (تُحسب من الفترة ويمكن تعديلها)',t:'date'},{k:'count',l:'عدد الأقساط'+R,t:'select',opts:addv([['','— اختر —'],...CNTS],c.count)},
-    {k:'unit',l:'رقم الوحدة'+R},{k:'owner',l:'اسم المالك'+R},{k:'tenant',l:'اسم المستأجر'+R},{k:'rent',l:'قيمة الإيجار'+R,t:'number'},{k:'fee',l:'رسوم الأملاك',t:'number'},{k:'ejar',l:'رقم عقد منصة إيجار (اختياري)'},{k:'sap',l:'رقم ساب SAP (اختياري)'},{k:'notes',l:'ملاحظات',t:'area',full:1}],
-    onSave:o=>{
-      let pid=o.pid,pn='';
-      if(pid==='__new'){pn=o.pname;if(!pn)return 'أدخل اسم المشروع الجديد';pid=Object.keys(P()).find(k=>P()[k].name===pn)||'p'+uid()}
-      if(!numOk(o.rent)||!numOk(o.fee))return 'تحقق من الأرقام المدخلة';
-      if(!ed){const need=[['unit','رقم الوحدة'],['tenant','اسم المستأجر'],['owner','اسم المالك'],['period','فترة العقد'],['start','بداية الإيجار'],['end','نهاية الإيجار'],['count','عدد الأقساط'],['rent','قيمة الإيجار']];
-        for(const[k,l]of need)if(String(o[k]??'').trim()==='')return 'الحقل إلزامي: '+l;
-        if(!(Number(o.rent)>0))return 'قيمة الإيجار يجب أن تكون أكبر من صفر';
-        const t=calc({start:o.start,end:o.end,rent:o.rent,count:o.count,period:o.period},MODE(),TODAY);
-        if(o.end<o.start)return 'نهاية الإيجار قبل بدايته';
-        if(!t.inst.length||t.inst.some(i=>i.date==null))return 'تعذّر حساب الأقساط وتواريخ الاستحقاق — راجع عدد الأقساط والتواريخ'}
-      if(!o.unit&&!o.tenant)return 'أدخل رقم الوحدة أو اسم المستأجر';
-      const d={unit:o.unit,tenant:o.tenant,owner:o.owner,ejar:o.ejar,sap:o.sap,rent:o.rent===''?'':Number(o.rent),fee:o.fee===''?'':Number(o.fee),start:o.start,end:o.end,period:o.period,count:/^\d+(\.\d+)?$/.test(o.count)?Number(o.count):o.count,notes:o.notes};
-      const put=(pid,c)=>{if(!P()[pid])P()[pid]={name:pn,no:'',contracts:[],units:[]};const p=structuredClone(P()[pid]);ensureUnit(p,c);p.contracts.push(c);P()[pid]=p};
-      if(ed){
-        const old=P()[ed.pid].contracts.find(c=>c.id===ed.cid),m={...old,...d};
-        if(pid===ed.pid)mutate(pid,p=>{p.contracts=p.contracts.map(c=>c.id===ed.cid?m:c);ensureUnit(p,m)});
-        else{mutate(ed.pid,p=>{p.contracts=p.contracts.filter(c=>c.id!==ed.cid)});put(pid,m);persist()}
-        S.cur={pid,cid:ed.cid};
-      }else{const c={id:'c'+uid(),oldDates:[],prevRemaining:'',extra:0,payments:[],...d};put(pid,c);persist();S.cur={pid,cid:c.id}}
-      render();openDet(S.cur.pid,S.cur.cid);
-    }});
-  const PM={'شهر':1,'3 أشهر':3,'6 أشهر':6,'9 أشهر':9,'سنة':12,'سنتان':24,'3 سنوات':36};
-  const autoEnd=()=>{const s=pd($('#ff_start').value),m=PM[$('#ff_period').value];if(s!=null&&m)$('#ff_end').value=iso(edate(s,m)-DAY)};
-  const sched=()=>{const el=$('#ff_sched');if(!el)return;const o={start:$('#ff_start').value,end:$('#ff_end').value,rent:$('#ff_rent').value,count:$('#ff_count').value,period:$('#ff_period').value};
-    const r=calc(o,MODE(),TODAY);el.innerHTML=r.inst.length?`<b>جدول الأقساط وتواريخ الاستحقاق (${r.inst.length})</b><div class="chips">${r.inst.map(i=>`<span class="ch">${i.n}: ${i.date!=null?iso(i.date):'—'} · ${fm(i.amount)}</span>`).join('')}</div>`:'<span class="sub">يظهر جدول الأقساط عند إدخال الفترة والتواريخ والإيجار وعدد الأقساط.</span>'};
-  $('#frm .fg').insertAdjacentHTML('beforeend','<div class="full" id="ff_sched"></div>');
-  ['ff_period','ff_start'].forEach(id=>$(('#'+id)).addEventListener('change',()=>{autoEnd();sched()}));
-  ['ff_end','ff_count','ff_rent'].forEach(id=>$(('#'+id)).addEventListener('input',sched));$('#ff_count').addEventListener('change',sched);
-  sched();
-  const dl=(id,L)=>`<datalist id="${id}">${L.map(n=>`<option value="${esc(n)}">`).join('')}</datalist>`;
-  const rowsAll=rows();$('#frm .fg').insertAdjacentHTML('beforeend',dl('dl_ten',[...new Set(rowsAll.map(x=>x.c.tenant).filter(Boolean))])+dl('dl_own',[...new Set(rowsAll.map(x=>x.c.owner).filter(Boolean))]));
-  $('#ff_tenant').setAttribute('list','dl_ten');$('#ff_owner').setAttribute('list','dl_own');
-  const fillPick=()=>{const sel=$('#ff_upick');if(!sel)return;const p=P()[$('#ff_pid').value];const flt=($('#ff_uf').value||'').trim().toLowerCase(),onlyAv=$('#ff_uav').checked;
-    const us=[...(p?.units||[])].sort((a,b)=>String(a.no).localeCompare(String(b.no),'ar',{numeric:true}));
-    const L={rented:'مؤجرة',avail:'متاحة',pend:'منتهية بانتظار القرار',unavail:'غير متاحة'},cu=normU($('#ff_unit').value);
-    const sh=us.filter(u=>{const st=unitInfo(p,u).st;return normU(u.no)===cu||((!flt||String(u.no).toLowerCase().includes(flt)||String(u.owner||'').toLowerCase().includes(flt))&&(!onlyAv||st==='avail'))});
-    sel.innerHTML='<option value="">— اختر وحدة ('+sh.length+') —</option><option value="__new">+ وحدة جديدة غير مرفوعة</option>'+sh.map(u=>`<option value="${esc(u.id)}">${esc(u.no)} — ${L[unitInfo(p,u).st]}${u.owner?' — '+esc(u.owner):''}</option>`).join('');
-    const m=us.find(u=>normU(u.no)===cu);if(m)sel.value=m.id};
-  $('#ff_unit').closest('label').insertAdjacentHTML('beforebegin','<div class="full upk"><label>تصفية رقم الوحدة<input id="ff_uf" placeholder="اكتب رقم الوحدة أو اسم المالك"></label><label>اختيار الوحدة من وحدات المشروع (يُعبَّأ المالك تلقائيًا)<select id="ff_upick"></select></label><label class="chk"><input type="checkbox" id="ff_uav"'+(ed?'':' checked')+'> المتاحة فقط</label><small id="ff_unote">الوحدة غير الموجودة تُضاف إلى وحدات المشروع تلقائيًا عند الحفظ.</small></div>');
-  fillPick();
-  ['ff_uf'].forEach(id=>$('#'+id).addEventListener('input',fillPick));$('#ff_uav').addEventListener('change',fillPick);
-  $('#ff_pid').addEventListener('change',fillPick);
-  $('#ff_upick').addEventListener('change',e=>{
-    if(e.target.value==='__new'){$('#ff_unit').value='';$('#ff_owner').value='';$('#ff_unit').focus();$('#ff_unote').textContent='أدخل رقم الوحدة الجديدة واسم مالكها — ستُضاف إلى وحدات المشروع عند حفظ العقد.';return}
-    const p=P()[$('#ff_pid').value],u=p?.units.find(u=>u.id===e.target.value);if(!u)return;$('#ff_unit').value=u.no;$('#ff_owner').value=u.owner||'';if(!$('#ff_rent').value&&u.askRent){$('#ff_rent').value=u.askRent;sched()}});
-}
 function renewForm(pid,c){
   const m=Core.months(c)||12,s=c.end?iso(pd(c.end)+DAY):iso(TODAY);
   contractForm(false,{pid,unit:c.unit,tenant:c.tenant,owner:c.owner,fee:c.fee,rent:c.rent,count:c.count,start:s,end:iso(edate(pd(s),m)-DAY),period:c.period,notes:''});
