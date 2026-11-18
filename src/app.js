@@ -103,7 +103,7 @@ function renderNav(all){
   const pendN=all.filter(x=>x.r.st==='منتهي'&&endState(x.pid,x.c)==='pend').length;
   const bd={ended:pendN?`<span class="bd">${pendN}</span>`:'',due:late?`<span class="bd">${late}</span>`:'',renew:ren?`<span class="bd">${ren}</span>`:''};
   $('#nav').innerHTML=VIEWS.map(([k,l])=>`<button data-a="go" data-v="${k}" class="${S.view===k?'on':''}">${ico(NAVIC[k])}<span>${l}</span>${bd[k]||''}</button>`).join('');
-  $('#sidefoot').innerHTML='التاريخ المعتمد: <bdi>'+iso(TODAY)+'</bdi>';
+  $('#sidefoot').innerHTML='التاريخ المعتمد: <bdi>'+iso(TODAY)+'</bdi><br>الإصدار <bdi>'+esc(S.ver||'')+'</bdi> · <button class="link" data-a="chkUpd">التحقق من التحديث</button>';
 }
 function render(){
   const all=rows();renderNav(all);
@@ -697,6 +697,7 @@ native.onUpdate(d=>{
   const b=$('#upd');if(!b)return;
   if(d.t==='available'){b.hidden=false;b.textContent='جارٍ تنزيل التحديث '+d.v+'…'}
   else if(d.t==='progress'){b.hidden=false;b.textContent='تنزيل التحديث '+d.pct+'%'}
+  else if(d.t==='error'){toast('تعذّر التحقق من التحديث: '+String(d.m).slice(0,120))}
   else if(d.t==='ready'){b.hidden=false;b.innerHTML='تحديث جاهز ('+d.v+') — <b>اضغط لإعادة التشغيل والتثبيت</b>';b.onclick=async()=>{await flush();native.installUpdate()}}
 });
 (async()=>{

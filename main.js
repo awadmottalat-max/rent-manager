@@ -124,7 +124,7 @@ if(!lock)app.quit();else{
       autoUpdater.on('update-downloaded',i=>send('ready',{v:i.version}));
       autoUpdater.on('error',e=>send('error',{m:String(e.message||e)}));
       win.webContents.once('did-finish-load',()=>setTimeout(()=>autoUpdater.checkForUpdates().catch(()=>{}),4000));
-      setInterval(()=>autoUpdater.checkForUpdates().catch(()=>{}),4*3600e3);
+      setInterval(()=>autoUpdater.checkForUpdates().catch(()=>{}),30*60e3);win.on('focus',()=>{autoUpdater.checkForUpdates().catch(()=>{})});
     }
     app.on('activate',()=>{if(!BrowserWindow.getAllWindows().length)createWindow()});
   });
