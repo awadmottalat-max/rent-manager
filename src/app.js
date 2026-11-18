@@ -10,7 +10,7 @@ const todayNow=()=>{const d=new Date();return Date.UTC(d.getFullYear(),d.getMont
 let TODAY=todayNow();
 window.addEventListener('focus',()=>{const t=todayNow();if(t!==TODAY){TODAY=t;render()}});
 const sum=(a,f)=>a.reduce((s,x)=>s+f(x),0);
-const S={db:{v:1,projects:{},settings:{mode:'total'}},view:'dash',f:{p:'',s:'',q:''},due:{p:'',cs:'',mode:'exp',s:'open',from:'',to:'',m:'',g:'month',q:''},flow:{p:'',cs:'',mode:'exp',s:'all',from:'',to:'',m:'',g:'month',q:''},av:{p:'',q:''},rc:null,ren:{p:'',win:'all90',q:''},ow:{q:''},pr:{q:''},cur:null,ed:null,imp:null,dir:'',pm:null};
+const S={db:{v:1,projects:{},settings:{mode:'total'}},view:'dash',f:{p:'',s:'',q:''},due:{p:'',cs:'',mode:'exp',s:'open',from:'',to:'',m:'',g:'month',q:''},flow:{p:'',cs:'',mode:'exp',s:'all',from:'',to:'',m:'',g:'month',q:''},av:{p:'',q:''},en:{p:'',q:'',s:'pend'},rc:null,ren:{p:'',win:'all90',q:''},ow:{q:''},pr:{q:''},cur:null,ed:null,imp:null,dir:'',pm:null};
 let tt;const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(tt);tt=setTimeout(()=>t.style.display='none',3200)};
 function arm(b,fn){if(b.dataset.armed){fn();return}b.dataset.t=b.textContent;b.dataset.armed=1;b.textContent='اضغط للتأكيد';setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent=b.dataset.t}},3000)}
 
@@ -71,17 +71,38 @@ async function printArea(html,pdfName){
   else{window.addEventListener('afterprint',done,{once:true});setTimeout(done,180000);await native.print()}
 }
 const safe=s=>String(s).replace(/[\\/:*?"<>|]/g,'_');
-const pbtn=k=>`<button class="btn" data-a="print" data-k="${k}">طباعة</button><button class="btn" data-a="pdf" data-k="${k}">حفظ PDF</button>`;
+const pbtn=k=>`<button class="btn" data-a="print" data-k="${k}">طباعة</button><button class="btn" data-a="pdf" data-k="${k}">حفظ PDF</button>${k==='list'?'<button class="btn" data-a="xlsx">تصدير Excel</button>':''}`;
 function listDoc(){const m=S.pm;return docHtml({title:m.title,sub:m.sub,land:true,body:T(m.cols,m.rows,{print:true,foot:m.foot,footSpan:m.footSpan})})}
 
+/* ---------- أيقونات ---------- */
+const IC={
+dash:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+key:'<circle cx="8" cy="15" r="4"/><path d="M10.8 12.2 20 3M16 7l3 3M14 9l2 2"/>',
+file:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
+filex:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9.5 12.5l5 5M14.5 12.5l-5 5"/>',
+wallet:'<path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2z"/><circle cx="16.5" cy="14.5" r="1"/>',
+trend:'<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
+refresh:'<path d="M21 12a9 9 0 0 0-15-6.7L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 15 6.7L21 16"/><path d="M21 21v-5h-5"/>',
+building:'<rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M10 21v-5h4v5"/>',
+users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6.5 6.5 0 0 1 3.5 6"/>',
+sign:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M8.5 16c1.5-2.5 2.5-2.5 3 0s1.5 1.5 3.5-1"/>',
+calc:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"/>',
+chart:'<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>',
+db:'<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>',
+alert:'<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/>',
+clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'};
+const ico=(k,c)=>`<svg class="ic ${c||''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[k]||''}</svg>`;
+const NAVIC={dash:'dash',avail:'key',contracts:'file',ended:'filex',due:'wallet',flow:'trend',renew:'refresh',props:'building',owners:'users',agr:'sign',fin:'calc',rep:'chart',settings:'db'};
+
 /* ---------- التنقل ---------- */
-const VIEWS=[['dash','لوحة التحكم'],['avail','الشقق المتاحة'],['contracts','العقود'],['due','المستحقات'],['flow','التدفقات النقدية'],['renew','التجديدات'],['props','المشاريع والوحدات'],['owners','الملاك'],['agr','اتفاقيات التأجير'],['fin','التحليل المالي'],['settings','البيانات والنسخ الاحتياطي']];
+const VIEWS=[['dash','لوحة التحكم'],['avail','الشقق المتاحة'],['contracts','العقود'],['ended','العقود المنتهية'],['due','المستحقات'],['flow','التدفقات النقدية'],['renew','التجديدات'],['props','المشاريع والوحدات'],['owners','الملاك'],['agr','اتفاقيات التأجير'],['fin','التحليل المالي'],['rep','التقارير'],['settings','البيانات والنسخ الاحتياطي']];
 const VF={};
 function go(v){S.view=v;render();$('main').scrollTop=0}
 function renderNav(all){
   const late=all.filter(x=>x.r.late_n).length,ren=renewals(all,TODAY,90).length;
-  const bd={due:late?`<span class="bd">${late}</span>`:'',renew:ren?`<span class="bd">${ren}</span>`:''};
-  $('#nav').innerHTML=VIEWS.map(([k,l])=>`<button data-a="go" data-v="${k}" class="${S.view===k?'on':''}"><span>${l}</span>${bd[k]||''}</button>`).join('');
+  const pendN=all.filter(x=>x.r.st==='منتهي'&&endState(x.pid,x.c)==='pend').length;
+  const bd={ended:pendN?`<span class="bd">${pendN}</span>`:'',due:late?`<span class="bd">${late}</span>`:'',renew:ren?`<span class="bd">${ren}</span>`:''};
+  $('#nav').innerHTML=VIEWS.map(([k,l])=>`<button data-a="go" data-v="${k}" class="${S.view===k?'on':''}">${ico(NAVIC[k])}<span>${l}</span>${bd[k]||''}</button>`).join('');
   $('#sidefoot').innerHTML='التاريخ المعتمد: <bdi>'+iso(TODAY)+'</bdi>';
 }
 function render(){
@@ -93,10 +114,10 @@ function render(){
   if(S.cur&&$('#det').open)fillDet();
   if(S.view==='settings')native.getIcon().then(u=>{if(u&&$('#iconprev'))$('#iconprev').src=u}).catch(()=>{});
 }
-Object.assign(VF,{dash:vDash,avail:vAvail,contracts:vContracts,due:vDues,flow:vFlow,renew:vRenew,props:vProps,owners:vOwners,settings:vSettings});
+Object.assign(VF,{ended:vEnded,dash:vDash,avail:vAvail,contracts:vContracts,due:vDues,flow:vFlow,renew:vRenew,props:vProps,owners:vOwners,settings:vSettings});
 const J={
   avail:()=>{S.av={p:'',q:''};go('avail')},
-  active:()=>{S.f={p:'',q:'',s:'active'};go('contracts')},ended:()=>{S.f={p:'',q:'',s:'ended'};go('contracts')},
+  active:()=>{S.f={p:'',q:'',s:'active'};go('contracts')},ended:()=>{S.en={p:'',q:'',s:'pend'};go('ended')},
   open:()=>{S.f={p:'',q:'',s:'open'};go('contracts')},issues:()=>{S.f={p:'',q:'',s:'issues'};go('contracts')},
   late:()=>{Object.assign(S.due,{p:'',cs:'',mode:'exp',s:'late',from:'',to:'',m:'',g:'month',q:''});go('due')},
   soon:()=>{Object.assign(S.due,{p:'',cs:'',mode:'exp',s:'open',from:iso(TODAY),to:iso(TODAY+30*DAY),m:'',g:'day',q:''});go('due')},
@@ -113,7 +134,8 @@ function vDash(all){
   const late=sum(all,x=>x.r.late),soon=sum(all,x=>sum(x.r.inst.filter(i=>i.soon),i=>i.due));
   const rn=renewals(all,TODAY,90),exp=rn.filter(x=>x.days>=0),endd=rn.filter(x=>x.days<0).sort((a,b)=>b.endT-a.endT);
   const endedAll=all.filter(x=>x.r.st==='منتهي').length;
-  const kp=(cls,j,l,v,i)=>`<button class="kp ${cls}" data-a="jump" data-j="${j}"><span>${l}</span><b>${v}</b><i>${i}</i></button>`;
+  const KI={active:'file',avail:'key',ended:'filex',open:'wallet',late:'alert',soon:'clock',exp:'refresh',issues:'alert'};
+  const kp=(cls,j,l,v,i)=>`<button class="kp ${cls}" data-a="jump" data-j="${j}"><em class="kic">${ico(KI[j])}</em><span>${l}</span><b>${v}</b><i>${i}</i></button>`;
   const US=unitsSummary();
   const byP=Object.entries(P()).map(([pid,p])=>{const rs=all.filter(x=>x.pid===pid);return{n:p.name,tot:sum(rs,x=>x.r.total||0),paid:sum(rs,x=>x.r.paid||0),rem:sum(rs,x=>x.r.rem>0?x.r.rem:0),late:sum(rs,x=>x.r.late)}}).sort((a,b)=>b.tot-a.tot);
   const maxT=Math.max(1,...byP.map(x=>x.tot));
@@ -123,20 +145,21 @@ function vDash(all){
     lateList.slice(0,TOP).map(x=>({cls:'late',attrs:open_(x),cells:[...pu(x),esc(x.c.owner)||'—',esc(x.c.tenant)||'—',fd(x.r.inst.find(i=>i.late)?.date),x.r.late_n,'<b>'+fm(x.r.late)+'</b>',fm(x.r.rem)]})));
   const upT=T([{h:'تاريخ الاستحقاق',k:'d'},{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'القسط',k:'d'},{h:'المبلغ',k:'n'}],
     upc.slice(0,TOP).map(({x,i})=>({attrs:open_(x),cells:[fd(i.date),...pu(x),esc(x.c.owner)||'—',esc(x.c.tenant)||'—',i.n+' / '+x.r.k,'<b>'+fm(i.due)+'</b>']})));
-  return `<h1>لوحة التحكم</h1><p class="sub">${all.length} عقدًا في ${Object.keys(P()).length} مشاريع — اضغط على أي بطاقة أو «عرض الكل» لفتح التفاصيل الكاملة.</p>
+  const hr=new Date().getHours(),TT=sum(all,x=>x.r.total||0),PP=sum(all,x=>x.r.paid||0);
+  return `<div class="hero"><div class="hl"><small>${hr<12?'صباح الخير':'مساء الخير'}</small><h1>لوحة التحكم</h1><p>${all.length} عقدًا في ${Object.keys(P()).length} مشاريع — اضغط على أي بطاقة أو «عرض الكل» لفتح التفاصيل.</p></div><div class="hk"><div><span>إجمالي قيمة العقود</span><b>${fm(TT)}</b></div><div><span>المحصَّل</span><b>${fm(PP)}</b></div><div><span>نسبة التحصيل</span><b>${TT?Math.round(PP/TT*100):0}%</b></div></div></div>
 <div class="kpis">
 ${kp('','active','عقود سارية',all.filter(x=>x.r.st==='ساري').length,'من '+all.length)}
 ${kp('g','avail','شقق متاحة للإيجار',US.reduce((a,x)=>a+x.avail,0),'من '+US.reduce((a,x)=>a+x.total,0)+' وحدة')}
-${kp('','ended','عقود منتهية',endedAll,'منها '+endd.length+' بلا تجديد')}
+${kp('','ended','عقود منتهية',endedAll,'بانتظار القرار: '+all.filter(x=>x.r.st==='منتهي'&&endState(x.pid,x.c)==='pend').length)}
 ${kp('','open','إجمالي المتبقي',fm(sum(all,x=>x.r.rem>0?x.r.rem:0)),'على العقود المكتملة البيانات')}
 ${kp('l','late','متأخر',fm(late),all.filter(x=>x.r.late_n).length+' عقدًا')}
 ${kp('','soon','يستحق خلال 30 يومًا',fm(soon),all.filter(x=>x.r.soon).length+' عقدًا')}
 ${kp('','exp','تنتهي خلال 90 يومًا',exp.length,'تحتاج متابعة التجديد')}
 ${kp('','issues','بيانات ناقصة',all.filter(x=>x.r.iss.length).length,'تحتاج استكمالًا')}
 </div>
-<div class="sec"><div class="sech"><h3>الشقق المتاحة للإيجار حسب المشروع</h3><button class="link" data-a="jump" data-j="avail">عرض الكل ←</button></div>${T([{h:'المشروع',k:'t'},{h:'إجمالي الوحدات',k:'n'},{h:'مؤجرة',k:'n'},{h:'متاحة للإيجار',k:'n'},{h:'غير متاحة',k:'n'},{h:'الإشغال',k:'n'}],
-  US.map(m=>({attrs:` data-a="availProj" data-p="${esc(m.pid)}"`,cells:['<b>'+esc(m.name)+'</b>',m.total,m.rented,'<b style="color:var(--acc)">'+m.avail+'</b>',m.unavail,m.total?Math.round(m.rented/m.total*100)+'%':'—']})),
-  {foot:['الإجمالي',sum(US,m=>m.total),sum(US,m=>m.rented),sum(US,m=>m.avail),sum(US,m=>m.unavail),''],})}</div>
+<div class="sec"><div class="sech"><h3>الشقق المتاحة للإيجار حسب المشروع</h3><button class="link" data-a="jump" data-j="avail">عرض الكل ←</button></div>${T([{h:'المشروع',k:'t'},{h:'إجمالي الوحدات',k:'n'},{h:'مؤجرة',k:'n'},{h:'متاحة للإيجار',k:'n'},{h:'منتهية بانتظار القرار',k:'n'},{h:'غير متاحة',k:'n'},{h:'الإشغال',k:'n'}],
+  US.map(m=>({attrs:` data-a="availProj" data-p="${esc(m.pid)}"`,cells:['<b>'+esc(m.name)+'</b>',m.total,m.rented,'<b style="color:var(--acc)">'+m.avail+'</b>',m.pend,m.unavail,m.total?Math.round(m.rented/m.total*100)+'%':'—']})),
+  {foot:['الإجمالي',sum(US,m=>m.total),sum(US,m=>m.rented),sum(US,m=>m.avail),sum(US,m=>m.pend),sum(US,m=>m.unavail),''],})}</div>
 ${secDash('أكبر المتأخرات','late',lateList.length,lateList.length?lateT:'<div class="card empty">لا توجد متأخرات.</div>')}
 ${secDash('أقساط الـ 30 يومًا القادمة','soon',upc.length,upc.length?upT:'<div class="card empty">لا أقساط قادمة.</div>')}
 ${secDash('عقود تنتهي خلال 90 يومًا','exp',exp.length,exp.length?T(RCOLS,exp.slice(0,TOP).map(rRow)):'<div class="card empty">لا عقود تنتهي قريبًا.</div>')}
@@ -149,7 +172,7 @@ const CCOLS=[{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المال�
 const SLAB={'':'كل الحالات',late:'متأخرة',soon:'تستحق خلال 30 يومًا',open:'عليها متبقٍ',active:'سارية',ended:'منتهية',future:'لم تبدأ',issues:'بياناتها ناقصة'};
 function vContracts(all){
   const list=sorted(all.filter(passC));
-  const rws=list.map(x=>{const{c,r}=x;return{cls:r.late_n?'late':r.soon?'soon':'',attrs:open_(x),cells:[...pu(x),esc(c.owner)||'—',esc(c.tenant)||'—',fs_(c.start),fs_(c.end),fm(r.total),fm(r.paid),'<b>'+fm(r.rem)+'</b>',r.next?fd(r.next.date)+'<small class="num">'+fm(r.next.due)+'</small>':'—',stChip(x)+(r.iss.length?` <span class="ch warn" title="${esc(r.iss.join('، '))}">ناقص</span>`:'')]}});
+  const rws=list.map(x=>{const{c,r}=x;return{cls:r.late_n?'late':r.soon?'soon':'',attrs:open_(x),cells:[...pu(x),esc(c.owner)||'—',esc(c.tenant)||'—',fs_(c.start),fs_(c.end),fm(r.total),fm(r.paid),'<b>'+fm(r.rem)+'</b>',r.next?fd(r.next.date)+'<small class="num">'+fm(r.next.due)+'</small>':'—',stChip(x)+endBtns(x)+(r.iss.length?` <span class="ch warn" title="${esc(r.iss.join('، '))}">ناقص</span>`:'')]}});
     S.pm={title:'قائمة العقود',sub:'المشروع: '+(S.f.p?esc(pname(S.f.p)):'الكل')+' — الحالة: '+SLAB[S.f.s]+(S.f.q?' — بحث: '+esc(S.f.q):''),cols:CCOLS,rows:rws};
   S.pm.foot=[list.length+' عقدًا','','','','','',fm(sum(list,x=>x.r.total||0)),fm(sum(list,x=>x.r.paid||0)),fm(sum(list,x=>x.r.rem>0?x.r.rem:0)),'',''];S.pm.footSpan=0;
   return `<h1>العقود</h1><p class="sub">انقر على أي عقد لعرض ملفه الكامل وأقساطه ودفعاته. يُخصَّص المسدد للأقساط الأقدم أولًا.</p>
@@ -159,11 +182,14 @@ function vContracts(all){
 <button class="btn p" data-a="new">+ عقد جديد</button>${pbtn('list')}<button class="btn" data-a="csv">تصدير CSV</button></div>
 ${T(CCOLS,rws,{foot:S.pm.foot})}`;
 }
+const endBtns=x=>{if(x.r.st!=='منتهي')return'';const e=endState(x.pid,x.c);
+  if(e==='renewed')return' <span class="ch ok">مجدد</span>';if(e==='term')return' <span class="ch">انتهى الإيجار</span>';
+  return `<span class="eb"><button class="btn sm p" data-a="endRenew" data-p="${esc(x.pid)}" data-c="${esc(x.c.id)}">تجديد</button><button class="btn sm dng" data-a="endExit" data-p="${esc(x.pid)}" data-c="${esc(x.c.id)}">إنهاء</button></span>`};
 const cur=()=>{const p=P()[S.cur?.pid];const c=p?.contracts.find(c=>c.id===S.cur.cid);return c?{pid:S.cur.pid,pn:p.name,c,r:calc(c,MODE(),TODAY)}:null};
 function infoGrid(x){
   const{c,r}=x,i=(l,v)=>`<div><span>${l}</span><b>${v||'—'}</b></div>`;
   return `<div class="info">${i('المشروع',esc(x.pn))}${i('رقم الوحدة',esc(c.unit))}${i('المالك',esc(c.owner))}${i('المستأجر',esc(c.tenant))}${i('بداية الإيجار',fs_(c.start))}${i('نهاية الإيجار',fs_(c.end))}
-${i('مدة العقد',r.m?r.m+' شهرًا':esc(c.period))}${i('قيمة الإيجار المسجلة',fm(c.rent))}${i('عدد الأقساط',r.k?r.k+' قسطًا':esc(c.count))}${i('رسوم الأملاك',fm(c.fee))}${i('المتبقي المسجل قبل التعديل',fm(c.prevRemaining))}${i('الحالة',r.late_n?'متأخر ('+r.late_n+' قسط)':r.st)}</div>`;
+${i('مدة العقد',r.m?r.m+' شهرًا':esc(c.period))}${i('قيمة الإيجار المسجلة',fm(c.rent))}${i('عدد الأقساط',r.k?r.k+' قسطًا':esc(c.count))}${i('رسوم الأملاك',fm(c.fee))}${c.ejar?i('رقم عقد إيجار',esc(c.ejar)):''}${i('المتبقي المسجل قبل التعديل',fm(c.prevRemaining))}${i('الحالة',r.late_n?'متأخر ('+r.late_n+' قسط)':r.st)}</div>`;
 }
 function instTable(x,print){
   const r=x.r;
@@ -181,7 +207,7 @@ function fillDet(){
 <div class="db"><div class="sum"><div><span>إجمالي العقد</span><b>${fm(r.total)}</b></div><div><span>المسدد</span><b>${fm(r.paid)}</b></div>
 <div><span>المتبقي</span><b>${fm(r.rem)}</b></div><div><span>المتأخر</span><b>${fm(r.late)}</b></div><div><span>الأقساط</span><b>${r.k?r.k+' × '+fm(r.M):'—'}</b></div></div>
 ${r.iss.length?'<p class="warnbox">يلزم استكمال: '+r.iss.map(esc).join('، ')+'</p>':''}
-<div class="acts"><button class="btn" data-a="edit">تعديل بيانات العقد</button><button class="btn" data-a="renewC">تجديد العقد</button><button class="btn p" data-a="print" data-k="contract">طباعة ملف العقد</button><button class="btn" data-a="pdf" data-k="contract">حفظ PDF</button><button class="btn dng" data-a="delC">حذف العقد</button></div>
+<div class="acts"><button class="btn" data-a="edit">تعديل بيانات العقد</button><button class="btn" data-a="renewC">تجديد العقد</button>${r.st==='منتهي'&&endState(x.pid,c)==='pend'?`<button class="btn dng" data-a="endExit" data-p="${esc(x.pid)}" data-c="${esc(c.id)}">انتهاء الإيجار (خروج المستأجر)</button>`:''}${c.exit?`<button class="btn" data-a="endUndo" data-p="${esc(x.pid)}" data-c="${esc(c.id)}">إلغاء الإنهاء</button>`:''}<button class="btn p" data-a="print" data-k="contract">طباعة ملف العقد</button><button class="btn" data-a="pdf" data-k="contract">حفظ PDF</button><button class="btn dng" data-a="delC">حذف العقد</button></div>
 <h3>بيانات العقد</h3>${infoGrid(x)}${c.notes?`<p style="margin:6px 0;font-size:13.5px"><b>ملاحظات:</b> ${esc(c.notes)}</p>`:''}
 ${(c.oldDates||[]).length?`<small>تواريخ مسجلة سابقًا: ${c.oldDates.map(d=>'<bdi>'+esc(d)+'</bdi>').join('، ')}</small>`:''}
 <h3>جدول الأقساط</h3>${r.inst.length?instTable(x):'<p class="empty">يظهر الجدول بعد استكمال القيمة والتواريخ وعدد الأقساط.</p>'}
@@ -219,7 +245,7 @@ function contractForm(ed,pre){
   const opts=Object.entries(P()).map(([k,p])=>[k,p.name]).concat([['__new','+ مشروع جديد']]);
   formDlg({title:ed?'تعديل العقد':(pre?'تجديد العقد':'عقد جديد'),vals:c,fields:[
     {k:'pid',l:'المشروع',t:'select',opts,def:pid},{k:'pname',l:'اسم المشروع الجديد',ph:'يُستخدم عند اختيار مشروع جديد'},
-    {k:'unit',l:'رقم الوحدة'},{k:'tenant',l:'اسم المستأجر'},{k:'owner',l:'اسم المالك'},{k:'fee',l:'رسوم الأملاك',t:'number'},
+    {k:'unit',l:'رقم الوحدة'},{k:'tenant',l:'اسم المستأجر'},{k:'owner',l:'اسم المالك'},{k:'ejar',l:'رقم عقد منصة إيجار (اختياري)'},{k:'fee',l:'رسوم الأملاك',t:'number'},
     {k:'rent',l:'قيمة الإيجار',t:'number'},{k:'count',l:'عدد الأقساط في السنة (رقم، شهري، دفعتين…)'},
     {k:'start',l:'بداية الإيجار',t:'date'},{k:'end',l:'نهاية الإيجار',t:'date'},
     {k:'period',l:'فترة العقد نصًّا (تُستخدم إذا غابت التواريخ، مثل: سنة، 3 شهور)',full:1},{k:'notes',l:'ملاحظات',t:'area',full:1}],
@@ -228,7 +254,7 @@ function contractForm(ed,pre){
       if(pid==='__new'){pn=o.pname;if(!pn)return 'أدخل اسم المشروع الجديد';pid=Object.keys(P()).find(k=>P()[k].name===pn)||'p'+uid()}
       if(!numOk(o.rent)||!numOk(o.fee))return 'تحقق من الأرقام المدخلة';
       if(!o.unit&&!o.tenant)return 'أدخل رقم الوحدة أو اسم المستأجر';
-      const d={unit:o.unit,tenant:o.tenant,owner:o.owner,rent:o.rent===''?'':Number(o.rent),fee:o.fee===''?'':Number(o.fee),start:o.start,end:o.end,period:o.period,count:/^\d+(\.\d+)?$/.test(o.count)?Number(o.count):o.count,notes:o.notes};
+      const d={unit:o.unit,tenant:o.tenant,owner:o.owner,ejar:o.ejar,rent:o.rent===''?'':Number(o.rent),fee:o.fee===''?'':Number(o.fee),start:o.start,end:o.end,period:o.period,count:/^\d+(\.\d+)?$/.test(o.count)?Number(o.count):o.count,notes:o.notes};
       const put=(pid,c)=>{if(!P()[pid])P()[pid]={name:pn,no:'',contracts:[],units:[]};const p=structuredClone(P()[pid]);ensureUnit(p,c);p.contracts.push(c);P()[pid]=p};
       if(ed){
         const old=P()[ed.pid].contracts.find(c=>c.id===ed.cid),m={...old,...d};
@@ -238,6 +264,14 @@ function contractForm(ed,pre){
       }else{const c={id:'c'+uid(),oldDates:[],prevRemaining:'',extra:0,payments:[],...d};put(pid,c);persist();S.cur={pid,cid:c.id}}
       render();openDet(S.cur.pid,S.cur.cid);
     }});
+  const fillPick=()=>{const sel=$('#ff_upick');if(!sel)return;const p=P()[$('#ff_pid').value];const us=[...(p?.units||[])].sort((a,b)=>String(a.no).localeCompare(String(b.no),'ar',{numeric:true}));
+    const L={rented:'مؤجرة',avail:'متاحة',pend:'منتهية بانتظار القرار',unavail:'غير متاحة'};
+    sel.innerHTML='<option value="">— اختر وحدة من وحدات المشروع —</option>'+us.map(u=>`<option value="${esc(u.id)}">${esc(u.no)} — ${L[unitInfo(p,u).st]}${u.owner?' — '+esc(u.owner):''}</option>`).join('');
+    const m=us.find(u=>normU(u.no)===normU($('#ff_unit').value));if(m)sel.value=m.id};
+  $('#ff_unit').closest('label').insertAdjacentHTML('beforebegin','<label class="full">اختيار الوحدة من وحدات المشروع (يُعبَّأ المالك تلقائيًا)<select id="ff_upick"></select></label>');
+  fillPick();
+  $('#ff_pid').addEventListener('change',fillPick);
+  $('#ff_upick').addEventListener('change',e=>{const p=P()[$('#ff_pid').value],u=p?.units.find(u=>u.id===e.target.value);if(!u)return;$('#ff_unit').value=u.no;$('#ff_owner').value=u.owner||'';if(!$('#ff_rent').value&&u.askRent)$('#ff_rent').value=u.askRent});
 }
 function renewForm(pid,c){
   const m=Core.months(c)||12,s=c.end?iso(pd(c.end)+DAY):iso(TODAY);
@@ -261,14 +295,29 @@ function askReceipt(pid,cid,payId){
   $('#frm').innerHTML=`<div class="dh"><h2>تم تسجيل الدفعة</h2><button class="x" data-a="fclose" aria-label="إغلاق">✕</button></div><p style="padding:6px 4px">هل تريد طباعة سند القبض الآن؟</p><div class="ft"><button class="btn p" data-a="rcPrint">طباعة سند القبض</button><button class="btn" data-a="rcPdf">حفظ PDF</button><button class="btn" data-a="fclose">لاحقًا</button></div>`;
   if(!$('#frm').open)$('#frm').showModal();
 }
+const CO={name:'شركة كثيب للاستثمار',addr:'الرياض - حي القيروان - ص.ب 911 الرياض 11322',vat:'311175458400003',cr:'1010773989',phone:'+966 53 0900 930',mail:'info@kathib.com.sa'};
+function hijriStr(isoD){
+  const t=pd(isoD);if(t==null)return'';
+  try{const o={};for(const x of new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn',{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'UTC'}).formatToParts(new Date(t)))o[x.type]=x.value;return o.day+' / '+o.month+' / '+String(o.year).replace(/\D/g,'')}catch{return''}
+}
 function receiptDoc(pid,cid,payId){
   const p=P()[pid],c=p?.contracts.find(c=>c.id===cid),pm=c?.payments.find(x=>x.id===payId);if(!pm)return null;
-  const rno=pm.rno?String(pm.rno).padStart(5,'0'):'—';
-  const row=(a,b)=>`<tr><th style="width:30%">${a}</th><td>${b}</td></tr>`;
-  const body=`<div style="display:flex;justify-content:space-between;margin:6px 0 14px"><b>سند قبض رقم: <bdi>${rno}</bdi></b><b>التاريخ: <bdi>${esc(pm.date)}</bdi></b></div>
-<table class="kv">${row('استلمنا من المستأجر',esc(c.tenant)||'—')}${row('المشروع',esc(p.name))}${row('الوحدة / الشقة',esc(c.unit)||'—')}${row('المبلغ','<b><bdi>'+fm(pm.amount)+'</bdi></b> ريال سعودي')}${row('مبلغًا وقدره',esc(Fin.tafqeet(pm.amount)))}${pm.method?row('طريقة الدفع',esc(pm.method)):''}${pm.note?row('رقم الحوالة / ملاحظة',esc(pm.note)):''}${row('وذلك عن','دفعة إيجار')}</table>
-<div style="display:flex;justify-content:space-between;margin-top:46px"><div style="text-align:center;width:40%">المستلم<br><br>............................</div><div style="text-align:center;width:40%">المستأجر<br><br>............................</div></div>`;
-  return{html:docHtml({title:'سند قبض',sub:'شركة كثيب للتشغيل والصيانة',body}),name:'receipt-'+rno+'.pdf'};
+  const rno=pm.rno?String(pm.rno).padStart(5,'0'):'—',g=String(pm.date||'').split('-'),gs=g.length===3?g[2]+' / '+g[1]+' / '+g[0]:'';
+  const cash=!pm.method||pm.method==='نقدًا',m=pm.method||'نقدًا';
+  const how=cash?'<b class="hw">نقدًا</b>':`<b class="hw">${esc(m)}</b>`;
+  const html=`<div class="rcv"><div class="rcv-in">
+<div class="rc-top"><div class="rc-amt"><div class="bx"><span>ريال</span><b>${fm(pm.amount)}</b></div><div class="rno">رقم: <bdi>${rno}</bdi></div></div></div><div class="rc-logo"><img src="assets/logo.svg" alt="كثيب"><h2>سـنـد قبض <small>Receipt Voucher</small></h2></div>
+<div class="rc-dates"><div class="bx"><span>التاريخ</span><b>${pm.date?esc(hijriStr(pm.date))+' هـ':''}</b></div><div class="bx"><span>Date</span><b>${esc(gs)}</b></div></div>
+</div>
+<div class="rl"><span class="lb">استلمت من <i>Received from</i></span><span class="ln hw">${esc(c.tenant)||''}</span></div>
+<div class="rl"><span class="lb">مبلغ وقدره <i>The Sum of</i></span><span class="ln box hw">${esc(Fin.tafqeet(pm.amount))}</span></div>
+<div class="rl"><span class="lb">نقدًا / تحويل / شيك رقم <i>cash/cheque</i></span><span class="ln hw">${how}${pm.note?' — '+esc(pm.note):''}</span><span class="lb s">على بنك <i>Bank</i></span><span class="ln s"></span><span class="lb s">تاريخ <i>Date</i></span><span class="ln s"></span></div>
+<div class="rl"><span class="lb">وذلك مقابل <i>For</i></span><span class="ln hw">دفعة إيجار — الوحدة ${esc(c.unit)||''} — ${esc(p.name)}</span></div>
+<div class="rl"><span class="ln"></span></div>
+<div class="rc-sign"><div><span>المدير <i>Manager</i></span><u></u></div><div><span>المحاسب <i>Accountant</i></span><u></u></div><div><span>المستلم <i>Receiver</i></span><u></u></div></div>
+<div class="rc-foot"><div>المقر الرئيسي: ${esc(CO.name)}<br>${esc(CO.addr)}</div><div>رقم ضريبة القيمة المضافة:<br><bdi>${CO.vat}</bdi></div><div>س.ت: <bdi>${CO.cr}</bdi><br><bdi>${CO.phone}</bdi></div><div class="em"><bdi>${CO.mail}</bdi></div></div>
+</div></div>`;
+  return{html,name:'receipt-'+rno+'.pdf'};
 }
 
 /* ---------- المستحقات والتدفقات النقدية ---------- */
@@ -353,6 +402,33 @@ ${selH('fl_mode',[['exp','تفاصيل المتوقع (الأقساط)'],['act',
 <h3>${act?'تفاصيل المحصَّل فعليًا':'تفاصيل المتوقع'}</h3>${T(m.cols,m.rows,{foot:m.foot,footSpan:m.footSpan})}${m.truncated?'<p class="sub" style="margin-top:8px">يُعرض أول 800 بند فقط؛ الإجماليات تشمل الكل.</p>':''}`;
 }
 
+/* ---------- العقود المنتهية ---------- */
+const EN_LAB={all:'كل المنتهية',pend:'بانتظار القرار',renewed:'مجددة',term:'انتهى الإيجار (خروج المستأجر)'};
+function exitForm(pid,cid){
+  const c=P()[pid]?.contracts.find(c=>c.id===cid);if(!c)return;
+  formDlg({title:'انتهاء الإيجار — '+esc(c.unit)+' / '+esc(c.tenant),save:'تأكيد انتهاء الإيجار',vals:{date:c.end||iso(TODAY),note:''},
+    fields:[{k:'date',l:'تاريخ خروج المستأجر',t:'date'},{k:'reason',l:'السبب',t:'select',opts:[['','—'],['انتهاء المدة وعدم الرغبة بالتجديد','انتهاء المدة وعدم الرغبة بالتجديد'],['رغبة المالك','رغبة المالك'],['إخلاء لعدم السداد','إخلاء لعدم السداد'],['أخرى','أخرى']]},{k:'note',l:'ملاحظات',t:'area',full:1}],
+    onSave:o=>{if(!o.date)return 'أدخل تاريخ الخروج';mutate(pid,p=>{p.contracts.find(x=>x.id===cid).exit={date:o.date,reason:o.reason,note:o.note}});toast('انتهى الإيجار — الوحدة '+c.unit+' صارت متاحة للإيجار')}});
+}
+function endedList(all){
+  const E=S.en,q=E.q.toLowerCase();
+  return all.filter(x=>x.r.st==='منتهي'&&(!E.p||x.pid===E.p)&&(!q||txt(x.c.unit,x.c.tenant,x.c.owner,x.pn).includes(q))).map(x=>({...x,es:endState(x.pid,x.c)})).filter(x=>E.s==='all'||x.es===E.s)
+    .sort((a,b)=>(pd(b.c.end)||0)-(pd(a.c.end)||0));
+}
+function vEnded(all){
+  const E=S.en,L=endedList(all),cnt=k=>all.filter(x=>x.r.st==='منتهي'&&endState(x.pid,x.c)===k).length;
+  const cols=[{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'بداية',k:'d'},{h:'نهاية',k:'d'},{h:'منذ (يوم)',k:'n'},{h:'المتبقي',k:'n'},{h:'الحالة',k:'t'},{h:'الإجراء',k:'ac'}];
+  const rws=L.map(x=>({attrs:open_(x),cells:[...pu(x),esc(x.c.owner)||'—',esc(x.c.tenant)||'—',fs_(x.c.start),fs_(x.c.end),Math.max(0,Math.round((TODAY-(pd(x.c.end)||TODAY))/DAY)),fm(x.r.rem>0?x.r.rem:0),
+    x.es==='pend'?'<span class="ch warn">بانتظار القرار</span>':x.es==='renewed'?'<span class="ch ok">مجدد</span>':'<span class="ch">انتهى الإيجار'+(x.c.exit.date?' · '+fs_(x.c.exit.date):'')+'</span>',
+    x.es==='pend'?endBtns(x):x.es==='term'?`<button class="btn sm" data-a="endUndo" data-p="${esc(x.pid)}" data-c="${esc(x.c.id)}">تراجع</button>`:'']}));
+  const pc=cols.filter(c=>c.k!=='ac');
+  S.pm={title:'العقود المنتهية',sub:'الحالة: '+EN_LAB[E.s]+(E.p?' — المشروع: '+esc(pname(E.p)):''),cols:pc,rows:rws.map(r=>({...r,cells:r.cells.slice(0,pc.length)})),foot:[L.length+' عقدًا','','','','','','',fm(sum(L,x=>x.r.rem>0?x.r.rem:0)),'']};
+  return `<h1>العقود المنتهية</h1><p class="sub">لكل عقد منتهٍ قرار واحد: <b>تجديد العقد</b> (يُنشأ عقد جديد مملوء من القديم)، أو <b>انتهاء الإيجار</b> (خروج المستأجر) فتتحول الوحدة إلى «الشقق المتاحة للإيجار». ما دام القرار معلّقًا لا تُحسب الوحدة متاحة.</p>
+<div class="bar"><select id="en_p">${projOpts(E.p,true)}</select><select id="en_s">${Object.entries(EN_LAB).map(([v,l])=>`<option value="${v}"${E.s===v?' selected':''}>${l}</option>`).join('')}</select><input type="search" id="en_q" placeholder="بحث: وحدة، مستأجر، مالك" value="${esc(E.q)}">${pbtn('list')}</div>
+<div class="kpis"><div class="kp static"><span>بانتظار القرار</span><b>${cnt('pend')}</b></div><div class="kp static"><span>مجددة</span><b>${cnt('renewed')}</b></div><div class="kp static"><span>انتهى الإيجار</span><b>${cnt('term')}</b></div></div>
+${T(cols,rws,{foot:S.pm.foot.concat([''])})}`;
+}
+
 /* ---------- التجديدات ---------- */
 const RW=[['all90','منتهية + تنتهي خلال 90 يومًا'],['ended','المنتهية فقط'],['u30','تنتهي خلال 30 يومًا'],['u60','تنتهي خلال 60 يومًا'],['u90','تنتهي خلال 90 يومًا'],['u180','تنتهي خلال 180 يومًا']];
 function renList(all){
@@ -372,14 +448,23 @@ ${T(cols,rws)}`;
 }
 
 /* ---------- المشاريع والوحدات ---------- */
+function endState(pid,c){
+  if(c.exit)return'term';
+  const e=pd(c.end),k=normU(c.unit);
+  if(e!=null&&k&&(P()[pid].contracts||[]).some(o=>o!==c&&normU(o.unit)===k&&(pd(o.end)||0)>e))return'renewed';
+  return'pend';
+}
 function unitInfo(p,u){
-  const k=normU(u.no),cs=(p.contracts||[]).filter(c=>normU(c.unit)===k).map(c=>({c,r:calc(c,MODE(),TODAY)}));
+  const pid=Object.keys(P()).find(k=>P()[k]===p),k=normU(u.no),cs=(p.contracts||[]).filter(c=>normU(c.unit)===k).map(c=>({c,r:calc(c,MODE(),TODAY)}));
   const act=cs.find(o=>o.r.st==='ساري')||cs.find(o=>o.r.st==='لم يبدأ');
   const last=[...cs].sort((a,b)=>(pd(b.c.end)||0)-(pd(a.c.end)||0))[0];
-  return{st:act?'rented':u.avail==='no'?'unavail':'avail',act,last};
+  let st='avail';
+  if(act)st='rented';else if(u.avail==='no')st='unavail';
+  else if(last&&last.r.st==='منتهي'&&endState(pid,last.c)==='pend')st='pend';
+  return{st,act,last};
 }
 function unitsSummary(){
-  return Object.entries(P()).map(([pid,p])=>{let t=0,r=0,a=0,n=0;for(const u of p.units||[]){t++;const i=unitInfo(p,u).st;if(i==='rented')r++;else if(i==='avail')a++;else n++}return{pid,name:p.name,total:t,rented:r,avail:a,unavail:n}}).sort((x,y)=>y.avail-x.avail||x.name.localeCompare(y.name,'ar'));
+  return Object.entries(P()).map(([pid,p])=>{let t=0,r=0,a=0,n=0,w=0;for(const u of p.units||[]){t++;const i=unitInfo(p,u).st;if(i==='rented')r++;else if(i==='avail')a++;else if(i==='pend')w++;else n++}return{pid,name:p.name,total:t,rented:r,avail:a,unavail:n,pend:w}}).sort((x,y)=>y.avail-x.avail||x.name.localeCompare(y.name,'ar'));
 }
 function availList(){
   const A=S.av,q=A.q.toLowerCase(),L=[];
@@ -395,27 +480,44 @@ function vAvail(){
     return{cells:['<b>'+esc(o.p.name)+'</b>','<b>'+esc(o.u.no)+'</b>',esc(o.u.owner)||'—',esc(o.u.type)||'—',esc(o.u.area)||'—',esc(o.u.rooms)||'—',o.u.askRent?fm(o.u.askRent):'—',l?esc(l.c.tenant)||'—':'لم تؤجَّر بعد',l?fs_(l.c.end):'—',days!=null?days+' يوم':'—',
       `<button class="btn sm p" data-a="rentUnit" data-p="${esc(o.pid)}" data-i="${esc(o.u.id)}">تأجير</button> <button class="btn sm" data-a="editUnit2" data-p="${esc(o.pid)}" data-i="${esc(o.u.id)}">تعديل</button>`]}});
   S.pm={title:'الشقق المتاحة للإيجار',sub:S.av.p?'المشروع: '+esc(pname(S.av.p)):'كل المشاريع',cols,rows:rws,foot:['الإجمالي: '+L.length+' وحدة','','','','','','','','','',''],footSpan:0};
-  return `<h1>الشقق المتاحة للإيجار</h1><p class="sub">الوحدة المتاحة هي التي ليس لها عقد ساري أو قادم، ولم تُعلَّم «غير متاحة». «تأجير» يفتح عقدًا جديدًا مملوءًا ببيانات الوحدة.</p>
+  return `<h1>الشقق المتاحة للإيجار</h1><p class="sub">الوحدة المتاحة هي التي لا عقد ساريًا أو قادمًا لها، وانتهى إيجارها رسميًا (من صفحة العقود المنتهية) أو لم تؤجَّر بعد. الوحدة ذات العقد المنتهي لا تُحسب متاحة حتى تختار «انتهاء الإيجار». «تأجير» يفتح عقدًا جديدًا مملوءًا ببيانات الوحدة.</p>
 <div class="bar"><select id="av_p">${projOpts(S.av.p,true)}</select><input type="search" id="av_q" placeholder="بحث: وحدة، مالك، نوع" value="${esc(S.av.q)}">${pbtn('list')}<button class="btn" data-a="availCsv">تصدير CSV</button></div>
-<div class="kpis"><div class="kp static"><span>متاحة للإيجار</span><b>${L.length}</b></div><div class="kp static"><span>مؤجرة</span><b>${sum(sm,x=>x.rented)}</b></div><div class="kp static"><span>غير متاحة</span><b>${sum(sm,x=>x.unavail)}</b></div><div class="kp static"><span>إجمالي الوحدات</span><b>${sum(sm,x=>x.total)}</b></div></div>
+<div class="kpis"><div class="kp static"><span>متاحة للإيجار</span><b>${L.length}</b></div><div class="kp static"><span>مؤجرة</span><b>${sum(sm,x=>x.rented)}</b></div><div class="kp static"><span>منتهية بانتظار القرار</span><b>${sum(sm,x=>x.pend)}</b></div><div class="kp static"><span>غير متاحة</span><b>${sum(sm,x=>x.unavail)}</b></div><div class="kp static"><span>إجمالي الوحدات</span><b>${sum(sm,x=>x.total)}</b></div></div>
 ${T(cols,rws,{foot:S.pm.foot})}`;
 }
+const propsTabs=()=>`<div class="tabs"><button data-a="prTab" data-t="proj" class="${S.pr.tab!=='units'?'on':''}">المشاريع</button><button data-a="prTab" data-t="units" class="${S.pr.tab==='units'?'on':''}">الوحدات (بفلاتر)</button></div>`;
+function vUnitsTab(){
+  const F=S.pr,q=(F.uq||'').toLowerCase(),ST={rented:'مؤجرة',avail:'متاحة للإيجار',pend:'منتهية بانتظار القرار',unavail:'غير متاحة'};
+  const all=[];for(const[pid,p]of Object.entries(P()))for(const u of p.units||[])all.push({pid,p,u,i:unitInfo(p,u)});
+  const owners=[...new Set(all.map(o=>o.u.owner).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar')),types=[...new Set(all.map(o=>o.u.type).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
+  const L=all.filter(o=>(!F.up||o.pid===F.up)&&(!F.us||o.i.st===F.us)&&(!F.uo||o.u.owner===F.uo)&&(!F.ut||o.u.type===F.ut)&&(!q||txt(o.u.no,o.u.owner,o.u.type,o.p.name,o.i.act?.c.tenant).includes(q)))
+    .sort((a,b)=>a.p.name.localeCompare(b.p.name,'ar')||String(a.u.no).localeCompare(String(b.u.no),'ar',{numeric:true}));
+  const cols=[{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المالك',k:'t'},{h:'النوع',k:'t'},{h:'المساحة',k:'t'},{h:'الغرف',k:'d'},{h:'الإيجار المطلوب',k:'n'},{h:'الحالة',k:'t'},{h:'المستأجر الحالي',k:'t'},{h:'نهاية العقد',k:'d'}];
+  const rws=L.map(o=>({attrs:` data-a="projOpen" data-p="${esc(o.pid)}"`,cells:['<b>'+esc(o.p.name)+'</b>','<b>'+esc(o.u.no)+'</b>',esc(o.u.owner)||'—',esc(o.u.type)||'—',esc(o.u.area)||'—',esc(o.u.rooms)||'—',o.u.askRent?fm(o.u.askRent):'—',`<span class="ch ${o.i.st==='rented'?'ok':o.i.st==='avail'?'':'warn'}">${ST[o.i.st]}</span>`,o.i.act?esc(o.i.act.c.tenant)||'—':'—',o.i.act?fs_(o.i.act.c.end):'—']}));
+  S.pm={title:'سجل الوحدات',sub:'عدد الوحدات: '+L.length,cols,rows:rws,foot:['الإجمالي: '+L.length,'','','','','','','','','']};
+  const o_=(v,arr)=>'<option value="">الكل</option>'+arr.map(x=>`<option${x===v?' selected':''}>${esc(x)}</option>`).join('');
+  return `<h1>المشاريع والوحدات</h1><p class="sub">كل الوحدات المرفوعة بكل المشاريع مع فلاتر الحالة والمالك والنوع والمشروع.</p>${propsTabs()}
+<div class="bar"><select id="pu_p">${projOpts(F.up,true)}</select><select id="pu_s"><option value="">كل الحالات</option>${Object.entries(ST).map(([k,l])=>`<option value="${k}"${F.us===k?' selected':''}>${l}</option>`).join('')}</select><select id="pu_o" title="المالك">${o_(F.uo,owners).replace('الكل','كل الملاك')}</select><select id="pu_t" title="النوع">${o_(F.ut,types).replace('الكل','كل الأنواع')}</select>
+<input type="search" id="pu_q" placeholder="بحث: وحدة، مالك، مستأجر" value="${esc(F.uq||'')}">${pbtn('list')}<button class="btn" data-a="pu_clear">مسح الفلاتر</button></div>
+<div class="kpis">${Object.entries(ST).map(([k,l])=>`<div class="kp static"><span>${l}</span><b>${L.filter(o=>o.i.st===k).length}</b></div>`).join('')}<div class="kp static"><span>المعروض</span><b>${L.length}</b></div></div>${T(cols,rws,{foot:S.pm.foot})}`;
+}
 function vProps(all){
+  if(S.pr.tab==='units')return vUnitsTab();
   const q=S.pr.q.toLowerCase(),sm=Object.fromEntries(unitsSummary().map(x=>[x.pid,x]));
   const list=Object.entries(P()).filter(([,p])=>!q||txt(p.name,p.no,p.address).includes(q)).sort((a,b)=>a[1].name.localeCompare(b[1].name,'ar')).map(([pid,p])=>{
     const rs=all.filter(x=>x.pid===pid),m=sm[pid];
-    return{pid,p,units:m.total,occ:m.rented,av:m.avail,un:m.unavail,act:rs.filter(x=>x.r.st==='ساري').length,tot:sum(rs,x=>x.r.total||0),rem:sum(rs,x=>x.r.rem>0?x.r.rem:0),late:sum(rs,x=>x.r.late)}});
-  const cols=[{h:'المشروع',k:'t'},{h:'رقم المشروع',k:'d'},{h:'الوحدات',k:'n'},{h:'مؤجرة',k:'n'},{h:'متاحة',k:'n'},{h:'غير متاحة',k:'n'},{h:'الإشغال',k:'n'},{h:'عقود سارية',k:'n'},{h:'إجمالي العقود',k:'n'},{h:'المتبقي',k:'n'},{h:'المتأخر',k:'n'}];
-  const rws=list.map(o=>({attrs:` data-a="projOpen" data-p="${esc(o.pid)}"`,cells:['<b>'+esc(o.p.name)+'</b>'+(o.p.address?`<small>${esc(o.p.address)}</small>`:''),esc(o.p.no)||'—',o.units,o.occ,'<b>'+o.av+'</b>',o.un,o.units?Math.round(o.occ/o.units*100)+'%':'—',o.act,fm(o.tot),fm(o.rem),o.late?fm(o.late):'—']}));
-  const foot=['الإجمالي ('+list.length+')','',sum(list,o=>o.units),sum(list,o=>o.occ),sum(list,o=>o.av),sum(list,o=>o.un),'',sum(list,o=>o.act),fm(sum(list,o=>o.tot)),fm(sum(list,o=>o.rem)),fm(sum(list,o=>o.late))];
+    return{pid,p,units:m.total,occ:m.rented,av:m.avail,pd:m.pend,un:m.unavail,act:rs.filter(x=>x.r.st==='ساري').length,tot:sum(rs,x=>x.r.total||0),rem:sum(rs,x=>x.r.rem>0?x.r.rem:0),late:sum(rs,x=>x.r.late)}});
+  const cols=[{h:'المشروع',k:'t'},{h:'رقم المشروع',k:'d'},{h:'الوحدات',k:'n'},{h:'مؤجرة',k:'n'},{h:'متاحة',k:'n'},{h:'بانتظار القرار',k:'n'},{h:'غير متاحة',k:'n'},{h:'الإشغال',k:'n'},{h:'عقود سارية',k:'n'},{h:'إجمالي العقود',k:'n'},{h:'المتبقي',k:'n'},{h:'المتأخر',k:'n'}];
+  const rws=list.map(o=>({attrs:` data-a="projOpen" data-p="${esc(o.pid)}"`,cells:['<b>'+esc(o.p.name)+'</b>'+(o.p.address?`<small>${esc(o.p.address)}</small>`:''),esc(o.p.no)||'—',o.units,o.occ,'<b>'+o.av+'</b>',o.pd,o.un,o.units?Math.round(o.occ/o.units*100)+'%':'—',o.act,fm(o.tot),fm(o.rem),o.late?fm(o.late):'—']}));
+  const foot=['الإجمالي ('+list.length+')','',sum(list,o=>o.units),sum(list,o=>o.occ),sum(list,o=>o.av),sum(list,o=>o.pd),sum(list,o=>o.un),'',sum(list,o=>o.act),fm(sum(list,o=>o.tot)),fm(sum(list,o=>o.rem)),fm(sum(list,o=>o.late))];
   S.pm={title:'تقرير المشاريع والوحدات',sub:'حالة الإشغال والوحدات المتاحة والتحصيل',cols,rows:rws,foot};
-  return `<h1>المشاريع والوحدات</h1><p class="sub">سجل الأملاك: المشاريع ووحداتها وحالة الإشغال. تُضاف الوحدات تلقائيًا من العقود، ويمكنك إضافة وحدات متاحة يدويًا.</p>
+  return `<h1>المشاريع والوحدات</h1><p class="sub">سجل الأملاك: المشاريع ووحداتها وحالة الإشغال. تُضاف الوحدات تلقائيًا من العقود، ويمكنك إضافة وحدات متاحة يدويًا.</p>${propsTabs()}
 <div class="bar"><button class="btn p" data-a="newProj">+ مشروع جديد</button><input type="search" id="pq" placeholder="بحث باسم المشروع" value="${esc(S.pr.q)}">${pbtn('list')}</div>${T(cols,rws,{foot})}`;
 }
 function projUnits(pid,print){
   const p=P()[pid],us=[...(p.units||[])].sort((a,b)=>String(a.no).localeCompare(String(b.no),'ar',{numeric:true}));
   return T([{h:'الوحدة',k:'t'},{h:'المالك',k:'t'},{h:'النوع',k:'t'},{h:'المساحة',k:'t'},{h:'الغرف',k:'d'},{h:'الإيجار المطلوب',k:'n'},{h:'الحالة',k:'t'},{h:'المستأجر الحالي',k:'t'},{h:'نهاية العقد',k:'d'},{h:'',k:'ac'}],
-    us.map(u=>{const i=unitInfo(p,u);return{cells:['<b>'+esc(u.no)+'</b>',esc(u.owner)||'—',esc(u.type)||'—',esc(u.area)||'—',esc(u.rooms)||'—',u.askRent?fm(u.askRent):'—',i.st==='rented'?'<span class="ch ok">مؤجرة</span>':i.st==='unavail'?'<span class="ch warn">غير متاحة</span>'+(u.availNote?`<small>${esc(u.availNote)}</small>`:''):'<span class="ch">متاحة للإيجار</span>',i.act?esc(i.act.c.tenant):'—',i.act?fs_(i.act.c.end):'—',`${i.st==='avail'?`<button class="btn sm p" data-a="rentUnit" data-p="${esc(pid)}" data-i="${esc(u.id)}">تأجير</button> `:''}<button class="btn sm" data-a="editUnit" data-i="${esc(u.id)}">تعديل</button> <button class="btn sm dng" data-a="delUnit" data-i="${esc(u.id)}">حذف</button>`]}}),{print});
+    us.map(u=>{const i=unitInfo(p,u);return{cells:['<b>'+esc(u.no)+'</b>',esc(u.owner)||'—',esc(u.type)||'—',esc(u.area)||'—',esc(u.rooms)||'—',u.askRent?fm(u.askRent):'—',i.st==='rented'?'<span class="ch ok">مؤجرة</span>':i.st==='pend'?'<span class="ch warn">منتهية — بانتظار القرار</span>':i.st==='unavail'?'<span class="ch warn">غير متاحة</span>'+(u.availNote?`<small>${esc(u.availNote)}</small>`:''):'<span class="ch">متاحة للإيجار</span>',i.act?esc(i.act.c.tenant):'—',i.act?fs_(i.act.c.end):'—',`${i.st==='avail'?`<button class="btn sm p" data-a="rentUnit" data-p="${esc(pid)}" data-i="${esc(u.id)}">تأجير</button> `:''}<button class="btn sm" data-a="editUnit" data-i="${esc(u.id)}">تعديل</button> <button class="btn sm dng" data-a="delUnit" data-i="${esc(u.id)}">حذف</button>`]}}),{print});
 }
 function projDlg(pid){
   S.pj=pid;const p=P()[pid];if(!p){$('#stm').close();return}
@@ -553,6 +655,11 @@ const act={
     saveText('cashflow.csv',out.join('\r\n'))},
   dueClear:b=>{Object.assign(b.dataset.d==='fl'?S.flow:S.due,{from:'',to:'',m:''});render()},
   delC:b=>arm(b,()=>{const{pid,cid}=S.cur;$('#det').close();mutate(pid,p=>{p.contracts=p.contracts.filter(c=>c.id!==cid)})}),
+  prTab:b=>{S.pr.tab=b.dataset.t;render()},pu_clear:()=>{Object.assign(S.pr,{up:'',us:'',uo:'',ut:'',uq:''});render()},
+  endRenew:b=>{const x=P()[b.dataset.p]?.contracts.find(c=>c.id===b.dataset.c);if(x){S.cur={pid:b.dataset.p,cid:x.id};renewForm(b.dataset.p,x)}},
+  endExit:b=>exitForm(b.dataset.p,b.dataset.c),
+  endUndo:b=>{mutate(b.dataset.p,p=>{const c=p.contracts.find(c=>c.id===b.dataset.c);delete c.exit});toast('أُلغي الإنهاء — عادت الوحدة بانتظار القرار')},
+  endCsv:()=>exportXlsx('expired',S.pm),
   addPay:b=>payForm(S.cur.pid,S.cur.cid,b.dataset.v),
   rcOne:b=>{const r=receiptDoc(S.cur.pid,S.cur.cid,b.dataset.i);if(r)printArea(r.html,null)},
   rcPrint:()=>{const r=receiptDoc(S.rc.pid,S.rc.cid,S.rc.payId);$('#frm').close();if(r)printArea(r.html,null)},
@@ -592,7 +699,7 @@ const act={
 document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b||!act[b.dataset.a])return;if(b.tagName==='TR'&&e.target.closest('button'))return;act[b.dataset.a](b)});
 document.addEventListener('input',e=>{
   const id=e.target.id,v=e.target.value.trim();
-  if(id==='fq'){S.f.q=v;render()}else if(id==='due_q'){S.due.q=v;render()}else if(id==='fl_q'){S.flow.q=v;render()}else if(id==='av_q'){S.av.q=v;render()}else if(id==='rq'){S.ren.q=v;render()}
+  if(id==='fq'){S.f.q=v;render()}else if(id==='en_q'){S.en.q=v;render()}else if(id==='pu_q'){S.pr.uq=v;render()}else if(id==='due_q'){S.due.q=v;render()}else if(id==='fl_q'){S.flow.q=v;render()}else if(id==='av_q'){S.av.q=v;render()}else if(id==='rq'){S.ren.q=v;render()}
   else if(id==='oq'){S.ow.q=v;render()}else if(id==='pq'){S.pr.q=v;render()}
 });
 document.addEventListener('change',e=>{
@@ -604,7 +711,7 @@ document.addEventListener('change',e=>{
   else if(id==='fl_p'){S.flow.p=v;render()}else if(id==='fl_s'){S.flow.s=v;render()}else if(id==='fl_cs'){S.flow.cs=v;render()}else if(id==='fl_mode'){S.flow.mode=v;render()}else if(id==='fl_g'){S.flow.g=v;render()}
   else if(id==='fl_from'){S.flow.from=v;S.flow.m='';render()}else if(id==='fl_to'){S.flow.to=v;S.flow.m='';render()}
   else if(id==='fl_m'){S.flow.m=v;S.flow.from=v?v+'-01':'';S.flow.to=v?mEnd(v):'';render()}
-  else if(id==='av_p'){S.av.p=v;render()}
+  else if(id==='av_p'){S.av.p=v;render()}else if(id==='pu_p'){S.pr.up=v;render()}else if(id==='pu_s'){S.pr.us=v;render()}else if(id==='pu_o'){S.pr.uo=v;render()}else if(id==='pu_t'){S.pr.ut=v;render()}else if(id==='en_p'){S.en.p=v;render()}else if(id==='en_s'){S.en.s=v;render()}
   else if(id==='set_vat'){const n=Number(v);if(isFinite(n)&&n>=0&&n<=100){S.db.settings.vat=n;persist();toast('تم حفظ الإعداد')}}else if(id==='set_op'){S.db.settings.operator=v.trim();persist();toast('تم حفظ الإعداد')}
   else if(id==='rp'){S.ren.p=v;render()}else if(id==='rw'){S.ren.win=v;render()}
   else if(id==='mode'){S.db.settings.mode=v;persist();render();toast('تم حفظ الإعداد')}

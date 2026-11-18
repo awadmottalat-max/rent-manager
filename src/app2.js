@@ -120,7 +120,7 @@ function vFin(all){
 ${rws.length?T(cols,rws,{foot}):'<div class="tw"><p class="empty">لا توجد تحليلات. اضغط «تحليل جديد» واختر العقد والدفعة.</p></div>'}`;
 }
 function anCollect(){
-  const o={id:rv('an_id'),date:rv('an_date'),pid:rv('an_pid'),cid:rv('an_cid'),aid:rv('an_aid'),payId:rv('an_pay'),unit:rv('an_unit').trim(),owner:rv('an_owner').trim(),tenant:rv('an_tenant').trim(),
+  const o={id:rv('an_id'),date:rv('an_date'),pid:rv('an_pid'),cstart:rv('an_cs'),cend:rv('an_ce'),ejar:rv('an_ejar').trim(),cid:rv('an_cid'),aid:rv('an_aid'),payId:rv('an_pay'),unit:rv('an_unit').trim(),owner:rv('an_owner').trim(),tenant:rv('an_tenant').trim(),
     payment:nv('an_payment')||0,annualRent:nv('an_annual')||0,mgmt:{type:rv('an_mt'),value:nv('an_mv')||0,base:rv('an_mb')},mgmtManual:rv('an_mman')==='1',mgmtAmt:nv('an_mamt'),vatManual:rv('an_vman')==='1',vatAmt:nv('an_vamt'),note:rv('an_note').trim()};
   for(const[k]of Fin.ANA_LINES)if(k!=='mgmt')o[k]=nv('an_'+k)||0;
   return o;
@@ -136,7 +136,7 @@ function anPrefill(){
   const ps=[...(c.payments||[])].sort((x,y)=>String(x.date).localeCompare(String(y.date)));
   const pm=ps.find(p=>p.id===rv('an_pay'))||ps[ps.length-1],idx=pm?ps.indexOf(pm):-1;
   if(pm){$('#an_payment').value=pm.amount;$('#an_date').value=pm.date||$('#an_date').value}
-  $('#an_unit').value=c.unit||'';$('#an_owner').value=c.owner||'';$('#an_tenant').value=c.tenant||'';
+  $('#an_unit').value=c.unit||'';$('#an_owner').value=c.owner||'';$('#an_tenant').value=c.tenant||'';$('#an_cs').value=c.start||'';$('#an_ce').value=c.end||'';$('#an_ejar').value=c.ejar||'';
   const r=calc(c,MODE(),TODAY);$('#an_annual').value=a?a.annualRent:Fin.r2(r.total||0);
   if(a){$('#an_aid').value=a.id;$('#an_mt').value=a.mgmt.type;$('#an_mv').value=a.mgmt.value;$('#an_mb').value='annual';
     const k=Fin.agrCalc(a,VATP()),row=k.rows[idx]||k.rows.find(x=>Math.abs(x.amount-(pm?.amount||0))<0.01);
@@ -149,12 +149,12 @@ function anPrefill(){
 function anForm(id,pre){
   const a=id?N_().find(x=>x.id===id):{date:iso(TODAY),mgmt:{type:'pct',value:0,base:'annual'},...(pre||{})};
   const f=(l,el,full)=>`<label class="${full?'full':''}">${l}${el}</label>`,inp=(i,v,t='text')=>`<input id="${i}" type="${t}" ${t==='number'?'step="0.01"':''} value="${esc(v??'')}">`,sel=(i,o,v)=>`<select id="${i}">${o.map(([x,y])=>`<option value="${esc(x)}"${String(x)===String(v)?' selected':''}>${esc(y)}</option>`).join('')}</select>`;
-  const cs=[['','— اختر العقد —']];for(const[pid,p]of Object.entries(P()))for(const c of p.contracts)cs.push([pid+'|'+c.id,p.name+' — '+c.unit+' — '+(c.tenant||'')]);
+  const cs=[['','— اختر العقد —']];for(const[pid,p]of Object.entries(P()))for(const c of p.contracts)cs.push([pid+'|'+c.id,p.name+' — '+c.unit+' — '+(c.tenant||'')+(calc(c,MODE(),TODAY).st==='منتهي'?' (منتهي)':'')]);
   const curC=a.pid&&a.cid?a.pid+'|'+a.cid:'';
   const c0=cOf(a.pid,a.cid),pays=c0?[...c0.payments].sort((x,y)=>String(x.date).localeCompare(String(y.date))).map(p=>[p.id,(p.date||'بلا تاريخ')+' — '+fm(p.amount)]):[];
   $('#frm').innerHTML=`<div class="dh"><h2>${id?'تعديل التحليل المالي':'تحليل مالي جديد'}</h2><button class="x" data-a="fclose" aria-label="إغلاق">✕</button></div>
-<input type="hidden" id="an_id" value="${esc(a.id||'')}"><input type="hidden" id="an_pid" value="${esc(a.pid||'')}"><input type="hidden" id="an_cid" value="${esc(a.cid||'')}"><input type="hidden" id="an_aid" value="${esc(a.aid||'')}">
-<div class="fg">${f('العقد',sel('an_pick',cs,curC),1)}${f('الدفعة المسددة',`<select id="an_pay"><option value="">— يدوي —</option>${pays.map(([x,y])=>`<option value="${esc(x)}"${x===a.payId?' selected':''}>${esc(y)}</option>`).join('')}</select>`)}${f('تاريخ التحليل',inp('an_date',a.date,'date'))}
+<input type="hidden" id="an_id" value="${esc(a.id||'')}"><input type="hidden" id="an_cid" value="${esc(a.cid||'')}"><input type="hidden" id="an_aid" value="${esc(a.aid||'')}">
+<div class="fg">${f('العقد (حالي أو سابق) — أو اتركه فارغًا وأدخل بيانات عقد سابق يدويًا',sel('an_pick',cs,curC),1)}${f('المشروع',`<select id="an_pid"><option value="">— غير محدد —</option>${projOpts(a.pid,false)}</select>`)}${f('بداية العقد (للعقد السابق)',inp('an_cs',a.cstart,'date'))}${f('نهاية العقد (للعقد السابق)',inp('an_ce',a.cend,'date'))}${f('رقم عقد إيجار (اختياري)',inp('an_ejar',a.ejar))}${f('الدفعة المسددة',`<select id="an_pay"><option value="">— يدوي —</option>${pays.map(([x,y])=>`<option value="${esc(x)}"${x===a.payId?' selected':''}>${esc(y)}</option>`).join('')}</select>`)}${f('تاريخ التحليل',inp('an_date',a.date,'date'))}
 ${f('الوحدة',inp('an_unit',a.unit))}${f('المالك',inp('an_owner',a.owner))}${f('المستأجر',inp('an_tenant',a.tenant))}
 ${f('قيمة الدفعة',inp('an_payment',a.payment,'number'))}${f('الإيجار السنوي (أساس النسبة)',inp('an_annual',a.annualRent,'number'))}
 ${f('إدارة الأملاك',sel('an_mt',Object.entries(MG_LAB),a.mgmt.type))}${f('القيمة (% أو مبلغ)',inp('an_mv',a.mgmt.value,'number'))}${f('أساس النسبة',sel('an_mb',[['annual','الإيجار السنوي'],['payment','قيمة الدفعة']],a.mgmt.base||'annual'))}
@@ -174,7 +174,7 @@ ${f('كهرباء',inp('an_elec',a.elec,'number'))}${f('إنترنت',inp('an_ne
 function anDoc(a){
   const k=anaFor(a),pn=esc(pname(a.pid)),ag=findAgr(a);
   const rowsL=Fin.ANA_LINES.map(([key,,tx])=>[key,tx]).filter(([key])=>k.lines[key]).map(([key,tx])=>({cells:[AN_LAB[key],fm(k.lines[key]),tx?'خاضع':'غير خاضع']}));
-  const body=`<table class="kv"><tr><th style="width:18%">المشروع</th><td>${pn}</td><th style="width:18%">الوحدة</th><td><b>${esc(a.unit)}</b></td></tr><tr><th>المالك</th><td>${esc(a.owner)||'—'}</td><th>المستأجر</th><td>${esc(a.tenant)||'—'}</td></tr><tr><th>تاريخ التحليل</th><td><bdi>${esc(a.date)}</bdi></td><th>الإيجار السنوي</th><td>${fm(a.annualRent)}</td></tr></table>
+  const body=`<table class="kv"><tr><th style="width:18%">المشروع</th><td>${pn}</td><th style="width:18%">الوحدة</th><td><b>${esc(a.unit)}</b></td></tr><tr><th>المالك</th><td>${esc(a.owner)||'—'}</td><th>المستأجر</th><td>${esc(a.tenant)||'—'}</td></tr><tr><th>تاريخ التحليل</th><td><bdi>${esc(a.date)}</bdi></td><th>الإيجار السنوي</th><td>${fm(a.annualRent)}</td></tr>${a.cstart||a.cend||a.ejar?`<tr><th>مدة العقد</th><td>${a.cstart||a.cend?'<bdi>'+esc(a.cstart||'—')+'</bdi> إلى <bdi>'+esc(a.cend||'—')+'</bdi>':'—'}</td><th>رقم عقد إيجار</th><td>${esc(a.ejar)||'—'}</td></tr>`:''}</table>
 <h3>الدفعة المسددة: <bdi>${fm(k.payment)}</bdi> ريال</h3>
 ${T([{h:'بند الخصم',k:'t'},{h:'المبلغ',k:'n'},{h:'الضريبة',k:'t'}],[...rowsL,{cells:['ضريبة القيمة المضافة '+VATP()+'% على '+fm(k.taxBase),'<b>'+fm(k.vat)+'</b>','']}],{print:true,foot:['إجمالي الخصومات',fm(k.totalDed),'']})}
 <div class="sum" style="margin-top:14px"><div><span>قيمة الدفعة</span><b>${fm(k.payment)}</b></div><div><span>إجمالي الخصومات</span><b>${fm(k.totalDed)}</b></div><div><span>الصافي المستحق للمالك</span><b>${fm(k.netOwner)}</b></div></div>

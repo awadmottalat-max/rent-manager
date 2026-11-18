@@ -13,7 +13,7 @@ app.whenReady().then(async()=>{
   const b64=fs.readFileSync(process.argv.find(a=>a.endsWith('.xlsx'))).toString('base64');
   await ev(`(()=>{const bin=atob("${b64}");const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
     S.imp=parseWb(XLSX,XLSX.read(u,{type:'array'}));S.db.projects=applyImp(P(),S.imp,'replace').next;persist();render();})()`);
-  for(const v of ['dash','avail','contracts','due','flow','renew','props','owners','agr','fin','settings']){await ev(`go('${v}')`);await shot(v)}
+  for(const v of ['dash','avail','contracts','ended','due','flow','renew','props','owners','agr','fin','rep','settings']){await ev(`go('${v}')`);await shot(v)}
   await ev(`J.soon()`);await shot('due30');
   await ev(`go('contracts');const pid=Object.keys(P())[0];openDet(pid,P()[pid].contracts[3].id)`);await shot('detail');
   await pdf('contract',await ev(`contractDoc(cur())`));
@@ -30,5 +30,16 @@ app.whenReady().then(async()=>{
   await ev(`(()=>{const pid=Object.keys(P())[0],c=P()[pid].contracts[3];go('fin');anForm(null);document.getElementById('an_pick').value=pid+'|'+c.id;document.getElementById('an_pick').dispatchEvent(new Event('change',{bubbles:true}));document.getElementById('an_maint').value=500;anPreview()})()`);await shot('fin_form');
   await ev(`document.getElementById('an_save').click()`);await sleep(300);await shot('fin_list');
   await pdf('ana',await ev(`anDoc(S.db.analyses[0])`));
+  await ev(`go('rep');S.rp.tab='owner';S.rp.owner=ownerNames(rows())[5];render()`);await shot('rep_owner');
+  await ev(`S.rp.tab='tenant';S.rp.tenant=tenantNames(rows())[7];render()`);await shot('rep_tenant');
+  await ev(`S.rp.tab='tab';S.rp.rep='age';render()`);await shot('rep_tab');
+  await ev(`S.pr.tab='units';go('props')`);await shot('props_units');
+  await ev(`S.en.s='all';go('ended')`);await shot('ended_all');
+  await ev(`go('contracts');contractForm(false)`);await sleep(200);await shot('contract_new');
+  const nx=await ev(`(()=>{const pid=Object.keys(P())[0];const c=P()[pid].contracts.find(c=>c.payments.length);return{pid,c:c.id,p:c.payments[0].id}})()`);
+  await pdf('receipt2',await ev(`receiptDoc('${nx.pid}','${nx.c}','${nx.p}').html`));
+  const chk=await ev(`(()=>{const x=rows().find(x=>x.r.st==='منتهي'&&endState(x.pid,x.c)==='pend');const p=P()[x.pid];const u=p.units.find(u=>normU(u.no)===normU(x.c.unit));const b=unitInfo(p,u).st;
+    mutate(x.pid,q=>{q.contracts.find(c=>c.id===x.c.id).exit={date:'2026-11-01'}});const p2=P()[x.pid],u2=p2.units.find(u=>normU(u.no)===normU(x.c.unit));const a=unitInfo(p2,u2).st;return b+'>'+a})()`);
+  console.log('EXITCHK',chk);
   await sleep(500);console.log('ERRS',JSON.stringify(errs));app.exit(0);
 });
