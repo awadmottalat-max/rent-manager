@@ -36,7 +36,7 @@ function passC(x){
   if(s==='late'&&!r.late_n)return false;if(s==='soon'&&!r.soon)return false;
   if(s==='active'&&r.st!=='ساري')return false;if(s==='ended'&&r.st!=='منتهي')return false;if(s==='future'&&r.st!=='لم يبدأ')return false;
   if(s==='issues'&&!r.iss.length)return false;if(s==='open'&&!(r.rem>0.005))return false;
-  if(q&&!txt(x.c.unit,x.c.tenant,x.c.owner,x.pn).includes(q.toLowerCase()))return false;
+  if(q&&!txt(x.c.unit,x.c.tenant,x.c.owner,x.pn,x.c.sap,x.c.ejar).includes(q.toLowerCase()))return false;
   return true;
 }
 const chip=i=>i.status==='paid'?'<span class="ch ok">مسدد</span>':i.late?'<span class="ch late">متأخر</span>':i.soon?'<span class="ch warn">خلال 30 يومًا</span>':i.status==='partial'?'<span class="ch warn">جزئي</span>':i.date==null?'<span class="ch">بلا تاريخ</span>':'<span class="ch">قادم</span>';
@@ -189,7 +189,7 @@ const cur=()=>{const p=P()[S.cur?.pid];const c=p?.contracts.find(c=>c.id===S.cur
 function infoGrid(x){
   const{c,r}=x,i=(l,v)=>`<div><span>${l}</span><b>${v||'—'}</b></div>`;
   return `<div class="info">${i('المشروع',esc(x.pn))}${i('رقم الوحدة',esc(c.unit))}${i('المالك',esc(c.owner))}${i('المستأجر',esc(c.tenant))}${i('بداية الإيجار',fs_(c.start))}${i('نهاية الإيجار',fs_(c.end))}
-${i('مدة العقد',r.m?r.m+' شهرًا':esc(c.period))}${i('قيمة الإيجار المسجلة',fm(c.rent))}${i('عدد الأقساط',r.k?r.k+' قسطًا':esc(c.count))}${i('رسوم الأملاك',fm(c.fee))}${c.ejar?i('رقم عقد إيجار',esc(c.ejar)):''}${i('المتبقي المسجل قبل التعديل',fm(c.prevRemaining))}${i('الحالة',r.late_n?'متأخر ('+r.late_n+' قسط)':r.st)}</div>`;
+${i('مدة العقد',r.m?r.m+' شهرًا':esc(c.period))}${i('قيمة الإيجار المسجلة',fm(c.rent))}${i('عدد الأقساط',r.k?r.k+' قسطًا':esc(c.count))}${i('رسوم الأملاك',fm(c.fee))}${c.ejar?i('رقم عقد إيجار',esc(c.ejar)):''}${c.sap?i('رقم ساب SAP',esc(c.sap)):''}${i('المتبقي المسجل قبل التعديل',fm(c.prevRemaining))}${i('الحالة',r.late_n?'متأخر ('+r.late_n+' قسط)':r.st)}</div>`;
 }
 function instTable(x,print){
   const r=x.r;
@@ -198,7 +198,7 @@ function instTable(x,print){
 }
 function payTable(c,print,del){
   const ps=[...(c.payments||[])].sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
-  return T([{h:'سند',k:'d'},{h:'تاريخ التحصيل',k:'d'},{h:'المبلغ',k:'n'},{h:'استحقاق من',k:'d'},{h:'استحقاق إلى',k:'d'},{h:'ملاحظة',k:'t'},...(del?[{h:'',k:'ac'}]:[])],ps.map(p=>({cells:[p.rno?String(p.rno).padStart(5,'0'):'—',p.date?fs_(p.date):'غير محدد',fm(p.amount),fs_(p.from),fs_(p.to),esc([p.method,p.note].filter(Boolean).join(' — '))||'—',...(del?[(p.rno?`<button class="btn sm" data-a="rcOne" data-i="${esc(p.id)}">سند</button> `:`<button class="btn sm" data-a="rcOne" data-i="${esc(p.id)}">سند</button> `)+`<button class="btn dng sm" data-a="delPay" data-i="${esc(p.id)}">حذف</button>`]:[])]})),{print,foot:['','الإجمالي',fm(sum(ps,p=>+p.amount||0)+(+c.extra||0)),'','',+c.extra?'يشمل سداد إضافي '+fm(c.extra):'',...(del?['']:[])]});
+  return T([{h:'سند',k:'d'},{h:'تاريخ التحصيل',k:'d'},{h:'المبلغ',k:'n'},{h:'استحقاق من',k:'d'},{h:'استحقاق إلى',k:'d'},{h:'ساب',k:'t'},{h:'ملاحظة',k:'t'},...(del?[{h:'',k:'ac'}]:[])],ps.map(p=>({cells:[p.rno?String(p.rno).padStart(5,'0'):'—',p.date?fs_(p.date):'غير محدد',fm(p.amount),fs_(p.from),fs_(p.to),esc(p.sap)||'—',esc([p.method,p.note].filter(Boolean).join(' — '))||'—',...(del?[(p.rno?`<button class="btn sm" data-a="rcOne" data-i="${esc(p.id)}">سند</button> `:`<button class="btn sm" data-a="rcOne" data-i="${esc(p.id)}">سند</button> `)+`<button class="btn dng sm" data-a="delPay" data-i="${esc(p.id)}">حذف</button>`]:[])]})),{print,foot:['','الإجمالي',fm(sum(ps,p=>+p.amount||0)+(+c.extra||0)),'','','',+c.extra?'يشمل سداد إضافي '+fm(c.extra):'',...(del?['']:[])]});
 }
 function fillDet(){
   const x=cur();if(!x){$('#det').close();return}
@@ -245,7 +245,7 @@ function contractForm(ed,pre){
   const opts=Object.entries(P()).map(([k,p])=>[k,p.name]).concat([['__new','+ مشروع جديد']]);
   formDlg({title:ed?'تعديل العقد':(pre?'تجديد العقد':'عقد جديد'),vals:c,fields:[
     {k:'pid',l:'المشروع',t:'select',opts,def:pid},{k:'pname',l:'اسم المشروع الجديد',ph:'يُستخدم عند اختيار مشروع جديد'},
-    {k:'unit',l:'رقم الوحدة'},{k:'tenant',l:'اسم المستأجر'},{k:'owner',l:'اسم المالك'},{k:'ejar',l:'رقم عقد منصة إيجار (اختياري)'},{k:'fee',l:'رسوم الأملاك',t:'number'},
+    {k:'unit',l:'رقم الوحدة'},{k:'tenant',l:'اسم المستأجر'},{k:'owner',l:'اسم المالك'},{k:'ejar',l:'رقم عقد منصة إيجار (اختياري)'},{k:'sap',l:'رقم ساب SAP (اختياري)'},{k:'fee',l:'رسوم الأملاك',t:'number'},
     {k:'rent',l:'قيمة الإيجار',t:'number'},{k:'count',l:'عدد الأقساط في السنة (رقم، شهري، دفعتين…)'},
     {k:'start',l:'بداية الإيجار',t:'date'},{k:'end',l:'نهاية الإيجار',t:'date'},
     {k:'period',l:'فترة العقد نصًّا (تُستخدم إذا غابت التواريخ، مثل: سنة، 3 شهور)',full:1},{k:'notes',l:'ملاحظات',t:'area',full:1}],
@@ -254,7 +254,7 @@ function contractForm(ed,pre){
       if(pid==='__new'){pn=o.pname;if(!pn)return 'أدخل اسم المشروع الجديد';pid=Object.keys(P()).find(k=>P()[k].name===pn)||'p'+uid()}
       if(!numOk(o.rent)||!numOk(o.fee))return 'تحقق من الأرقام المدخلة';
       if(!o.unit&&!o.tenant)return 'أدخل رقم الوحدة أو اسم المستأجر';
-      const d={unit:o.unit,tenant:o.tenant,owner:o.owner,ejar:o.ejar,rent:o.rent===''?'':Number(o.rent),fee:o.fee===''?'':Number(o.fee),start:o.start,end:o.end,period:o.period,count:/^\d+(\.\d+)?$/.test(o.count)?Number(o.count):o.count,notes:o.notes};
+      const d={unit:o.unit,tenant:o.tenant,owner:o.owner,ejar:o.ejar,sap:o.sap,rent:o.rent===''?'':Number(o.rent),fee:o.fee===''?'':Number(o.fee),start:o.start,end:o.end,period:o.period,count:/^\d+(\.\d+)?$/.test(o.count)?Number(o.count):o.count,notes:o.notes};
       const put=(pid,c)=>{if(!P()[pid])P()[pid]={name:pn,no:'',contracts:[],units:[]};const p=structuredClone(P()[pid]);ensureUnit(p,c);p.contracts.push(c);P()[pid]=p};
       if(ed){
         const old=P()[ed.pid].contracts.find(c=>c.id===ed.cid),m={...old,...d};
@@ -282,11 +282,11 @@ function payForm(pid,cid,amount){
   const nx=(c.payments||[]).filter(p=>p.to).map(p=>p.to).sort().pop(),from0=nx?iso(pd(nx)+DAY):(c.start||'');
   formDlg({title:'تسجيل دفعة — '+esc(c.unit)+' / '+esc(c.tenant),save:'تسجيل الدفعة',vals:{date:iso(TODAY),amount:amount||'',from:from0,to:''},
     fields:[{k:'date',l:'تاريخ التحصيل',t:'date'},{k:'amount',l:'المبلغ',t:'number'},{k:'from',l:'استحقاق الدفعة من',t:'date'},{k:'to',l:'استحقاق الدفعة إلى',t:'date'},
-      {k:'method',l:'طريقة الدفع',t:'select',opts:[['','—'],['نقدًا','نقدًا'],['حوالة بنكية','حوالة بنكية'],['شيك','شيك'],['شبكة','شبكة / بطاقة']]},{k:'note',l:'رقم الحوالة / ملاحظة'}],
+      {k:'method',l:'طريقة الدفع',t:'select',opts:[['','—'],['نقدًا','نقدًا'],['حوالة بنكية','حوالة بنكية'],['شيك','شيك'],['شبكة','شبكة / بطاقة']]},{k:'note',l:'رقم الحوالة / ملاحظة'},{k:'sap',l:'رقم قيد ساب SAP (اختياري)'}],
     onSave:o=>{const a=+o.amount;if(!(a>0))return 'أدخل مبلغًا صحيحًا';if(!o.date)return 'أدخل تاريخ التحصيل';
       if(o.from&&o.to&&o.to<o.from)return 'نهاية فترة الاستحقاق قبل بدايتها';
       const rno=S.db.settings.nextReceipt||1;S.db.settings.nextReceipt=rno+1;
-      const id='i'+uid();mutate(pid,p=>p.contracts.find(c=>c.id===cid).payments.push({id,date:o.date,amount:a,from:o.from,to:o.to,method:o.method,note:o.note,rno}));
+      const id='i'+uid();mutate(pid,p=>p.contracts.find(c=>c.id===cid).payments.push({id,date:o.date,amount:a,from:o.from,to:o.to,method:o.method,note:o.note,sap:o.sap,rno}));
       toast('تم تسجيل الدفعة — سند القبض رقم '+rno);setTimeout(()=>askReceipt(pid,cid,id),120)}});
 }
 const quickPay=payForm;
