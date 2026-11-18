@@ -97,7 +97,7 @@ if(!lock)app.quit();else{
       const pdf=await win.webContents.printToPDF({printBackground:true,preferCSSPageSize:true});
       fs.writeFileSync(r.filePath,pdf);return r.filePath;
     });
-    ipcMain.handle('print:now',()=>{win.webContents.print({printBackground:true})});
+    ipcMain.handle('print:now',(_e,a5)=>{win.webContents.print(a5?{printBackground:true,pageSize:'A5',landscape:true,margins:{marginType:'none'}}:{printBackground:true})});
     ipcMain.handle('path:show',(_e,p)=>shell.showItemInFolder(p));
     ipcMain.handle('template:save',async()=>{
       const buf=await require('./src/template.js').build();

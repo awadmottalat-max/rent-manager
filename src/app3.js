@@ -1,6 +1,6 @@
 /* التقارير + تصدير Excel */
 'use strict';
-Object.assign(S,{rp:{tab:'ov',p:'',owner:'',tenant:'',from:'',to:'',rep:'pay'}});
+Object.assign(S,{rp:{tab:'ov',p:'',owner:'',tenant:'',from:'',to:'',rep:'pay',fo:'',ft:''}});
 const plain=h=>{const d=document.createElement('div');d.innerHTML=String(h??'');return d.textContent.replace(/\s+/g,' ').trim()};
 async function exportXlsx(name,m){
   if(!m){toast('لا يوجد تقرير لتصديره');return}
@@ -43,7 +43,10 @@ function setPm(title,sub,cols,rws,foot){S.pm={title,sub,cols,rows:rws,foot};retu
 function bucketAge(d){return d<=30?0:d<=90?1:d<=180?2:3}
 const AGE=['0–30 يومًا','31–90 يومًا','91–180 يومًا','أكثر من 180'];
 /* ===== التبويبات ===== */
-function tabOv(all){
+function nameBar(){const D=S.rp;return `<div class="bar"><input id="rp_fo" list="dl_rpo" placeholder="فلتر باسم المالك…" value="${esc(D.fo)}"><input id="rp_ft" list="dl_rpt" placeholder="فلتر باسم المستأجر…" value="${esc(D.ft)}"><select id="rp_p">${projOpts(D.p,true)}</select>${(D.fo||D.ft||D.p)?'<button class="btn" data-a="rpClear">مسح الفلاتر</button>':''}<datalist id="dl_rpo">${ownerNames(ALLR).map(n=>`<option value="${esc(n)}">`).join('')}</datalist><datalist id="dl_rpt">${tenantNames(ALLR).map(n=>`<option value="${esc(n)}">`).join('')}</datalist></div>`}
+let ALLR=[];
+const nf=(a,k,v)=>!v||String(a.c[k]||'').toLowerCase().includes(v.toLowerCase());
+function tabOv(all){all=all.filter(x=>(!S.rp.p||x.pid===S.rp.p)&&nf(x,'owner',S.rp.fo)&&nf(x,'tenant',S.rp.ft));
   const T_=sum(all,x=>x.r.total||0),P_=sum(all,x=>x.r.paid||0),R_=sum(all,x=>x.r.rem>0?x.r.rem:0),L_=sum(all,x=>x.r.late),US=unitsSummary(),
     us=k=>sum(US,m=>m[k]);
   const months=[];for(let i=11;i>=0;i--){const d=new Date(TODAY+0);const t=new Date(Date.UTC(new Date(TODAY).getUTCFullYear(),new Date(TODAY).getUTCMonth()-i,1));months.push(t.toISOString().slice(0,7))}
@@ -63,11 +66,11 @@ function ownerNames(all){return [...new Set(all.map(x=>String(x.c.owner||'').tri
 function tenantNames(all){return [...new Set(all.map(x=>String(x.c.tenant||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'))}
 function tabOwner(all){
   const D=S.rp,names=ownerNames(all);
-  const sel=`<div class="bar"><select id="rp_owner"><option value="">— اختر المالك —</option>${names.map(n=>`<option${n===D.owner?' selected':''}>${esc(n)}</option>`).join('')}</select>${rpRange(D)}${D.owner?pbtn('list'):''}</div>`;
+  const sel=`<div class="bar"><input id="rp_owner" list="dl_rpo" placeholder="ابحث باسم المالك أو اخترْه…" value="${esc(D.owner)}" style="min-width:300px"><datalist id="dl_rpo">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist>${rpRange(D)}${D.owner?pbtn('list'):''}</div>`;
   if(!D.owner){S.pm=null;return sel+'<div class="card empty">اختر المالك لعرض كشف حسابه.</div>'}
-  const mine=all.filter(x=>String(x.c.owner||'').trim()===D.owner),mv=[];
+  const exactO=names.includes(D.owner),mine=all.filter(x=>exactO?String(x.c.owner||'').trim()===D.owner:String(x.c.owner||'').toLowerCase().includes(D.owner.toLowerCase())),mv=[];
   for(const x of mine)for(const p of x.c.payments||[]){const t=pd(p.date);if(t!=null&&!rpIn(t,D))continue;mv.push({t:t??0,d:p.date||'',desc:'تحصيل دفعة'+(p.rno?' — سند '+String(p.rno).padStart(5,'0'):'')+(p.note?' — '+p.note:''),pn:x.pn,unit:x.c.unit,ten:x.c.tenant,cr:+p.amount||0,dr:0})}
-  for(const a of S.db.analyses||[]){if(String(a.owner||'').trim()!==D.owner)continue;const t=pd(a.date);if(!rpIn(t,D))continue;const k=Fin.anaCalc(a,VATP());mv.push({t:t??0,d:a.date,desc:'خصومات التحليل المالي (إدارة وخدمات وضريبة وصيانة…)',pn:pname(a.pid),unit:a.unit,ten:a.tenant,cr:0,dr:k.totalDed})}
+  for(const a of S.db.analyses||[]){if(!(exactO?String(a.owner||'').trim()===D.owner:String(a.owner||'').toLowerCase().includes(D.owner.toLowerCase())))continue;const t=pd(a.date);if(!rpIn(t,D))continue;const k=Fin.anaCalc(a,VATP());mv.push({t:t??0,d:a.date,desc:'خصومات التحليل المالي (إدارة وخدمات وضريبة وصيانة…)',pn:pname(a.pid),unit:a.unit,ten:a.tenant,cr:0,dr:k.totalDed})}
   mv.sort((a,b)=>a.t-b.t);let bal=0;
   const cols=[{h:'التاريخ',k:'d'},{h:'البيان',k:'t'},{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المستأجر',k:'t'},{h:'محصَّل',k:'n'},{h:'مخصوم',k:'n'},{h:'الرصيد المستحق للمالك',k:'n'}];
   const rws=mv.map(m=>{bal=Fin.r2(bal+m.cr-m.dr);return{cells:[fs_(m.d),esc(m.desc),esc(m.pn),'<b>'+esc(m.unit)+'</b>',esc(m.ten)||'—',m.cr?fm(m.cr):'—',m.dr?fm(m.dr):'—','<b>'+fm(bal)+'</b>']}});
@@ -80,9 +83,9 @@ function tabOwner(all){
 }
 function tabTenant(all){
   const D=S.rp,names=tenantNames(all);
-  const sel=`<div class="bar"><select id="rp_tenant"><option value="">— اختر المستأجر —</option>${names.map(n=>`<option${n===D.tenant?' selected':''}>${esc(n)}</option>`).join('')}</select>${rpRange(D)}${D.tenant?pbtn('list'):''}</div>`;
+  const sel=`<div class="bar"><input id="rp_tenant" list="dl_rpt" placeholder="ابحث باسم المستأجر أو اخترْه…" value="${esc(D.tenant)}" style="min-width:300px"><datalist id="dl_rpt">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist>${rpRange(D)}${D.tenant?pbtn('list'):''}</div>`;
   if(!D.tenant){S.pm=null;return sel+'<div class="card empty">اختر المستأجر لعرض كشف حسابه.</div>'}
-  const mine=all.filter(x=>String(x.c.tenant||'').trim()===D.tenant),mv=[];
+  const exactT=names.includes(D.tenant),mine=all.filter(x=>exactT?String(x.c.tenant||'').trim()===D.tenant:String(x.c.tenant||'').toLowerCase().includes(D.tenant.toLowerCase())),mv=[];
   for(const x of mine){
     for(const i of x.r.inst){if(!rpIn(i.date,D))continue;mv.push({t:i.date,o:0,d:iso(i.date),desc:'قسط مستحق '+i.n+' / '+x.r.k,pn:x.pn,unit:x.c.unit,dr:i.amount,cr:0})}
     for(const p of x.c.payments||[]){const t=pd(p.date);if(t!=null&&!rpIn(t,D))continue;mv.push({t:t??0,o:1,d:p.date||'',desc:'دفعة'+(p.rno?' — سند '+String(p.rno).padStart(5,'0'):'')+(p.method?' — '+p.method:'')+(p.note?' — '+p.note:''),pn:x.pn,unit:x.c.unit,dr:0,cr:+p.amount||0})}
@@ -97,9 +100,9 @@ function tabTenant(all){
 const REPS={pay:'سجل الدفعات المحصَّلة',age:'أعمار الديون لكل عقد',proj:'ملخص المشاريع',own:'ملخص الملاك',ded:'خصومات التحليل المالي',units:'سجل الوحدات والإشغال'};
 function tabTables(all){
   const D=S.rp;let html='';
-  const bar=`<div class="bar"><select id="rp_rep">${Object.entries(REPS).map(([k,l])=>`<option value="${k}"${D.rep===k?' selected':''}>${l}</option>`).join('')}</select><select id="rp_p">${projOpts(D.p,true)}</select>${rpRange(D)}${pbtn('list')}</div>`;
+  const bar=`<div class="bar"><select id="rp_rep">${Object.entries(REPS).map(([k,l])=>`<option value="${k}"${D.rep===k?' selected':''}>${l}</option>`).join('')}</select><select id="rp_p">${projOpts(D.p,true)}</select><input id="rp_fo" list="dl_rpo" placeholder="فلتر باسم المالك…" value="${esc(D.fo)}"><input id="rp_ft" list="dl_rpt" placeholder="فلتر باسم المستأجر…" value="${esc(D.ft)}"><datalist id="dl_rpo">${ownerNames(all).map(n=>`<option value="${esc(n)}">`).join('')}</datalist><datalist id="dl_rpt">${tenantNames(all).map(n=>`<option value="${esc(n)}">`).join('')}</datalist>${rpRange(D)}${pbtn('list')}</div>`;
   const per=(D.from||D.to?' — الفترة: '+(D.from||'…')+' إلى '+(D.to||'…'):'')+(D.p?' — المشروع: '+pname(D.p):'');
-  const A=all.filter(x=>!D.p||x.pid===D.p);
+  const A=all.filter(x=>(!D.p||x.pid===D.p)&&nf(x,'owner',D.fo)&&nf(x,'tenant',D.ft));
   if(D.rep==='pay'){
     const L=[];for(const x of A)for(const p of x.c.payments||[]){const t=pd(p.date);if(t!=null&&!rpIn(t,D))continue;if(t==null&&(D.from||D.to))continue;L.push({x,p,t:t??0})}L.sort((a,b)=>b.t-a.t);
     html=setPm(REPS.pay,per.slice(3)||'كل الفترات',[{h:'تاريخ التحصيل',k:'d'},{h:'سند',k:'d'},{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'المبلغ',k:'n'},{h:'استحقاق من',k:'d'},{h:'استحقاق إلى',k:'d'},{h:'طريقة الدفع',k:'t'}],
@@ -131,14 +134,14 @@ function tabTables(all){
 function rpRange(D){return `<label>من <input type="date" id="rp_from" value="${esc(D.from)}"></label><label>إلى <input type="date" id="rp_to" value="${esc(D.to)}"></label>`}
 const RT=[['ov','نظرة عامة'],['owner','كشف حساب مالك'],['tenant','كشف حساب مستأجر'],['tab','تقارير جدولية']];
 function vRep(all){
-  const D=S.rp,body=D.tab==='ov'?tabOv(all):D.tab==='owner'?tabOwner(all):D.tab==='tenant'?tabTenant(all):tabTables(all);
+  const D=S.rp;ALLR=all;const body=D.tab==='ov'?nameBar()+tabOv(all):D.tab==='owner'?tabOwner(all):D.tab==='tenant'?tabTenant(all):tabTables(all);
   return `<h1>التقارير</h1><p class="sub">داشبورد شامل لتفاصيل الإيجارات، وكشوف حساب للمالك والمستأجر بكل حركاتهم، وتقارير جدولية جاهزة. كل تقرير يُطبع ويُحفظ PDF ويُصدَّر Excel.</p>
 <div class="tabs">${RT.map(([k,l])=>`<button data-a="rpTab" data-t="${k}" class="${D.tab===k?'on':''}">${l}</button>`).join('')}</div>${body}`;
 }
 VF.rep=vRep;
-Object.assign(act,{rpTab:b=>{S.rp.tab=b.dataset.t;render()},xlsx:()=>exportXlsx(S.pm?.title||'report',S.pm)});
+Object.assign(act,{rpClear:()=>{Object.assign(S.rp,{fo:'',ft:'',p:''});render()},rpTab:b=>{S.rp.tab=b.dataset.t;render()},xlsx:()=>exportXlsx(S.pm?.title||'report',S.pm)});
 document.addEventListener('change',e=>{
   const id=e.target.id,v=e.target.value,D=S.rp;
-  if(id==='rp_owner')D.owner=v;else if(id==='rp_tenant')D.tenant=v;else if(id==='rp_from')D.from=v;else if(id==='rp_to')D.to=v;else if(id==='rp_p')D.p=v;else if(id==='rp_rep')D.rep=v;else return;
+  if(id==='rp_owner')D.owner=v;else if(id==='rp_tenant')D.tenant=v;else if(id==='rp_from')D.from=v;else if(id==='rp_to')D.to=v;else if(id==='rp_p')D.p=v;else if(id==='rp_rep')D.rep=v;else if(id==='rp_fo')D.fo=v.trim();else if(id==='rp_ft')D.ft=v.trim();else return;
   render();
 });

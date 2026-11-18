@@ -13,7 +13,7 @@ app.whenReady().then(async()=>{
   const b64=fs.readFileSync(process.argv.find(a=>a.endsWith('.xlsx'))).toString('base64');
   await ev(`(()=>{const bin=atob("${b64}");const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
     S.imp=parseWb(XLSX,XLSX.read(u,{type:'array'}));S.db.projects=applyImp(P(),S.imp,'replace').next;persist();render();})()`);
-  for(const v of ['dash','avail','contracts','ended','due','flow','renew','props','owners','agr','fin','rep','settings']){await ev(`go('${v}')`);await shot(v)}
+  for(const v of ['dash','avail','contracts','ended','due','flow','renew','props','owners','tenants','agr','fin','rep','settings']){await ev(`go('${v}')`);await shot(v)}
   await ev(`J.soon()`);await shot('due30');
   await ev(`go('contracts');const pid=Object.keys(P())[0];openDet(pid,P()[pid].contracts[3].id)`);await shot('detail');
   await pdf('contract',await ev(`contractDoc(cur())`));
@@ -36,6 +36,12 @@ app.whenReady().then(async()=>{
   await ev(`S.pr.tab='units';go('props')`);await shot('props_units');
   await ev(`S.en.s='all';go('ended')`);await shot('ended_all');
   await ev(`go('contracts');contractForm(false)`);await sleep(200);await shot('contract_new');
+  const f1=await ev(`(()=>{contractForm(false);const set=(i,v)=>{const e=document.getElementById(i);e.value=v;e.dispatchEvent(new Event('change',{bubbles:true}));e.dispatchEvent(new Event('input',{bubbles:true}))};
+    set('ff_period','6 أشهر');set('ff_start','2026-12-01');const end=document.getElementById('ff_end').value;set('ff_count','2');set('ff_rent','50000');
+    const sch=document.getElementById('ff_sched').textContent;document.getElementById('fsave').click();const err=document.querySelector('#frm .err')?.textContent||document.querySelector('#frm [role=alert]')?.textContent||'';return JSON.stringify({end,sch,err})})()`);
+  console.log('FORM',f1);await shot('contract_req');
+  await ev(`document.getElementById('frm').close();partyForm('owners','');`);await sleep(200);await shot('party_new');await ev(`document.getElementById('frm').close();go('tenants')`);await shot('tenants2');
+  await ev(`S.rp.tab='ov';S.rp.fo='';go('rep')`);await shot('rep_ov');
   const nx=await ev(`(()=>{const pid=Object.keys(P())[0];const c=P()[pid].contracts.find(c=>c.payments.length);return{pid,c:c.id,p:c.payments[0].id}})()`);
   await pdf('receipt2',await ev(`receiptDoc('${nx.pid}','${nx.c}','${nx.p}').html`));
   const chk=await ev(`(()=>{const x=rows().find(x=>x.r.st==='منتهي'&&endState(x.pid,x.c)==='pend');const p=P()[x.pid];const u=p.units.find(u=>normU(u.no)===normU(x.c.unit));const b=unitInfo(p,u).st;

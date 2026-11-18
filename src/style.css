@@ -126,17 +126,17 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 
 .hb{margin-bottom:11px}.hb .t{display:flex;justify-content:space-between;font-size:13px;gap:10px}.hb .t b{direction:ltr;font-weight:600;color:var(--mut)}
 
 /* سند القبض (A5 أفقي) */
-.rcv{width:210mm;height:148mm;box-sizing:border-box;padding:9mm 12mm;background:#fff;color:#2b2326;font-size:12.5px;position:relative}
+.rcv{width:210mm;height:148mm;box-sizing:border-box;padding:7mm 12mm 6mm;background:#fff;color:#2b2326;font-size:12.5px;position:relative}
 .rcv-in{height:100%;display:flex;flex-direction:column;justify-content:space-between}
 .rc-top{display:grid;grid-template-columns:1fr auto 1fr;align-items:start;gap:8px}
-.rc-logo{text-align:center}.rc-logo img{width:30mm;display:block;margin:0 auto 4px}.rc-logo h2{margin:0;font-size:16px;color:#5e2132}.rc-logo h2 small{font-size:12px;font-weight:600;font-family:Arial}
-.rc-dates,.rc-amt{display:flex;flex-direction:column;gap:6px;padding-top:6mm}.rc-amt{align-items:flex-end}.rc-dates{align-items:flex-start}
-.rcv .bx{display:flex;align-items:center;gap:8px;border:1px solid #b39973;border-radius:8px;padding:3px 10px;min-width:42mm;font-size:12px}.rcv .bx span{color:#5e2132;font-size:11px}.rcv .bx b{margin-inline-start:auto;direction:ltr;font-size:14px}
-.rcv .rno{font-size:11px;color:#5e2132}
-.rl{display:flex;align-items:flex-end;gap:8px}.rl .lb{white-space:nowrap;font-weight:600;color:#2b2326}.rl .lb i{font-style:normal;font-size:10.5px;color:#5e2132;font-family:Arial;margin-inline-start:3px}
-.rl .ln{flex:1;border-bottom:1px dotted #8a8a8a;min-height:7mm;padding:0 6px 1px;font-size:15px;font-weight:600;color:#14234b}.rl .ln.box{border:1px solid #b39973;border-radius:8px;padding:4px 10px}.rl .s{flex:.5}.rl .lb.s{flex:none}
-.rc-sign{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;text-align:center;font-weight:600}.rc-sign span i{font-style:normal;font-size:10.5px;color:#5e2132;font-family:Arial}.rc-sign u{display:block;border-bottom:1px dotted #8a8a8a;height:13mm;margin:0 8mm}
-.rc-foot{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:10px;border-top:1px solid #d9c9b0;padding-top:5px;font-size:9.5px;line-height:1.5;color:#444}.rc-foot .em{text-align:end}
+.rc-logo{text-align:center}.rc-logo img{width:30mm;display:block;margin:0 auto 3px}.rc-logo h2{margin:0;font-size:15px;color:#5e2132;white-space:nowrap}.rc-logo h2 small{font-size:12.5px;font-weight:700;font-family:Arial}
+.rc-dates,.rc-amt{display:flex;flex-direction:column;gap:7px;padding-top:8mm}.rc-amt{align-items:flex-start}.rc-dates{align-items:flex-end}
+.rcv .bx{display:flex;align-items:center;gap:8px;border:1px solid #b39973;border-radius:8px;padding:3px 10px;min-width:44mm;font-size:12px;justify-content:space-between}.rcv .bx span{color:#5e2132;font-size:11px}.rcv .bx span.en{font-family:Arial;font-size:10px}.rcv .bx b{direction:ltr;font-size:14px;font-family:Arial}.rcv .bx b.dd{font-size:12px}.rcv .bx b.dd i{font-style:normal;display:inline-block;min-width:9mm;text-align:center}
+.rcv .rno{font-size:10.5px;color:#5e2132;padding-inline-start:4px}
+.rl{display:flex;align-items:flex-end;gap:8px}.rl .lb{white-space:nowrap;font-weight:600;color:#2b2326;font-size:13px}.rl .en{white-space:nowrap;font-family:Arial;font-size:10.5px;color:#444;font-weight:600}
+.rl .ln{flex:1;border-bottom:1px dotted #8a8a8a;min-height:7.5mm;padding:0 6px 1px;font-size:15px;font-weight:600;color:#14203a;line-height:1.5}.rl .ln.box{border:1px solid #b39973;border-radius:8px;padding:4px 10px;font-size:14px}.rl .ln.s{flex:.55}
+.rc-sign{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;text-align:center;font-weight:600}.rc-sign span i{font-style:normal;font-size:10.5px;font-family:Arial;margin-inline-start:4px}.rc-sign u{display:block;border-bottom:1px dotted #8a8a8a;height:12mm;margin:0 9mm}
+.rc-foot{display:grid;grid-template-columns:1.5fr 1.05fr 1fr 1fr;gap:0;border-top:1px solid #d9c9b0;padding-top:5px;font-size:9.5px;line-height:1.5;color:#333}.rc-foot>div{padding:0 10px;border-inline-start:1px solid #b39973}.rc-foot>div:first-child{border-inline-start:none;padding-inline-start:0}.rc-foot .em{text-align:end;border-inline-start:1px solid #b39973}
 
 /* ===== لمسات الفخامة ===== */
 ::selection{background:#bcd9f5}
@@ -170,3 +170,5 @@ dialog{border-radius:18px;border:none;box-shadow:0 30px 80px #0b153066}dialog::b
 .ch.ok::before,.ch.late::before,.ch.warn::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-inline-end:6px;vertical-align:middle}
 @media print{.topbar,#splash{display:none!important}}
 .kp span{display:block;min-height:36px;padding-inline-end:46px;line-height:1.35}.kp b{margin-top:4px}
+.upk{display:grid;grid-template-columns:1fr 1.4fr auto;gap:10px;align-items:end;background:#f1f6fd;border:1px dashed #b9cde8;border-radius:12px;padding:10px 12px}.upk small{grid-column:1/-1;color:var(--mut)}.upk .chk{display:flex;align-items:center;gap:6px;flex-direction:row;white-space:nowrap}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
