@@ -605,7 +605,9 @@ ${auditCard()}
 function impStats(){
   const I=S.imp;if(!I)return'';const m=$('#imode').value;let hit=0;
   if(m==='merge'){hit=applyImp(P(),I,'merge').stats.updated}
-  return 'الورقة المقروءة: «'+esc(I.sn)+'». عدد العقود: '+I.n+' في '+Object.keys(I.P).length+' مشاريع.'+(I.authN?' (ملف مُصدَّر من التطبيق: الدفعات بتواريخها ستُستعاد).':'')+(m==='merge'?' سيُحدَّث '+hit+' عقدًا مطابقًا وتُضاف '+(I.n-hit)+' عقدًا جديدًا. الدفعات المسجلة داخل التطبيق بتواريخها تبقى ولا تتكرر.':' ستُحذف عقود المشاريع الحالية ويُستبدل بها محتوى الملف.');
+  const uq=I.un?' عدد الوحدات المتاحة في الملف: '+I.un+' (تُضاف الوحدات غير الموجودة ولا تتكرر الموجودة).':'';
+  if(!I.n)return 'الورقة المقروءة: «'+esc(I.sn)+'».'+uq;
+  return uq+'الورقة المقروءة: «'+esc(I.sn)+'». عدد العقود: '+I.n+' في '+Object.keys(I.P).length+' مشاريع.'+(I.authN?' (ملف مُصدَّر من التطبيق: الدفعات بتواريخها ستُستعاد).':'')+(m==='merge'?' سيُحدَّث '+hit+' عقدًا مطابقًا وتُضاف '+(I.n-hit)+' عقدًا جديدًا. الدفعات المسجلة داخل التطبيق بتواريخها تبقى ولا تتكرر.':' ستُحذف عقود المشاريع الحالية ويُستبدل بها محتوى الملف.');
 }
 function openImp(){
   S.imp=null;
@@ -621,16 +623,16 @@ async function pickImp(){
   const f=await native.openFile([{name:'Excel',extensions:['xlsx','xlsm','xls']}]);if(!f)return;
   try{S.imp=parseWb(XLSX,XLSX.read(f.bytes,{type:'array'}))}catch(x){S.imp=null;toast('تعذّرت قراءة الملف')}
   $('#iname').textContent=f.name;
-  $('#ipv').innerHTML=S.imp&&S.imp.n?impStats():'<span class="warnbox" style="display:block">لم أجد عقودًا في الملف. تأكد أن الأعمدة بنفس ترتيب ورقة المعالجة.</span>';
-  $('#iapply').disabled=!(S.imp&&S.imp.n);
+  $('#ipv').innerHTML=S.imp&&(S.imp.n||S.imp.un)?impStats():'<span class="warnbox" style="display:block">لم أجد عقودًا في الملف. تأكد أن الأعمدة بنفس ترتيب ورقة المعالجة.</span>';
+  $('#iapply').disabled=!(S.imp&&(S.imp.n||S.imp.un));
 }
 async function applyBtn(b){
-  const mode=$('#imode').value;
+  const mode=S.imp&&!S.imp.n?'merge':$('#imode').value;
   const run=async()=>{
     await flush();await native.backupPre('import');
     const{next,stats}=applyImp(P(),S.imp,mode);
     S.db.projects=next;S.imp=null;persist();$('#imp').close();render();
-    toast('تم الاستيراد: '+(mode==='merge'?stats.updated+' محدَّث، '+stats.added+' جديد':stats.added+' عقدًا'));
+    toast('تم الاستيراد: '+(mode==='merge'?stats.updated+' محدَّث، '+stats.added+' جديد':stats.added+' عقدًا')+(stats.units?'، '+stats.units+' وحدة':''));
   };
   mode==='replace'?arm(b,run):run();
 }

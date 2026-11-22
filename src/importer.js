@@ -26,7 +26,22 @@ function parseTpl(XLSX,wb,sn){
   }
   return{P,n,sn,authN:0};
 }
+/* ورقة «الوحدات المتاحة»: وحدات بلا عقود (المشروع، الوحدة، المالك، النوع، المساحة، عدد الغرف، الإيجار المطلوب، ملاحظات) */
+function parseUnits(XLSX,wb){
+  const ws=wb.Sheets['الوحدات المتاحة'];if(!ws)return null;
+  const R=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null}),hdr=(R[0]||[]).map(h=>tx(h).replace(/\s*\*$/,'').trim());
+  const ix=h=>hdr.indexOf(h),I={b:ix('المشروع'),u:ix('الوحدة'),o:ix('المالك'),t:ix('النوع'),a:ix('المساحة'),r:ix('عدد الغرف'),q:ix('الإيجار المطلوب'),n:ix('ملاحظات')};
+  const g=(r,k)=>I[k]<0?null:r[I[k]],U={};let un=0;
+  for(const r of R.slice(1)){const b=tx(g(r,'b')),no=tx(g(r,'u'));if(!b||!no)continue;
+    (U[b]=U[b]||[]).push({no,owner:tx(g(r,'o')),type:tx(g(r,'t')),area:tx(g(r,'a')),rooms:tx(g(r,'r')),askRent:typeof g(r,'q')==='number'?g(r,'q'):'',notes:tx(g(r,'n'))});un++}
+  return{U,un};
+}
 function parseWb(XLSX,wb){
+  const uu=parseUnits(XLSX,wb),hasMain=wb.Sheets['قالب الاستيراد']||wb.Sheets['ورقه المعالجة']||!uu;
+  const base=hasMain?parseWb0(XLSX,wb):{P:{},n:0,sn:'الوحدات المتاحة',authN:0};
+  base.U=uu?uu.U:{};base.un=uu?uu.un:0;return base;
+}
+function parseWb0(XLSX,wb){
   if(wb.Sheets['قالب الاستيراد'])return parseTpl(XLSX,wb,'قالب الاستيراد');
   const sn=wb.Sheets['ورقه المعالجة']?'ورقه المعالجة':wb.SheetNames[0],ws=wb.Sheets[sn];
   const R=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null}),D=XLSX.utils.decode_col,P={};let n=0;
@@ -90,6 +105,15 @@ function applyImp(S_projects,imp,mode){
       }else{delete c.payAuth;T.contracts.push(c);stats.added++}
       ensureUnit(T,c);
     }
+  }
+  for(const[name,list]of Object.entries(imp.U||{})){
+    let pid=Object.keys(next).find(k=>next[k].name===name);
+    if(!pid){const o=Object.keys(S_projects).find(k=>S_projects[k].name===name);if(o){pid=o;next[pid]={...structuredClone(S_projects[o]),contracts:[]}}}
+    if(!pid){pid='p'+uid();next[pid]={name,no:'',contracts:[],units:[]}}
+    const T=next[pid];T.units=T.units||[];
+    for(const u of list){const k=normU(u.no),old=T.units.find(x=>normU(x.no)===k);
+      if(old){for(const f of['owner','type','area','rooms','notes'])if(!old[f]&&u[f])old[f]=u[f];if(old.askRent===''||old.askRent==null)old.askRent=u.askRent;stats.unitsKept=(stats.unitsKept||0)+1}
+      else{T.units.push({id:'u'+uid(),...u,avail:'auto'});stats.units=(stats.units||0)+1}}
   }
   return{next,stats};
 }
