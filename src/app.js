@@ -225,17 +225,7 @@ ${(c.oldDates||[]).length?`<small>تواريخ مسجلة سابقًا: ${c.oldD
 ${(c.payments||[]).length||+c.extra?payTable(c,false,true):'<div class="tw"><p class="empty">لا توجد دفعات مسجلة.</p></div>'}</div>`;
 }
 function openDet(pid,cid){S.cur={pid,cid};fillDet();if(!$('#det').open)$('#det').showModal()}
-function contractDoc(x){
-  const{c,r}=x;
-  return docHtml({title:'ملف عقد إيجار — الوحدة '+esc(c.unit),sub:esc(x.pn)+' · المستأجر: '+esc(c.tenant),body:
-  `<h3>بيانات العقد</h3>${infoGrid(x)}
-  <h3>الملخص المالي</h3><div class="sum"><div><span>إجمالي العقد</span><b>${fm(r.total)}</b></div><div><span>المسدد</span><b>${fm(r.paid)}</b></div><div><span>المتبقي</span><b>${fm(r.rem)}</b></div><div><span>المتأخر</span><b>${fm(r.late)}</b></div></div>
-  ${r.inst.length?`<h3>جدول الأقساط</h3>${instTable(x,true)}`:''}
-  <h3>سجل الدفعات</h3>${(c.payments||[]).length||+c.extra?payTable(c,true,false):'<p>لا توجد دفعات مسجلة.</p>'}
-  ${c.notes?`<h3>ملاحظات</h3><p>${esc(c.notes)}</p>`:''}
-  ${r.iss.length?`<h3>بيانات ناقصة</h3><p>${r.iss.map(esc).join('، ')}</p>`:''}
-  <div class="sign"><div>المالك / ممثله</div><div>المستأجر</div><div>إدارة الأملاك</div></div>`});
-}
+function contractDoc(x){return leaseDoc(x)}
 
 /* ---------- نموذج عام ---------- */
 function formDlg({title,fields,vals={},save,onSave}){

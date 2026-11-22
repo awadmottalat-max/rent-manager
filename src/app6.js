@@ -55,3 +55,51 @@ Object.assign(act,{
     o.innerHTML=I.length?Object.entries(G).map(([t,l])=>{const L=I.filter(x=>x.t===t);return L.length?`<h4>${l} (${L.length})</h4><ul class="aud">${L.slice(0,60).map(x=>`<li>${x.cid?`<button class="link" data-a="open" data-p="${esc(x.pid)}" data-c="${esc(x.cid)}">${esc(x.msg)}</button>`:esc(x.msg)}</li>`).join('')}</ul>${t==='dupUnit'?'<button class="btn" data-a="auditFix">دمج الوحدات المكررة تلقائيًا</button>':''}`:''}).join(''):'<p class="ok">✓ لا توجد مشكلات: لا تكرار ولا تداخل.</p>'},
   auditFix:()=>{const n=auditFixUnits();toast('تم دمج '+n+' وحدة مكررة');render()}
 });
+
+/* ----- قالب طباعة عقد الإيجار (A4) ----- */
+function leaseDoc(x){
+  const{c,r,pid}=x,p=P()[pid]||{},cn=v=>esc(v)||'—',u=(p.units||[]).find(z=>normU(z.no)===normU(c.unit))||{};
+  const own=PR('owners').find(z=>nm(z.name)===nm(c.owner))||{},ten=PR('tenants').find(z=>nm(z.name)===nm(c.tenant))||{};
+  const s=pd(c.start),prev=(p.contracts||[]).some(o=>o!==c&&normU(o.unit)===normU(c.unit)&&((pd(o.end)||0)<(s||0)||(pd(o.start)||0)<(s||0)));
+  const idx=(p.contracts||[]).filter(o=>normU(o.unit)===normU(c.unit)).sort((a,b)=>(pd(a.start)||0)-(pd(b.start)||0)).indexOf(c)+1;
+  const inNo=(p.no?p.no+'-':'')+c.unit+(idx>1?'/'+idx:'');
+  const rate=Number(c.vatRate)||0,vatf=Number(S.db.settings.vat)||0,n=v=>fm(v),num=v=>Number(v)||0;
+  let pool=num(r.paid),lateG=0;const paidG=num(r.paid),rentT=num(r.total),rentVat=r2(rentT*rate/100),grossT=r2(rentT+rentVat);
+  const fee=num(c.fee),feeVat=r2(fee*vatf/100),svc=num(c.svc),dep=num(c.deposit);
+  const stT=r.st==='منتهي'?(c.exit?'مُنهى':'منتهٍ'):r.st;
+  const now=new Date(),pdt=iso(todayNow())+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  const rows=r.inst.map(i=>{const tax=r2(i.amount*rate/100),tot=r2(i.amount+tax),pd_=Math.min(tot,r2(pool));pool=r2(pool-pd_);const rm=i.waived?0:Math.max(0,r2(tot-pd_));if(i.late)lateG=r2(lateG+rm);
+    const stl=i.waived?'أُسقط':i.status==='paid'?'مسدد':i.late?'متأخر':i.status==='partial'?'مسدد جزئيًا':'قادم';
+    return `<tr><td>${i.n}</td><td>${i.date!=null?iso(i.date):'—'}</td><td>${n(i.amount)}</td><td>${rate?n(tax):'—'}</td><td>${n(tot)}</td><td>${n(pd_)}</td><td>${n(rm)}</td><td class="${i.late?'lt':''}">${stl}</td></tr>`}).join('');
+  const sumT=r.inst.length?`<tr class="tt"><td colspan="2">الإجمالي</td><td>${n(rentT)}</td><td>${rate?n(rentVat):'—'}</td><td>${n(grossT)}</td><td>${n(paidG)}</td><td>${n(Math.max(0,r2(grossT-paidG)))}</td><td></td></tr>`:'';
+  const cond=String(c.conditions||'').split(/\n+/).map(z=>z.trim()).filter(Boolean);
+  const kv=(a,b)=>`<th>${a}</th><td>${b}</td>`;
+  return `<div class="doc lease">
+<div class="ls-h"><div class="ls-co"><img src="assets/logo.svg" alt="كثيب"><div><b>${esc(CO.name)}</b><small>سجل تجاري ${CO.cr} · ${esc(CO.addr)}</small></div></div>
+<div class="ls-t"><h1>عقد إيجار وحدة عقارية</h1><small>ملخص بيانات العقد</small></div>
+<table class="ls-m"><tr><th>رقم عقد إيجار</th><td>${cn(c.ejar)}</td></tr><tr><th>الرقم الداخلي</th><td>${esc(inNo)}</td></tr><tr><th>نوع العقد</th><td>${prev?'مجدد':'جديد'}</td></tr><tr><th>حالة العقد</th><td>${esc(stT)}</td></tr><tr><th>تاريخ الطباعة</th><td>${pdt}</td></tr></table></div>
+<h2>أولًا: بيانات العقد والعقار</h2>
+<table class="ls-g"><tr>${kv('تاريخ إبرام العقد',c.signDate?fs_(c.signDate):'—')}${kv('مدة العقد',r.m?r.m+' شهرًا':cn(c.period))}</tr>
+<tr>${kv('بداية الإيجار',fs_(c.start))}${kv('نهاية الإيجار',fs_(c.end))}</tr>
+<tr>${kv('فترة السماح',Number(c.grace)>0?esc(c.grace)+' يومًا':'لا توجد')}${kv('رقم الوحدة','<b>'+cn(c.unit)+'</b>')}</tr>
+<tr>${kv('المشروع / العقار',cn(p.name))}${kv('نوع الوحدة',cn(u.type))}</tr>
+<tr>${kv('المساحة',u.area?esc(u.area)+' م²':'—')}${kv('عدد الغرف',cn(u.rooms))}</tr></table>
+<h2>ثانيًا: أطراف العقد</h2>
+<div class="ls-p"><table><tr><th colspan="2" class="ph">المؤجر</th></tr><tr><th>الاسم</th><td>${cn(c.owner)}</td></tr><tr><th>الهوية / السجل التجاري</th><td>${cn(own.idno)}</td></tr><tr><th>الرقم الموحد</th><td>${cn(own.unified)}</td></tr><tr><th>رقم الجوال</th><td>${cn(own.phone)}</td></tr></table>
+<table><tr><th colspan="2" class="ph">المستأجر</th></tr><tr><th>الاسم / المنشأة</th><td>${cn(c.tenant)}</td></tr><tr><th>الهوية / السجل التجاري</th><td>${cn(ten.idno)}</td></tr><tr><th>الرقم الضريبي</th><td>${cn(ten.tax)}</td></tr><tr><th>رقم الجوال</th><td>${cn(ten.phone)}</td></tr></table></div>
+<h2>ثالثًا: البيانات المالية</h2>
+<table class="ls-f"><thead><tr><th>البند</th><th>بدون ضريبة</th><th>الضريبة</th><th>الإجمالي</th><th>ملاحظة</th></tr></thead><tbody>
+<tr><td>قيمة الإيجار${r.m>12&&S.db.settings.mode==='annual'?' (للمدة كاملة)':''}</td><td>${n(rentT)}</td><td>${rate?n(rentVat)+' ('+rate+'%)':'غير مفروضة'}</td><td>${n(grossT)}</td><td></td></tr>
+<tr class="tt"><td>إجمالي قيمة العقد</td><td>${n(rentT)}</td><td>${rate?n(rentVat):'—'}</td><td>${n(grossT)}</td><td></td></tr>
+${fee?`<tr><td>رسوم الأملاك</td><td>${n(fee)}</td><td>${n(feeVat)} (${vatf}%)</td><td>${n(fee+feeVat)}</td><td>خارج قيمة الإيجار</td></tr>`:''}
+${svc?`<tr><td>رسوم إضافية (مياه / خدمات)</td><td>${n(svc)}</td><td>—</td><td>${n(svc)}</td><td></td></tr>`:''}
+${dep?`<tr><td>مبلغ الضمان / التأمين</td><td>${n(dep)}</td><td>—</td><td>${n(dep)}</td><td>مبلغ مسترد، لا يدخل ضمن قيمة الإيجار</td></tr>`:''}
+</tbody></table>
+<div class="ls-s"><div><span>إجمالي العقد</span><b>${n(grossT)}</b></div><div><span>إجمالي المسدد</span><b>${n(paidG)}</b></div><div><span>إجمالي المتبقي</span><b>${n(Math.max(0,r2(grossT-paidG)))}</b></div><div class="lt"><span>إجمالي المتأخر</span><b>${n(lateG)}</b></div></div>
+<h2>رابعًا: جدول سداد الدفعات</h2>
+${rows?`<table class="ls-i"><thead><tr><th>القسط</th><th>تاريخ الاستحقاق</th><th>قيمة الإيجار</th><th>الضريبة</th><th>الإجمالي</th><th>المسدد</th><th>المتبقي</th><th>الحالة</th></tr></thead><tbody>${rows}${sumT}</tbody></table>`:'<p class="ls-n">لم يكتمل جدول الأقساط (راجع الفترة والتواريخ وعدد الدفعات).</p>'}
+<div class="ls-end"><h2>خامسًا: الشروط الخاصة والاعتماد</h2>
+<div class="ls-c">${cond.length?'<ul>'+cond.map(z=>'<li>'+esc(z)+'</li>').join('')+'</ul>':'<span>لا توجد شروط خاصة. تسري أحكام عقد منصة «إيجار» الموحد.</span>'}</div>
+<div class="ls-sg"><div><b>المؤجر / ممثله</b><small>${esc(c.owner)||''}</small><i>التوقيع والختم</i><em>التاريخ: ____ / ____ / ________</em></div><div><b>المستأجر / ممثله</b><small>${esc(c.tenant)||''}</small><i>التوقيع والختم</i><em>التاريخ: ____ / ____ / ________</em></div></div></div>
+<div class="ls-f2">${esc(CO.name)} · ${CO.phone} · ${CO.mail}</div></div>`;
+}

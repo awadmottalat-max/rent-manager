@@ -62,6 +62,10 @@ ${f('بداية الإيجار'+R,dateField('cf_start',c.start??''))}${f('نها
 <div class="full sched" id="cf_sched"></div>
 <h4 class="fs full"><b>4</b> بيانات إضافية <small>(اختياري)</small></h4>
 ${f('رسوم الأملاك',`<input id="cf_fee" type="number" step="0.01" min="0" value="${esc(c.fee??'')}">`)}${f('رقم عقد منصة إيجار',`<input id="cf_ejar" value="${esc(c.ejar??'')}">`)}${f('رقم ساب SAP',`<input id="cf_sap" value="${esc(c.sap??'')}">`)}
+${f('تاريخ إبرام العقد',dateField('cf_sign',c.signDate??''))}${f('فترة السماح (أيام)',`<input id="cf_grace" type="number" min="0" step="1" value="${esc(c.grace??'')}">`)}
+${f('ضريبة القيمة المضافة على الإيجار',`<select id="cf_vat"><option value="0"${!Number(c.vatRate)?' selected':''}>لا تُفرض (سكني)</option><option value="15"${Number(c.vatRate)===15?' selected':''}>15% (تجاري)</option></select>`)}${f('مبلغ الضمان / التأمين',`<input id="cf_dep" type="number" min="0" step="0.01" value="${esc(c.deposit??'')}">`)}
+${f('رسوم إضافية (مياه / خدمات)',`<input id="cf_svc" type="number" min="0" step="0.01" value="${esc(c.svc??'')}">`)}
+${f('الشروط الخاصة (شرط في كل سطر، تظهر في الطباعة)',`<textarea id="cf_cond" rows="3">${esc(c.conditions??'')}</textarea>`,'full')}
 ${f('ملاحظات',`<textarea id="cf_notes" rows="2">${esc(c.notes??'')}</textarea>`,'full')}
 ${ed?'<div class="full ovbox" id="cf_all" hidden></div>':''}
 <h4 class="fs full"><b>5</b> المرفقات <small>(اختياري)</small></h4>
@@ -149,10 +153,10 @@ ${ed?'<div class="full ovbox" id="cf_all" hidden></div>':''}
   /* ----- الحفظ ----- */
   const mark=(ids,msg)=>{document.querySelectorAll('#frm .bad').forEach(e=>e.classList.remove('bad'));ids.forEach(i=>{const e=PV(i)||document.querySelector('#'+i+' input');if(e)(e.type==='hidden'?e.closest('.dtf'):e).classList.add('bad')});PV('cf_err').textContent=msg||'';const f=PV(ids[0])||document.querySelector('#'+ids[0]+' input');f&&(f.closest('.dtf')?.querySelector('.dtd')||f).focus()};
   PV('cf_save').onclick=()=>{
-    const o={pid:val('cf_pid'),pname:val('cf_pname'),unit:$('#cb_unit input').value.trim(),owner:$('#cb_owner input').value.trim(),tenant:$('#cb_ten input').value.trim(),rent:val('cf_rent'),fee:val('cf_fee'),count:cntNow(),freq:val('cf_freq'),fval:val('cf_fqv'),period:perVal(),start:val('cf_start'),end:val('cf_end'),ejar:val('cf_ejar'),sap:val('cf_sap'),notes:val('cf_notes')};
+    const o={pid:val('cf_pid'),pname:val('cf_pname'),unit:$('#cb_unit input').value.trim(),owner:$('#cb_owner input').value.trim(),tenant:$('#cb_ten input').value.trim(),rent:val('cf_rent'),fee:val('cf_fee'),count:cntNow(),freq:val('cf_freq'),fval:val('cf_fqv'),period:perVal(),start:val('cf_start'),end:val('cf_end'),ejar:val('cf_ejar'),sap:val('cf_sap'),notes:val('cf_notes'),signDate:val('cf_sign'),grace:val('cf_grace'),vatRate:val('cf_vat'),deposit:val('cf_dep'),svc:val('cf_svc'),conditions:PV('cf_cond').value.trim()};
     let pid=o.pid,pn='';
     if(pid==='__new'){pn=o.pname;if(!pn)return mark(['cf_pname'],'أدخل اسم المشروع الجديد');pid=Object.keys(P()).find(k=>P()[k].name===pn)||'p'+uid()}
-    if(!numOk(o.rent)||!numOk(o.fee))return mark(['cf_rent'],'تحقق من الأرقام المدخلة');
+    if(!numOk(o.rent)||!numOk(o.fee)||!numOk(o.deposit)||!numOk(o.svc))return mark(['cf_rent'],'تحقق من الأرقام المدخلة');
     if(!ed){
       const need=[['unit','cb_unit','رقم الوحدة'],['owner','cb_owner','اسم المالك'],['tenant','cb_ten','اسم المستأجر'],['rent','cf_rent','قيمة الإيجار'],['count',val('cf_freq')==='s'||val('cf_freq')==='n'?'cf_fqv':'cf_freq','دورة الدفع'],['period',val('cf_period')==='__c'?'cf_pm':'cf_period','فترة العقد'],['start','cf_start','بداية الإيجار'],['end','cf_end','نهاية الإيجار']];
       const miss=need.filter(([k])=>String(o[k]??'').trim()==='');
@@ -163,7 +167,7 @@ ${ed?'<div class="full ovbox" id="cf_all" hidden></div>':''}
       if(!t.inst.length||t.inst.some(i=>i.date==null))return mark(['cf_freq'],'تعذّر حساب الأقساط وتواريخ الاستحقاق — راجع دورة الدفع والتواريخ');
     }
     if(!o.unit&&!o.tenant)return mark(['cb_unit'],'أدخل رقم الوحدة أو اسم المستأجر');
-    const d={unit:o.unit,tenant:o.tenant,owner:o.owner,ejar:o.ejar,sap:o.sap,rent:o.rent===''?'':Number(o.rent),fee:o.fee===''?'':Number(o.fee),start:o.start,end:o.end,period:o.period,count:o.count===''?(ed?c.count:''):Number(o.count),freq:o.freq,fval:o.fval,notes:o.notes,files:attGet('cf')};
+    const d={unit:o.unit,tenant:o.tenant,owner:o.owner,ejar:o.ejar,sap:o.sap,rent:o.rent===''?'':Number(o.rent),fee:o.fee===''?'':Number(o.fee),signDate:o.signDate,grace:o.grace,vatRate:Number(o.vatRate)||0,deposit:o.deposit===''?'':Number(o.deposit),svc:o.svc===''?'':Number(o.svc),conditions:o.conditions,start:o.start,end:o.end,period:o.period,count:o.count===''?(ed?c.count:''):Number(o.count),freq:o.freq,fval:o.fval,notes:o.notes,files:attGet('cf')};
     const regAdd=(kind,name,ph,id,mail)=>{if(!name)return;const L=PR(kind);if(L.some(r=>nm(r.name)===name))return;if(partyList(kind,rows()).some(r=>r.name===name&&r.contracts))return;L.push({id:'r'+uid(),name,phone:ph,idno:id,email:mail,addr:'',notes:''})};
     if(st.newOwner)regAdd('owners',o.owner,val('no_phone'),val('no_id'),val('no_mail'));
     if(st.newTenant)regAdd('tenants',o.tenant,val('nt_phone'),val('nt_id'),val('nt_mail'));
