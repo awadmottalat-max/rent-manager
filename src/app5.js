@@ -30,7 +30,7 @@ function combo(id,o){
 const cbHtml=(id,ph)=>`<div class="cb" id="${id}"><input autocomplete="off" placeholder="${esc(ph||'')}"><div class="cbl" hidden></div></div>`;
 
 function contractForm(ed,pre){
-  const x=ed?cur():null,c=x?x.c:(pre||{}),pid0=x?x.pid:(pre?.pid||S.f.p||Object.keys(P())[0]||'__new');
+  const x=ed?cur():null,edRef=x?{pid:x.pid,cid:x.c.id}:null,c=x?x.c:(pre||{}),pid0=x?x.pid:(pre?.pid||S.f.p||Object.keys(P())[0]||'__new');
   const PERS=[['شهر','شهر'],...[2,3,4,5,6,7,8,9,10,11].map(n=>[n+' أشهر',n+' أشهر']),['سنة','سنة'],['سنتان','سنتان'],['3 سنوات','3 سنوات'],['__c','مخصص (عدد أشهر)…']],
     FQ=[['','— اختر —'],['1','شهري'],['3','ربع سنوي (كل 3 أشهر)'],['6','نصف سنوي (كل 6 أشهر)'],['12','سنوي'],['once','دفعة واحدة'],['s','مخصص: كل … شهر'],['n','مخصص: عدد دفعات محدد']];
   const addv=(L,v)=>{v=String(v??'');return v&&!L.some(o=>o[0]===v)?[...L,[v,v]]:L};
@@ -63,6 +63,7 @@ ${f('بداية الإيجار'+R,dateField('cf_start',c.start??''))}${f('نها
 <h4 class="fs full"><b>4</b> بيانات إضافية <small>(اختياري)</small></h4>
 ${f('رسوم الأملاك',`<input id="cf_fee" type="number" step="0.01" min="0" value="${esc(c.fee??'')}">`)}${f('رقم عقد منصة إيجار',`<input id="cf_ejar" value="${esc(c.ejar??'')}">`)}${f('رقم ساب SAP',`<input id="cf_sap" value="${esc(c.sap??'')}">`)}
 ${f('ملاحظات',`<textarea id="cf_notes" rows="2">${esc(c.notes??'')}</textarea>`,'full')}
+${ed?'<div class="full ovbox" id="cf_all" hidden></div>':''}
 <h4 class="fs full"><b>5</b> المرفقات <small>(اختياري)</small></h4>
 <div class="full"><span class="fl">العقد الموقّع، الهوية، السجل التجاري، عقد منصة إيجار، إيصالات…</span>${attField('cf',c.files)}</div>
 </div><div class="ft"><span id="cf_err" class="ferr"></span><button class="btn p" id="cf_save">${ed?'حفظ التعديلات':'حفظ العقد'}</button><button class="btn" data-a="fclose">إلغاء</button></div>`;
@@ -123,6 +124,28 @@ ${f('ملاحظات',`<textarea id="cf_notes" rows="2">${esc(c.notes??'')}</text
   ['cf_end','cf_fqv','cf_rent'].forEach(id=>{PV(id).addEventListener('input',sched);PV(id).addEventListener('change',sched)});
   PV('cf_pid').addEventListener('change',chkOv);$('#cb_unit').addEventListener('input',chkOv);$('#cb_unit').addEventListener('click',()=>setTimeout(chkOv,60));
   if(c.period&&!PERS.some(o=>o[0]===c.period)){}showFx();showPm();sched();chkOv();
+  /* ----- تطبيق التعديل على الكل (عند تغيير المالك/المستأجر/رقم الوحدة) ----- */
+  const cnt0=(f,v)=>{let n=0,u=0;for(const p of Object.values(P())){for(const z of p.contracts)if(nm(z[f])===v)n++;if(f==='owner')for(const z of p.units||[])if(nm(z.owner)===v)u++}return{n,u}};
+  const chg=()=>{const o=nm($('#cb_owner input').value),t=nm($('#cb_ten input').value),u=nm($('#cb_unit input').value);const r=[];
+    if(o&&nm(c.owner)&&o!==nm(c.owner))r.push(['o',nm(c.owner),o]);if(t&&nm(c.tenant)&&t!==nm(c.tenant))r.push(['t',nm(c.tenant),t]);if(u&&nm(c.unit)&&normU(u)!==normU(c.unit)&&!(P()[edRef.pid].units||[]).some(z=>normU(z.no)===normU(u)))r.push(['u',nm(c.unit),u]);return r};
+  function chkAll(){const box=PV('cf_all');if(!box)return;const r=chg(),key=JSON.stringify(r);
+    if(!r.length){box.hidden=true;box.dataset.k='';return}if(box.dataset.k===key){box.hidden=false;return}box.dataset.k=key;
+    box.innerHTML='<b>تطبيق التغيير على الكل</b>'+r.map(([k,a,b])=>{const n=k==='u'?(c.unit?P()[edRef.pid].contracts.filter(z=>normU(z.unit)===normU(a)).length:1):cnt0(k==='o'?'owner':'tenant',a).n,uu=k==='o'?cnt0('owner',a).u:0;
+      const lab=k==='o'?'اسم المالك':k==='t'?'اسم المستأجر':'رقم الوحدة';
+      return `<label class="chk"><input type="checkbox" id="ap_${k}" checked> تغيير ${lab} من «${esc(a)}» إلى «${esc(b)}» في كل المواضع (${n} عقدًا${uu?' و'+uu+' وحدة':''}${k==='u'?' + سجل الوحدة':''})</label>`}).join('')+'<small class="hint">إن أزلت العلامة يُغيَّر هذا العقد فقط.</small>';box.hidden=false}
+  const applyAll=(o,old,pid0)=>{
+    if(!PV('cf_all'))return{};
+    const r=chg().filter(([k])=>PV('ap_'+k)?.checked);
+    for(const[k,a,b]of r){
+      if(k==='u'){const p=P()[pid0];if((p.units||[]).some(z=>normU(z.no)!==normU(a)&&normU(z.no)===normU(b)))return{err:'رقم الوحدة «'+b+'» موجود مسبقًا في المشروع',id:'cb_unit'};
+        for(const z of p.contracts)if(normU(z.unit)===normU(a))z.unit=b;for(const z of p.units||[])if(normU(z.no)===normU(a))z.no=b}
+      else{const f=k==='o'?'owner':'tenant',kind=k==='o'?'owners':'tenants';
+        for(const p of Object.values(P())){for(const z of p.contracts)if(nm(z[f])===a)z[f]=b;if(k==='o')for(const z of p.units||[])if(nm(z.owner)===a)z.owner=b}
+        for(const z of S.db.agreements||[])if(nm(z[f])===a)z[f]=b;for(const z of S.db.analyses||[])if(nm(z[f])===a)z[f]=b;
+        const L=PR(kind),ra=L.find(z=>nm(z.name)===a);if(ra&&!L.some(z=>nm(z.name)===b))ra.name=b}}
+    if(r.length){const oc=P()[pid0].contracts.find(z=>z.id===old.id);if(oc)Object.assign(old,oc)}
+    return{}};
+  ['cb_owner','cb_ten','cb_unit'].forEach(i=>{const el=$('#'+i);el.addEventListener('input',chkAll);el.addEventListener('click',()=>setTimeout(chkAll,80))});
   /* ----- الحفظ ----- */
   const mark=(ids,msg)=>{document.querySelectorAll('#frm .bad').forEach(e=>e.classList.remove('bad'));ids.forEach(i=>{const e=PV(i)||document.querySelector('#'+i+' input');if(e)(e.type==='hidden'?e.closest('.dtf'):e).classList.add('bad')});PV('cf_err').textContent=msg||'';const f=PV(ids[0])||document.querySelector('#'+ids[0]+' input');f&&(f.closest('.dtf')?.querySelector('.dtd')||f).focus()};
   PV('cf_save').onclick=()=>{
@@ -147,10 +170,11 @@ ${f('ملاحظات',`<textarea id="cf_notes" rows="2">${esc(c.notes??'')}</text
     const extra=u=>{if(st.newUnit&&u){Object.assign(u,{type:val('nu_type'),area:val('nu_area'),rooms:val('nu_rooms')})}};
     const put=(pid,c)=>{if(!P()[pid])P()[pid]={name:pn,no:'',contracts:[],units:[]};const p=structuredClone(P()[pid]);ensureUnit(p,c);extra(p.units.find(u=>normU(u.no)===normU(c.unit)));p.contracts.push(c);P()[pid]=p};
     if(ed){
-      const old=P()[ed.pid].contracts.find(c=>c.id===ed.cid),m={...old,...d};
-      if(pid===ed.pid)mutate(pid,p=>{p.contracts=p.contracts.map(c=>c.id===ed.cid?m:c);ensureUnit(p,m)});
-      else{mutate(ed.pid,p=>{p.contracts=p.contracts.filter(c=>c.id!==ed.cid)});put(pid,m);persist()}
-      S.cur={pid,cid:ed.cid};
+      const old=P()[edRef.pid].contracts.find(c=>c.id===edRef.cid),m={...old,...d};
+      const A=applyAll(o,old,edRef.pid);if(A.err)return mark([A.id||'cb_unit'],A.err);
+      if(pid===edRef.pid)mutate(pid,p=>{p.contracts=p.contracts.map(c=>c.id===edRef.cid?m:c);ensureUnit(p,m)});
+      else{mutate(edRef.pid,p=>{p.contracts=p.contracts.filter(c=>c.id!==edRef.cid)});put(pid,m);persist()}
+      S.cur={pid,cid:edRef.cid};
     }else{const c={id:'c'+uid(),oldDates:[],prevRemaining:'',extra:0,payments:[],...d};put(pid,c);
       if(st.ov?.on){const oc=P()[pid].contracts.find(z=>z.id===st.ov.cid);if(oc){let dt=val('ov_d');if(!dt&&o.start)dt=iso(pd(o.start)-DAY);if(oc.start&&dt<oc.start)dt=oc.start;oc.exit={date:dt,reason:'تأجير الوحدة لمستأجر جديد قبل انتهاء العقد',note:'أُنهي تلقائيًا عند إضافة عقد جديد للوحدة (المستأجر الجديد: '+o.tenant+')',waive:false,files:[]}}}
       persist();S.cur={pid,cid:c.id}}

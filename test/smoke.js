@@ -87,6 +87,25 @@ app.whenReady().then(async()=>{
     const x1=P()[np].contracts[0];exitForm(np,x1.id);set('ff_date','2026-06-30');set('ff_rem','waive');document.getElementById('fsave').click();await sl(80);
     const rr=calc(P()[np].contracts[0],MODE(),TODAY);out.early=rr.st+'/'+rr.rem+'/'+rr.late+'/'+unitInfo(P()[np],P()[np].units.find(u=>u.no==='T-1')).st;
     attField('t1',[]);ATT.reg.t1.list.push({id:'x',name:'a.pdf',size:2048,f:'x.pdf'});out.att=attGet('t1').length;attDiscard();}
+
+    // v1.9 checks
+    {const sl2=ms=>new Promise(r=>setTimeout(r,ms));const pids=Object.keys(P()),pidE=pids[1],c0=P()[pidE].contracts[2],tn0=c0.tenant,ow0=c0.owner;
+    const sameT=P()[pidE].contracts.filter(c=>c.tenant===tn0).length;
+    S.cur={pid:pidE,cid:c0.id};contractForm(true);await sl2(80);
+    const E=(i,v)=>{const e=document.getElementById(i);e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}))};
+    E('cf_rent','12345');const ti=document.querySelector('#cb_ten input');ti.value='مستأجر معدل ٩';ti.dispatchEvent(new Event('input',{bubbles:true}));await sl2(50);
+    out.allBox=!document.getElementById('cf_all').hidden;document.getElementById('cf_save').click();await sl2(200);
+    const c1=P()[pidE].contracts.find(c=>c.id===c0.id);out.editSaved=c1.rent===12345&&c1.tenant==='مستأجر معدل ٩';
+    out.applyAll=P()[pidE].contracts.filter(c=>c.tenant==='مستأجر معدل ٩').length===sameT;
+    // ended -> renewal exclusion
+    const rx=rows().find(x=>x.r.st==='منتهي'&&endState(x.pid,x.c)==='pend');const before=renewalsOpen(rows(),90).length+'|'+endedList(rows()).length;
+    mutate(rx.pid,q=>{q.contracts.find(c=>c.id===rx.c.id).exit={date:rx.c.end}});const after=renewalsOpen(rows(),365).some(y=>y.c.id===rx.c.id);out.renExcluded=!after;S.en.s='pend';out.endedExcluded=!endedList(rows()).some(y=>y.c.id===rx.c.id);
+    // unit off / on
+    S.av={p:'',q:'',s:'avail'};const L0=availList(),a0=L0[0];const nA=L0.length;act.unitOff({dataset:{p:a0.pid,i:a0.u.id}});await sl2(60);document.getElementById('fsave').click();await sl2(100);
+    out.offRemoved=availList().length===nA-1;S.av.s='unavail';out.offListed=availList().some(o=>o.u.id===a0.u.id);act.unitOn({dataset:{p:a0.pid,i:a0.u.id}});S.av.s='avail';out.onBack=availList().length===nA;
+    // click outside closes
+    const dt=document.getElementById('det');openDet(pidE,c0.id);const bd=dt.getBoundingClientRect();dt.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,clientX:2,clientY:2}));out.outsideClose=!dt.open;
+    out.audit=auditData().length;}
     return JSON.stringify(out)})()`);
   console.log('FLOWS',f2);
   await shot('contract_req');
