@@ -131,7 +131,7 @@ function tabTables(all){
   }
   return bar+html;
 }
-function rpRange(D){return `<label>من <input type="date" id="rp_from" value="${esc(D.from)}"></label><label>إلى <input type="date" id="rp_to" value="${esc(D.to)}"></label>`}
+function rpRange(D){return `<label>من ${dateField('rp_from',D.from)}</label><label>إلى ${dateField('rp_to',D.to)}</label>`}
 const RT=[['ov','نظرة عامة'],['owner','كشف حساب مالك'],['tenant','كشف حساب مستأجر'],['tab','تقارير جدولية']];
 function vRep(all){
   const D=S.rp;ALLR=all;const body=D.tab==='ov'?nameBar()+tabOv(all):D.tab==='owner'?tabOwner(all):D.tab==='tenant'?tabTenant(all):tabTables(all);

@@ -72,6 +72,18 @@ if(!lock)app.quit();else{
     ipcMain.handle('backup:pre',(_e,tag)=>backup(tag));
     ipcMain.handle('backup:list',()=>fs.readdirSync(bdir()).filter(n=>/\.json$/.test(n)).sort().reverse().slice(0,60).map(n=>({name:n,size:fs.statSync(path.join(bdir(),n)).size,time:fs.statSync(path.join(bdir(),n)).mtimeMs})));
     ipcMain.handle('backup:read',(_e,n)=>{if(n!==path.basename(n))throw new Error('bad');return JSON.parse(fs.readFileSync(path.join(bdir(),n),'utf8'))});
+    const attDir=()=>{const d=path.join(dataDir,'attachments');fs.mkdirSync(d,{recursive:true});return d};
+    const attPath=f=>{if(!f||f!==path.basename(String(f)))throw new Error('bad');return path.join(attDir(),f)};
+    ipcMain.handle('att:add',async()=>{
+      const r=await dialog.showOpenDialog(win,{title:'اختر المرفقات',properties:['openFile','multiSelections']});
+      if(r.canceled)return[];const out=[];
+      for(const src of r.filePaths){const st=fs.statSync(src),id=Date.now().toString(36)+Math.random().toString(36).slice(2,7),ext=path.extname(src).replace(/[^\w.]/g,'').slice(0,12),f=id+ext;
+        fs.copyFileSync(src,path.join(attDir(),f));out.push({id,name:path.basename(src),size:st.size,added:new Date().toISOString().slice(0,10),f})}
+      return out;
+    });
+    ipcMain.handle('att:open',async(_e,f)=>{const p=attPath(f);if(!exists(p))return'الملف غير موجود (ربما حُذف من مجلد المرفقات)';return shell.openPath(p)});
+    ipcMain.handle('att:del',(_e,f)=>{try{fs.unlinkSync(attPath(f))}catch{}return true});
+    ipcMain.handle('att:dir',()=>shell.openPath(attDir()));
     ipcMain.handle('dir:open',()=>shell.openPath(dataDir));
     ipcMain.handle('dir:info',()=>dataDir);
     ipcMain.handle('dir:change',async()=>{
@@ -79,6 +91,7 @@ if(!lock)app.quit();else{
       if(r.canceled)return null;const nd=r.filePaths[0];
       fs.mkdirSync(path.join(nd,'backups'),{recursive:true});
       if(!exists(path.join(nd,FILE))&&exists(dataFile()))fs.copyFileSync(dataFile(),path.join(nd,FILE));
+      try{const oa=path.join(dataDir,'attachments'),na=path.join(nd,'attachments');if(exists(oa)&&!exists(na))fs.cpSync(oa,na,{recursive:true})}catch{}
       fs.writeFileSync(cfgPath,JSON.stringify({dataDir:nd}));dataDir=nd;return nd;
     });
     ipcMain.handle('file:open',async(_e,filters)=>{

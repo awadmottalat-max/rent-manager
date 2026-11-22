@@ -33,7 +33,7 @@ function vAgr(){
 ${rws.length?T(cols,rws,{foot:S.pm.foot}):'<div class="tw"><p class="empty">لا توجد اتفاقيات بعد. اضغط «اتفاقية جديدة» واختر العقد لتعبئة البيانات تلقائيًا.</p></div>'}`;
 }
 function agrInstRow(x,i,mode){
-  return `<tr data-ir="${i}"><td class="d">${i+1}</td><td><input type="date" class="ai_d" value="${esc(x.date||'')}"></td><td><input type="number" step="0.01" class="ai_a" value="${esc(x.amount??'')}"></td>
+  return `<tr data-ir="${i}"><td class="d">${i+1}</td><td>${dateField('ai_d'+i,x.date||'','ai_d')}</td><td><input type="number" step="0.01" class="ai_a" value="${esc(x.amount??'')}"></td>
 <td><input type="checkbox" class="ai_m"${x.mg?' checked':''}></td><td><input type="number" step="0.01" class="ai_s" value="${esc(x.mshare??'')}"${mode==='manual'?'':' disabled'}></td><td><button class="btn sm dng" data-a="agrRowDel" data-r="${i}">✕</button></td></tr>`;
 }
 function agrCollect(){
@@ -51,7 +51,7 @@ function agrPreview(){
 function agrForm(id,pre){
   const a=id?A_().find(x=>x.id===id):{no:'AG-'+String(A_().length+1).padStart(3,'0'),date:iso(TODAY),mgmt:{type:'pct',value:10},mgmtVat:true,mgmtAlloc:'equal',inst:[],fee:{amount:125,vat:true,mode:'owner',at:1},clauses:DEF_CLAUSES,...(pre||{})};
   const cs=[];for(const[pid,p]of Object.entries(P()))for(const c of p.contracts)cs.push([pid+'|'+c.id,p.name+' — '+c.unit+' — '+(c.tenant||'')]);
-  const f=(l,el,full)=>`<label class="${full?'full':''}">${l}${el}</label>`,inp=(i,v,t='text')=>`<input id="${i}" type="${t}" ${t==='number'?'step="0.01"':''} value="${esc(v??'')}">`,sel=(i,o,v)=>`<select id="${i}">${o.map(([x,y])=>`<option value="${esc(x)}"${String(x)===String(v)?' selected':''}>${esc(y)}</option>`).join('')}</select>`;
+  const f=(l,el,full)=>`<label class="${full?'full':''}">${l}${el}</label>`,inp=(i,v,t='text')=>t==='date'?dateField(i,v):`<input id="${i}" type="${t}" ${t==='number'?'step="0.01"':''} value="${esc(v??'')}">`,sel=(i,o,v)=>`<select id="${i}">${o.map(([x,y])=>`<option value="${esc(x)}"${String(x)===String(v)?' selected':''}>${esc(y)}</option>`).join('')}</select>`;
   $('#frm').innerHTML=`<div class="dh"><h2>${id?'تعديل الاتفاقية':'اتفاقية تأجير جديدة'}</h2><button class="x" data-a="fclose" aria-label="إغلاق">✕</button></div>
 <div class="fg">${f('تعبئة من عقد قائم',sel('ag_pick',[['','— اختر عقدًا —'],...cs],''),1)}
 ${f('رقم الاتفاقية',inp('ag_no',a.no))}${f('تاريخ الاتفاقية',inp('ag_date',a.date,'date'))}
@@ -65,12 +65,14 @@ ${f('طريقة سداد رسوم العقد',sel('ag_fm',Object.entries(FM_LAB)
 <div class="full"><div class="row" style="justify-content:space-between"><b>الدفعات (حدّد الدفعات التي تُخصم منها رسوم الإدارة)</b><span><button class="btn sm" data-a="agrRowAdd">+ دفعة</button> <button class="btn sm" data-a="agrGen">توليد دفعات متساوية</button> <label style="display:inline">عددها <input id="ag_n" type="number" min="1" max="24" value="2" style="width:60px"></label></span></div>
 <table class="t" id="ag_inst"><thead><tr><th>#</th><th>التاريخ</th><th>المبلغ</th><th>تُخصم منها الإدارة</th><th>حصة الإدارة (يدوي)</th><th></th></tr></thead><tbody>${(a.inst||[]).map((x,i)=>agrInstRow(x,i,a.mgmtAlloc)).join('')}</tbody></table></div>
 <div class="full" id="ag_prev"></div>
+<div class="full"><span class="fl">المرفقات (الاتفاقية الموقّعة، الهويات، سجل تجاري…)</span>${attField('ag',a.files)}</div>
 ${f('بنود الاتفاقية (قابلة للتعديل)',`<textarea id="ag_cl" rows="9">${esc(a.clauses||DEF_CLAUSES)}</textarea>`,1)}${f('ملاحظات',inp('ag_notes',a.notes),1)}</div>
 <div class="ft"><button class="btn p" id="ag_save">حفظ الاتفاقية</button><button class="btn" data-a="fclose">إلغاء</button></div>`;
   if(a.pid)$('#ag_pid').value=a.pid;
   if(!$('#frm').open)$('#frm').showModal();
   $('#ag_save').onclick=()=>{const o=agrCollect();
     if(!o.unit)return toast('أدخل رقم الوحدة');if(!o.pid)return toast('اختر المشروع');if(!(o.annualRent>0))return toast('أدخل الإيجار السنوي');
+    o.files=attGet('ag');attCommit();
     if(id)Object.assign(A_().find(x=>x.id===id),o);else A_().push({id:'g'+uid(),...o});
     persist();$('#frm').close();render();toast('تم حفظ الاتفاقية')};
   agrPreview();
@@ -78,7 +80,7 @@ ${f('بنود الاتفاقية (قابلة للتعديل)',`<textarea id="ag_
 function agrPick(v){
   const[pid,cid]=v.split('|'),c=cOf(pid,cid);if(!c)return;
   const r=calc(c,MODE(),TODAY),ann=r.m&&r.m!==12?(r.total/r.m*12):r.total;
-  $('#ag_pid').value=pid;$('#ag_cid').value=cid;$('#ag_unit').value=c.unit||'';$('#ag_owner').value=c.owner||'';$('#ag_tenant').value=c.tenant||'';$('#ag_start').value=c.start||'';$('#ag_end').value=c.end||'';
+  $('#ag_pid').value=pid;$('#ag_cid').value=cid;$('#ag_unit').value=c.unit||'';$('#ag_owner').value=c.owner||'';$('#ag_tenant').value=c.tenant||'';setDate('ag_start',c.start||'');setDate('ag_end',c.end||'');
   $('#ag_rent').value=Fin.r2(r.total||0);
   const ins=r.inst.map(i=>({date:iso(i.date),amount:i.amount,mg:false}));
   document.querySelector('#ag_inst tbody').innerHTML=ins.map((x,i)=>agrInstRow(x,i,rv('ag_malloc'))).join('');
@@ -135,8 +137,8 @@ function anPrefill(){
   const a=findAgr({pid,cid,unit:c.unit});
   const ps=[...(c.payments||[])].sort((x,y)=>String(x.date).localeCompare(String(y.date)));
   const pm=ps.find(p=>p.id===rv('an_pay'))||ps[ps.length-1],idx=pm?ps.indexOf(pm):-1;
-  if(pm){$('#an_payment').value=pm.amount;$('#an_date').value=pm.date||$('#an_date').value}
-  $('#an_unit').value=c.unit||'';$('#an_owner').value=c.owner||'';$('#an_tenant').value=c.tenant||'';$('#an_cs').value=c.start||'';$('#an_ce').value=c.end||'';$('#an_ejar').value=c.ejar||'';$('#an_sap').value=c.sap||'';
+  if(pm){$('#an_payment').value=pm.amount;setDate('an_date',pm.date||$('#an_date').value)}
+  $('#an_unit').value=c.unit||'';$('#an_owner').value=c.owner||'';$('#an_tenant').value=c.tenant||'';setDate('an_cs',c.start||'');setDate('an_ce',c.end||'');$('#an_ejar').value=c.ejar||'';$('#an_sap').value=c.sap||'';
   const r=calc(c,MODE(),TODAY);$('#an_annual').value=a?a.annualRent:Fin.r2(r.total||0);
   if(a){$('#an_aid').value=a.id;$('#an_mt').value=a.mgmt.type;$('#an_mv').value=a.mgmt.value;$('#an_mb').value='annual';
     const k=Fin.agrCalc(a,VATP()),row=k.rows[idx]||k.rows.find(x=>Math.abs(x.amount-(pm?.amount||0))<0.01);
@@ -148,7 +150,7 @@ function anPrefill(){
 }
 function anForm(id,pre){
   const a=id?N_().find(x=>x.id===id):{date:iso(TODAY),mgmt:{type:'pct',value:0,base:'annual'},...(pre||{})};
-  const f=(l,el,full)=>`<label class="${full?'full':''}">${l}${el}</label>`,inp=(i,v,t='text')=>`<input id="${i}" type="${t}" ${t==='number'?'step="0.01"':''} value="${esc(v??'')}">`,sel=(i,o,v)=>`<select id="${i}">${o.map(([x,y])=>`<option value="${esc(x)}"${String(x)===String(v)?' selected':''}>${esc(y)}</option>`).join('')}</select>`;
+  const f=(l,el,full)=>`<label class="${full?'full':''}">${l}${el}</label>`,inp=(i,v,t='text')=>t==='date'?dateField(i,v):`<input id="${i}" type="${t}" ${t==='number'?'step="0.01"':''} value="${esc(v??'')}">`,sel=(i,o,v)=>`<select id="${i}">${o.map(([x,y])=>`<option value="${esc(x)}"${String(x)===String(v)?' selected':''}>${esc(y)}</option>`).join('')}</select>`;
   const cs=[['','— اختر العقد —']];for(const[pid,p]of Object.entries(P()))for(const c of p.contracts)cs.push([pid+'|'+c.id,p.name+' — '+c.unit+' — '+(c.tenant||'')+(calc(c,MODE(),TODAY).st==='منتهي'?' (منتهي)':'')]);
   const curC=a.pid&&a.cid?a.pid+'|'+a.cid:'';
   const c0=cOf(a.pid,a.cid),pays=c0?[...c0.payments].sort((x,y)=>String(x.date).localeCompare(String(y.date))).map(p=>[p.id,(p.date||'بلا تاريخ')+' — '+fm(p.amount)]):[];
@@ -164,9 +166,11 @@ ${f('تعديل الضريبة يدويًا',sel('an_vman',[['0','تلقائي (
 ${f('مبالغ سابقة (بدون ضريبة)',inp('an_prev',a.prev,'number'))}${f('صيانة (نهائي بضريبته)',inp('an_maint',a.maint,'number'))}${f('نظافة (نهائي بضريبتها)',inp('an_clean',a.clean,'number'))}
 ${f('كهرباء',inp('an_elec',a.elec,'number'))}${f('إنترنت',inp('an_net',a.net,'number'))}${f('أخرى',inp('an_other',a.other,'number'))}
 <div class="full" id="an_prev"></div>${f('ملاحظات',inp('an_note',a.note),1)}</div>
+<div class="fg"><div class="full"><span class="fl">المرفقات</span>${attField('an',a.files)}</div></div>
 <div class="ft"><button class="btn p" id="an_save">حفظ التحليل</button><button class="btn" data-a="fclose">إلغاء</button></div>`;
   if(!$('#frm').open)$('#frm').showModal();
   $('#an_save').onclick=()=>{const o=anCollect();if(!o.unit)return toast('أدخل رقم الوحدة');if(!(o.payment>0))return toast('أدخل قيمة الدفعة');
+    o.files=attGet('an');attCommit();
     if(o.id)Object.assign(N_().find(x=>x.id===o.id),o);else{o.id='n'+uid();N_().push(o)}
     persist();$('#frm').close();render();toast('تم حفظ التحليل')};
   anPreview();

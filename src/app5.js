@@ -31,9 +31,11 @@ const cbHtml=(id,ph)=>`<div class="cb" id="${id}"><input autocomplete="off" plac
 
 function contractForm(ed,pre){
   const x=ed?cur():null,c=x?x.c:(pre||{}),pid0=x?x.pid:(pre?.pid||S.f.p||Object.keys(P())[0]||'__new');
-  const PERS=[['شهر','شهر'],['3 أشهر','3 أشهر'],['6 أشهر','6 أشهر'],['9 أشهر','9 أشهر'],['سنة','سنة'],['سنتان','سنتان'],['3 سنوات','3 سنوات']],
-    CNTS=[['12','شهري (12 قسطًا)'],['4','ربع سنوي (4 أقساط)'],['3','3 أقساط'],['2','دفعتان'],['1','دفعة واحدة'],['6','6 أقساط']];
+  const PERS=[['شهر','شهر'],...[2,3,4,5,6,7,8,9,10,11].map(n=>[n+' أشهر',n+' أشهر']),['سنة','سنة'],['سنتان','سنتان'],['3 سنوات','3 سنوات'],['__c','مخصص (عدد أشهر)…']],
+    FQ=[['','— اختر —'],['1','شهري'],['3','ربع سنوي (كل 3 أشهر)'],['6','نصف سنوي (كل 6 أشهر)'],['12','سنوي'],['once','دفعة واحدة'],['s','مخصص: كل … شهر'],['n','مخصص: عدد دفعات محدد']];
   const addv=(L,v)=>{v=String(v??'');return v&&!L.some(o=>o[0]===v)?[...L,[v,v]]:L};
+  const fq0=(()=>{if(c.freq)return{f:c.freq,v:c.fval??''};if(c.count===''||c.count==null)return{f:'',v:''};const m=Core.months(c),k=Core.count(c,m);if(!k||!m)return{f:'',v:''};
+    if(k===1)return{f:'once',v:''};for(const st of[1,3,6,12])if(k===(m>12?Math.round(12/st)*m/12:Math.ceil(m/st)))return{f:String(st),v:''};return{f:'n',v:k}})();
   const R=ed?'':'<i class="rq">*</i>',all=rows();
   const projOptsH=Object.entries(P()).map(([k,p])=>`<option value="${esc(k)}"${k===pid0?' selected':''}>${esc(p.name)}</option>`).join('')+'<option value="__new">+ مشروع جديد</option>';
   const PV=id=>document.getElementById(id),val=id=>(PV(id)?.value??'').trim();
@@ -51,15 +53,18 @@ ${f('المشروع'+R,`<select id="cf_pid">${projOptsH}</select>`)}${f('اسم 
 <div class="full box no" id="no" hidden><b>مالك جديد — يُحفظ في سجل الملاك</b><div class="g3"><label>الجوال<input id="no_phone"></label><label>الهوية / السجل<input id="no_id"></label><label>البريد<input id="no_mail"></label></div></div>
 <div class="full"><label>اسم المستأجر${R}</label>${cbHtml('cb_ten','ابحث عن المستأجر أو أضفه…')}</div>
 <div class="full box nt" id="nt" hidden><b>مستأجر جديد — يُحفظ في سجل المستأجرين</b><div class="g3"><label>الجوال<input id="nt_phone"></label><label>الهوية / الإقامة<input id="nt_id"></label><label>البريد<input id="nt_mail"></label></div></div>
-${f('قيمة الإيجار'+R,`<input id="cf_rent" type="number" step="0.01" min="0" value="${esc(c.rent??'')}">`)}${f('عدد الدفعات'+R,`<select id="cf_count">${addv([['','— اختر —'],...CNTS],c.count).map(([a,b])=>`<option value="${esc(a)}"${String(a)===String(c.count??'')?' selected':''}>${esc(b)}</option>`).join('')}</select>`)}
+${f('قيمة الإيجار'+R,`<input id="cf_rent" type="number" step="0.01" min="0" value="${esc(c.rent??'')}">`)}${f('دورة الدفع'+R,`<select id="cf_freq">${FQ.map(([a,b])=>`<option value="${esc(a)}"${a===fq0.f?' selected':''}>${esc(b)}</option>`).join('')}</select>`)}
+<div class="full" id="cf_fqx" hidden><label><span id="cf_fqx_l">كل كم شهر؟</span><input id="cf_fqv" type="number" min="1" max="36" step="1" value="${esc(fq0.v)}"></label><small class="hint">تُقسَّم مدة العقد على الدفعات بالتساوي — شاهد جدول الأقساط أدناه.</small></div>
 <h4 class="fs full"><b>3</b> فترة الإيجار وتواريخه</h4>
-${f('فترة العقد'+R,`<select id="cf_period">${addv([['','— اختر —'],...PERS],c.period).map(([a,b])=>`<option value="${esc(a)}"${String(a)===String(c.period??'')?' selected':''}>${esc(b)}</option>`).join('')}</select>`)}
-${f('بداية الإيجار'+R,`<input id="cf_start" type="date" value="${esc(c.start??'')}">`)}
-${f('نهاية الإيجار'+R+' <span class="hint">تُحسب من الفترة ويمكن تعديلها</span>',`<input id="cf_end" type="date" value="${esc(c.end??'')}">`)}
+<div class="g3r">${f('فترة العقد'+R,`<select id="cf_period">${addv([['','— اختر —'],...PERS],c.period).map(([a,b])=>`<option value="${esc(a)}"${String(a)===String(c.period??'')?' selected':''}>${esc(b)}</option>`).join('')}</select><input id="cf_pm" type="number" min="1" max="60" step="1" placeholder="عدد الأشهر" style="margin-top:6px" hidden>`)}
+${f('بداية الإيجار'+R,dateField('cf_start',c.start??''))}${f('نهاية الإيجار'+R+' <span class="hint">تُحسب من الفترة وتُعدَّل يدويًا</span>',dateField('cf_end',c.end??''))}</div>
+<div class="full ovbox" id="cf_ov" hidden></div>
 <div class="full sched" id="cf_sched"></div>
 <h4 class="fs full"><b>4</b> بيانات إضافية <small>(اختياري)</small></h4>
 ${f('رسوم الأملاك',`<input id="cf_fee" type="number" step="0.01" min="0" value="${esc(c.fee??'')}">`)}${f('رقم عقد منصة إيجار',`<input id="cf_ejar" value="${esc(c.ejar??'')}">`)}${f('رقم ساب SAP',`<input id="cf_sap" value="${esc(c.sap??'')}">`)}
 ${f('ملاحظات',`<textarea id="cf_notes" rows="2">${esc(c.notes??'')}</textarea>`,'full')}
+<h4 class="fs full"><b>5</b> المرفقات <small>(اختياري)</small></h4>
+<div class="full"><span class="fl">العقد الموقّع، الهوية، السجل التجاري، عقد منصة إيجار، إيصالات…</span>${attField('cf',c.files)}</div>
 </div><div class="ft"><span id="cf_err" class="ferr"></span><button class="btn p" id="cf_save">${ed?'حفظ التعديلات':'حفظ العقد'}</button><button class="btn" data-a="fclose">إلغاء</button></div>`;
   if(!$('#frm').open)$('#frm').showModal();
   /* ----- الحالة الأولية ----- */
@@ -90,30 +95,52 @@ ${f('ملاحظات',`<textarea id="cf_notes" rows="2">${esc(c.notes??'')}</text
   PV('cf_pid').addEventListener('change',()=>{showPN();const p=curP();const hit=p&&(p.units||[]).some(u=>normU(u.no)===normU($('#cb_unit input').value));if(!hit){$('#cb_unit input').value='';$('#nu').hidden=true;st.newUnit=false;if(!ed)$('#cb_owner input').value=''}cu&&cu.refresh()});
   PV('cf_uav').addEventListener('change',()=>{$('#cb_unit input').focus();cu.refresh()});
   /* ----- التواريخ والجدول ----- */
-  const PM={'شهر':1,'3 أشهر':3,'6 أشهر':6,'9 أشهر':9,'سنة':12,'سنتان':24,'3 سنوات':36};
-  const autoEnd=()=>{const s=pd(PV('cf_start').value),m=PM[PV('cf_period').value];if(s!=null&&m)PV('cf_end').value=iso(edate(s,m)-DAY)};
-  function sched(){const el=PV('cf_sched');const o={start:val('cf_start'),end:val('cf_end'),rent:val('cf_rent'),count:val('cf_count'),period:val('cf_period')};
-    const r=calc(o,MODE(),TODAY);el.innerHTML=r.inst.length?`<b>جدول الأقساط وتواريخ الاستحقاق (${r.inst.length})</b><div class="chips">${r.inst.map(i=>`<span class="ch">${i.n} · ${i.date!=null?iso(i.date):'—'} · ${fm(i.amount)}</span>`).join('')}</div>`:'<span class="sub">يظهر جدول الأقساط عند إدخال الفترة والبداية والإيجار وعدد الدفعات.</span>'}
-  ['cf_period','cf_start'].forEach(id=>PV(id).addEventListener('change',()=>{autoEnd();sched()}));
-  ['cf_end','cf_count','cf_rent'].forEach(id=>{PV(id).addEventListener('input',sched);PV(id).addEventListener('change',sched)});sched();
+  const perVal=()=>{const p=val('cf_period');if(p==='__c'){const n=parseInt(val('cf_pm'),10);return n>0?(n===1?'شهر':n+' أشهر'):''}return p};
+  const monthsNow=()=>Core.months({start:val('cf_start'),end:val('cf_end'),period:perVal()});
+  const cntNow=()=>{const f=val('cf_freq');if(!f)return'';if(f==='once')return 1;const m=monthsNow();if(!m)return'';const v=parseInt(val('cf_fqv'),10);let step=null,tot=null;
+    if(f==='s'){if(!(v>0))return'';step=v}else if(f==='n'){if(!(v>0))return'';tot=v}else step=+f;
+    return step!=null?(m<=12?Math.ceil(m/step):Math.max(1,Math.round(12/step))):(m<=12?tot:Math.max(1,Math.round(tot*12/m)))};
+  const autoEnd=()=>{const s=pd(val('cf_start')),m=Core.months({period:perVal()});if(s!=null&&m)setDate('cf_end',iso(edate(s,m)-DAY))};
+  const showFx=()=>{const f=val('cf_freq');PV('cf_fqx').hidden=!(f==='s'||f==='n');PV('cf_fqx_l').textContent=f==='n'?'عدد الدفعات الإجمالي':'كل كم شهر؟'};
+  const showPm=()=>{const pm=PV('cf_pm');pm.hidden=val('cf_period')!=='__c'};
+  function sched(){const el=PV('cf_sched');const o={start:val('cf_start'),end:val('cf_end'),rent:val('cf_rent'),count:cntNow(),period:perVal()};
+    const r=calc(o,MODE(),TODAY);el.innerHTML=r.inst.length?`<b>جدول الأقساط وتواريخ الاستحقاق (${r.inst.length})</b><div class="chips">${r.inst.map(i=>`<span class="ch">${i.n} · ${i.date!=null?iso(i.date):'—'} · ${fm(i.amount)}</span>`).join('')}</div>${r.m>12?'<small class="hint">العقد أطول من سنة: دورة الدفع تُطبَّق على كل سنة من العقد.</small>':''}`:'<span class="sub">يظهر جدول الأقساط عند إدخال الفترة والبداية والإيجار ودورة الدفع.</span>'}
+  /* ----- تأجير وحدة عليها عقد قائم ----- */
+  function chkOv(){const box=PV('cf_ov');if(ed){box.hidden=true;return}
+    const p=curP(),un=$('#cb_unit input').value,u=p&&(p.units||[]).find(u=>normU(u.no)===normU(un)),inf=u?unitInfo(p,u):null,a=inf&&inf.act&&!inf.act.c.exit?inf.act:null;
+    if(!a){box.hidden=true;st.ov=null;return}
+    const s=val('cf_start'),over=!s||s<=a.c.end;
+    if(!st.ov||st.ov.cid!==a.c.id){st.ov={cid:a.c.id,touched:false,on:over};
+      box.innerHTML=`<b>هذه الوحدة عليها عقد قائم</b><span>المستأجر الحالي: <b>${esc(a.c.tenant)||'—'}</b> — ينتهي عقده في <bdi>${esc(a.c.end)}</bdi>. يمكنك تأجيرها الآن قبل انتهائه وإنهاء العقد السابق من تاريخ محدد.</span>
+<label class="chk"><input type="checkbox" id="ov_on"> إنهاء العقد السابق تلقائيًا عند حفظ العقد الجديد</label><div id="ov_dw"><label>تاريخ انتهاء العقد السابق ${dateField('ov_d','')}<small class="hint">إن تُرك فارغًا يُنهى قبل بداية العقد الجديد بيوم.</small></label></div>`;
+      PV('ov_on').onchange=()=>{st.ov.on=PV('ov_on').checked;st.ov.touched=true;PV('ov_dw').style.display=st.ov.on?'':'none'}}
+    if(!st.ov.touched)st.ov.on=over;
+    PV('ov_on').checked=st.ov.on;PV('ov_dw').style.display=st.ov.on?'':'none';box.hidden=false}
+  PV('cf_freq').addEventListener('change',()=>{showFx();sched()});
+  PV('cf_period').addEventListener('change',()=>{showPm();autoEnd();sched()});
+  PV('cf_pm').addEventListener('input',()=>{autoEnd();sched()});
+  PV('cf_start').addEventListener('change',()=>{autoEnd();sched();chkOv()});
+  ['cf_end','cf_fqv','cf_rent'].forEach(id=>{PV(id).addEventListener('input',sched);PV(id).addEventListener('change',sched)});
+  PV('cf_pid').addEventListener('change',chkOv);$('#cb_unit').addEventListener('input',chkOv);$('#cb_unit').addEventListener('click',()=>setTimeout(chkOv,60));
+  if(c.period&&!PERS.some(o=>o[0]===c.period)){}showFx();showPm();sched();chkOv();
   /* ----- الحفظ ----- */
-  const mark=(ids,msg)=>{document.querySelectorAll('#frm .bad').forEach(e=>e.classList.remove('bad'));ids.forEach(i=>{const e=PV(i)||document.querySelector('#'+i+' input');e&&e.classList.add('bad')});PV('cf_err').textContent=msg||'';const f=PV(ids[0])||document.querySelector('#'+ids[0]+' input');f&&f.focus()};
+  const mark=(ids,msg)=>{document.querySelectorAll('#frm .bad').forEach(e=>e.classList.remove('bad'));ids.forEach(i=>{const e=PV(i)||document.querySelector('#'+i+' input');if(e)(e.type==='hidden'?e.closest('.dtf'):e).classList.add('bad')});PV('cf_err').textContent=msg||'';const f=PV(ids[0])||document.querySelector('#'+ids[0]+' input');f&&(f.closest('.dtf')?.querySelector('.dtd')||f).focus()};
   PV('cf_save').onclick=()=>{
-    const o={pid:val('cf_pid'),pname:val('cf_pname'),unit:$('#cb_unit input').value.trim(),owner:$('#cb_owner input').value.trim(),tenant:$('#cb_ten input').value.trim(),rent:val('cf_rent'),fee:val('cf_fee'),count:val('cf_count'),period:val('cf_period'),start:val('cf_start'),end:val('cf_end'),ejar:val('cf_ejar'),sap:val('cf_sap'),notes:val('cf_notes')};
+    const o={pid:val('cf_pid'),pname:val('cf_pname'),unit:$('#cb_unit input').value.trim(),owner:$('#cb_owner input').value.trim(),tenant:$('#cb_ten input').value.trim(),rent:val('cf_rent'),fee:val('cf_fee'),count:cntNow(),freq:val('cf_freq'),fval:val('cf_fqv'),period:perVal(),start:val('cf_start'),end:val('cf_end'),ejar:val('cf_ejar'),sap:val('cf_sap'),notes:val('cf_notes')};
     let pid=o.pid,pn='';
     if(pid==='__new'){pn=o.pname;if(!pn)return mark(['cf_pname'],'أدخل اسم المشروع الجديد');pid=Object.keys(P()).find(k=>P()[k].name===pn)||'p'+uid()}
     if(!numOk(o.rent)||!numOk(o.fee))return mark(['cf_rent'],'تحقق من الأرقام المدخلة');
     if(!ed){
-      const need=[['unit','cb_unit','رقم الوحدة'],['owner','cb_owner','اسم المالك'],['tenant','cb_ten','اسم المستأجر'],['rent','cf_rent','قيمة الإيجار'],['count','cf_count','عدد الدفعات'],['period','cf_period','فترة العقد'],['start','cf_start','بداية الإيجار'],['end','cf_end','نهاية الإيجار']];
+      const need=[['unit','cb_unit','رقم الوحدة'],['owner','cb_owner','اسم المالك'],['tenant','cb_ten','اسم المستأجر'],['rent','cf_rent','قيمة الإيجار'],['count',val('cf_freq')==='s'||val('cf_freq')==='n'?'cf_fqv':'cf_freq','دورة الدفع'],['period',val('cf_period')==='__c'?'cf_pm':'cf_period','فترة العقد'],['start','cf_start','بداية الإيجار'],['end','cf_end','نهاية الإيجار']];
       const miss=need.filter(([k])=>String(o[k]??'').trim()==='');
       if(miss.length)return mark(miss.map(m=>m[1]),'أكمل الحقول الإلزامية: '+miss.map(m=>m[2]).join('، '));
       if(!(Number(o.rent)>0))return mark(['cf_rent'],'قيمة الإيجار يجب أن تكون أكبر من صفر');
       if(o.end<o.start)return mark(['cf_end'],'نهاية الإيجار قبل بدايته');
       const t=calc({start:o.start,end:o.end,rent:o.rent,count:o.count,period:o.period},MODE(),TODAY);
-      if(!t.inst.length||t.inst.some(i=>i.date==null))return mark(['cf_count'],'تعذّر حساب الأقساط وتواريخ الاستحقاق — راجع عدد الدفعات والتواريخ');
+      if(!t.inst.length||t.inst.some(i=>i.date==null))return mark(['cf_freq'],'تعذّر حساب الأقساط وتواريخ الاستحقاق — راجع دورة الدفع والتواريخ');
     }
     if(!o.unit&&!o.tenant)return mark(['cb_unit'],'أدخل رقم الوحدة أو اسم المستأجر');
-    const d={unit:o.unit,tenant:o.tenant,owner:o.owner,ejar:o.ejar,sap:o.sap,rent:o.rent===''?'':Number(o.rent),fee:o.fee===''?'':Number(o.fee),start:o.start,end:o.end,period:o.period,count:/^\d+(\.\d+)?$/.test(o.count)?Number(o.count):o.count,notes:o.notes};
+    const d={unit:o.unit,tenant:o.tenant,owner:o.owner,ejar:o.ejar,sap:o.sap,rent:o.rent===''?'':Number(o.rent),fee:o.fee===''?'':Number(o.fee),start:o.start,end:o.end,period:o.period,count:o.count===''?(ed?c.count:''):Number(o.count),freq:o.freq,fval:o.fval,notes:o.notes,files:attGet('cf')};
     const regAdd=(kind,name,ph,id,mail)=>{if(!name)return;const L=PR(kind);if(L.some(r=>nm(r.name)===name))return;if(partyList(kind,rows()).some(r=>r.name===name&&r.contracts))return;L.push({id:'r'+uid(),name,phone:ph,idno:id,email:mail,addr:'',notes:''})};
     if(st.newOwner)regAdd('owners',o.owner,val('no_phone'),val('no_id'),val('no_mail'));
     if(st.newTenant)regAdd('tenants',o.tenant,val('nt_phone'),val('nt_id'),val('nt_mail'));
@@ -124,8 +151,10 @@ ${f('ملاحظات',`<textarea id="cf_notes" rows="2">${esc(c.notes??'')}</text
       if(pid===ed.pid)mutate(pid,p=>{p.contracts=p.contracts.map(c=>c.id===ed.cid?m:c);ensureUnit(p,m)});
       else{mutate(ed.pid,p=>{p.contracts=p.contracts.filter(c=>c.id!==ed.cid)});put(pid,m);persist()}
       S.cur={pid,cid:ed.cid};
-    }else{const c={id:'c'+uid(),oldDates:[],prevRemaining:'',extra:0,payments:[],...d};put(pid,c);persist();S.cur={pid,cid:c.id}}
-    $('#frm').close();render();openDet(S.cur.pid,S.cur.cid);toast('تم حفظ العقد');
+    }else{const c={id:'c'+uid(),oldDates:[],prevRemaining:'',extra:0,payments:[],...d};put(pid,c);
+      if(st.ov?.on){const oc=P()[pid].contracts.find(z=>z.id===st.ov.cid);if(oc){let dt=val('ov_d');if(!dt&&o.start)dt=iso(pd(o.start)-DAY);if(oc.start&&dt<oc.start)dt=oc.start;oc.exit={date:dt,reason:'تأجير الوحدة لمستأجر جديد قبل انتهاء العقد',note:'أُنهي تلقائيًا عند إضافة عقد جديد للوحدة (المستأجر الجديد: '+o.tenant+')',waive:false,files:[]}}}
+      persist();S.cur={pid,cid:c.id}}
+    attCommit();$('#frm').close();render();openDet(S.cur.pid,S.cur.cid);toast(st.ov?.on?'تم حفظ العقد وإنهاء العقد السابق للوحدة':'تم حفظ العقد');
   };
-  setTimeout(()=>{if(!ed)$('#cb_unit input').focus()},50);
+  setTimeout(()=>{if(!ed)$('#cb_unit input')?.focus()},50);
 }

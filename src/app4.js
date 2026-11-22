@@ -32,12 +32,12 @@ function vParties(kind,all){
 VF.owners=a=>vParties('owners',a);VF.tenants=a=>vParties('tenants',a);
 function partyForm(kind,name){
   const reg=PR(kind).find(r=>nm(r.name)===name),v=reg||{name:name||''};
-  formDlg({title:name?'تعديل '+PLAB[kind]+': '+name:'إضافة '+PLAB[kind]+' جديد',vals:v,fields:[{k:'name',l:'الاسم *'},{k:'phone',l:'الجوال'},{k:'idno',l:kind==='owners'?'رقم الهوية / السجل التجاري':'رقم الهوية / الإقامة / السجل'},{k:'email',l:'البريد الإلكتروني'},{k:'addr',l:'العنوان',full:1},{k:'notes',l:'ملاحظات',t:'area',full:1}],
+  formDlg({title:name?'تعديل '+PLAB[kind]+': '+name:'إضافة '+PLAB[kind]+' جديد',vals:v,fields:[{k:'name',l:'الاسم *'},{k:'phone',l:'الجوال'},{k:'idno',l:kind==='owners'?'رقم الهوية / السجل التجاري':'رقم الهوية / الإقامة / السجل'},{k:'email',l:'البريد الإلكتروني'},{k:'addr',l:'العنوان',full:1},{k:'notes',l:'ملاحظات',t:'area',full:1},{k:'files',l:'المرفقات (الهوية، السجل التجاري، الوكالة، عقد الملكية…)',t:'files'}],
     onSave:o=>{const n=nm(o.name);if(!n)return 'الاسم إلزامي';
       const all=rows(),exists=partyList(kind,all).some(p=>p.name===n&&p.name!==name);if(exists)return 'الاسم موجود مسبقًا';
       const L=PR(kind);let r=L.find(x=>nm(x.name)===name);
       if(!r){r={id:'r'+uid()};L.push(r)}
-      Object.assign(r,{name:n,phone:nm(o.phone),idno:nm(o.idno),email:nm(o.email),addr:nm(o.addr),notes:o.notes});
+      Object.assign(r,{name:n,phone:nm(o.phone),idno:nm(o.idno),email:nm(o.email),addr:nm(o.addr),notes:o.notes,files:o.files});
       if(name&&n!==name){const f=FKEY[kind];
         for(const pid of Object.keys(P()))mutate(pid,p=>{for(const c of p.contracts)if(nm(c[f])===name)c[f]=n;if(kind==='owners')for(const u of p.units||[])if(nm(u.owner)===name)u.owner=n});
         for(const a of S.db.agreements||[])if(nm(a[f])===name)a[f]=n;for(const a of S.db.analyses||[])if(nm(a[f])===name)a[f]=n}

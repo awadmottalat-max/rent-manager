@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('native',{
   setIcon:b=>ipc.invoke('icon:set',b),
   resetIcon:()=>ipc.invoke('icon:reset'),
   saveTemplate:()=>ipc.invoke('template:save'),
+  attAdd:()=>ipc.invoke('att:add'),attOpen:f=>ipc.invoke('att:open',f),attDel:f=>ipc.invoke('att:del',f),attDir:()=>ipc.invoke('att:dir'),
   version:()=>ipc.invoke('app:version'),
   checkUpdate:()=>ipc.invoke('upd:check'),
   installUpdate:()=>ipc.invoke('upd:install'),

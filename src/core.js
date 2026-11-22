@@ -11,7 +11,7 @@ function months(c){
   const s=pd(c.start),e=pd(c.end);
   if(s!=null&&e!=null)return e>=s?Math.max(1,Math.round(((e-s)/DAY+1)*12/365.25)):null;
   const t=String(c.period||'').replace(/\s/g,'');if(!t)return null;
-  let n=parseInt(t[0],10);if(isNaN(n))n=(t==='سنتين'||t==='سنتان')?2:1;
+  let n=parseInt(t,10);if(isNaN(n))n=(t==='سنتين'||t==='سنتان')?2:1;
   return t.includes('سن')?n*12:t.includes('شه')?n:null;
 }
 function count(c,m){
@@ -48,16 +48,21 @@ function calc(c,mode,today){
     it.late=open&&it.date<today;it.soon=open&&it.date>=today&&it.date<=today+30*DAY;
     if(it.status!=='paid'){const due=r2(it.amount-it.paid);it.due=due;if(it.late)late+=due;if(!next)next=it}
   }
-  const rem=total!=null?r2(total-paid):null;
-  const st=e==null?'بدون تاريخ نهاية':(s!=null&&e<s)?'تاريخ غير صحيح':e<today?'منتهي':(s!=null&&s>today)?'لم يبدأ':'ساري';
+  let st=e==null?'بدون تاريخ نهاية':(s!=null&&e<s)?'تاريخ غير صحيح':e<today?'منتهي':(s!=null&&s>today)?'لم يبدأ':'ساري';
+  /* إنهاء مبكر: يُعتبر العقد منتهيًا من تاريخ الإنهاء، ويمكن إسقاط المتبقي (تسوية) */
+  const xd=c.exit&&c.exit.date?pd(c.exit.date):null;
+  if(xd!=null&&xd<=today&&(e==null||xd<e)&&(st==='ساري'||st==='لم يبدأ'))st='منتهي';
+  let waived=0,total2=total;
+  if(c.exit&&c.exit.waive&&st==='منتهي'&&total!=null){waived=Math.max(0,r2(total-paid));total2=paid;late=0;for(const it of inst)if(it.status!=='paid'){it.late=false;it.soon=false;it.waived=true}}
+  const rem=total2!=null?r2(total2-paid):null;
   const iss=[];
   if(!ok)iss.push('قيمة الإيجار ناقصة');
   if(s==null)iss.push('تاريخ البداية ناقص');
   if(e==null)iss.push('تاريخ النهاية ناقص أو غير صالح');
   if(s!=null&&e!=null&&e<s)iss.push('النهاية قبل البداية');
   if(!k)iss.push('عدد الأقساط غير صالح');
-  if(rem!=null&&rem<-0.005)iss.push('المسدد أكبر من الإجمالي');
-  return{m,k,total,paid,rem,inst,late,next,st,iss,M:inst.length?inst[0].amount:null,
+  if(!waived&&rem!=null&&rem<-0.005)iss.push('المسدد أكبر من الإجمالي');
+  return{m,k,total:total2,paid,rem,waived,inst,late,next,st,iss,M:inst.length?inst[0].amount:null,
     late_n:inst.filter(x=>x.late).length,soon:inst.some(x=>x.soon),
     daysToEnd:e!=null?Math.round((e-today)/DAY):null};
 }

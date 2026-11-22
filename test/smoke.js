@@ -35,7 +35,7 @@ app.whenReady().then(async()=>{
   await ev(`S.rp.tab='tab';S.rp.rep='age';render()`);await shot('rep_tab');
   await ev(`S.pr.tab='units';go('props')`);await shot('props_units');
   await ev(`S.en.s='all';go('ended')`);await shot('ended_all');
-  await ev(`go('contracts');contractForm(false)`);await sleep(200);await shot('contract_new');
+  await ev(`go('contracts');contractForm(false)`);await sleep(200);await shot('contract_new');await ev(`document.getElementById('cf_save')&&(()=>{const E=(i,v)=>{const e=document.getElementById(i);e.value=v;e.dispatchEvent(new Event('change',{bubbles:true}))};E('cf_period','__c');document.getElementById('cf_pm').value=5;document.getElementById('cf_pm').dispatchEvent(new Event('input',{bubbles:true}));E('cf_freq','s');document.getElementById('cf_fqv').value=2;setDate('cf_start','2026-12-01');document.getElementById('cf_start').dispatchEvent(new Event('change',{bubbles:true}));document.getElementById('cf_rent').value=20000;document.getElementById('cf_rent').dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('#frm').scrollTo(0,400)})()`);await sleep(200);await shot('contract_new2');await ev(`(()=>{const pid=Object.keys(P())[0],c=P()[pid].contracts.find(c=>calc(c,MODE(),TODAY).st==='ساري'&&c.rent);document.getElementById('frm').close();payForm(pid,c.id,'')})()`);await sleep(200);await shot('pay_form');await ev(`(()=>{const pid=Object.keys(P())[0],c=P()[pid].contracts.find(c=>calc(c,MODE(),TODAY).st==='ساري');document.getElementById('frm').close();exitForm(pid,c.id)})()`);await sleep(200);await shot('exit_form');await ev(`document.getElementById('frm').close()`);
   const f1=await ev(`(async()=>{const sl=ms=>new Promise(r=>setTimeout(r,ms));contractForm(false);const E=(i,v,ev='change')=>{const e=document.getElementById(i);e.value=v;e.dispatchEvent(new Event(ev,{bubbles:true}))};
     const pids=Object.keys(P());const pid=pids[3];E('cf_pid',pid);await sl(50);
     const ui=document.querySelector('#cb_unit input');ui.focus();ui.dispatchEvent(new Event('focus'));await sl(50);const unitOpts=document.querySelectorAll('#cb_unit .cbo').length;
@@ -45,7 +45,7 @@ app.whenReady().then(async()=>{
     document.querySelector('#cb_unit .cbo.add').dispatchEvent(new MouseEvent('mousedown',{bubbles:true}));await sl(50);
     oi.value='مالك تجريبي جديد';oi.dispatchEvent(new Event('input'));await sl(30);const noShown=!document.getElementById('no').hidden;E('no_phone','0500000000','input');
     const ti=document.querySelector('#cb_ten input');ti.value='مستأجر تجريبي';ti.dispatchEvent(new Event('input'));await sl(30);
-    E('cf_rent','50000','input');E('cf_count','2');E('cf_period','6 أشهر');E('cf_start','2026-12-01');const end=document.getElementById('cf_end').value;
+    E('cf_rent','50000','input');E('cf_freq','n');E('cf_fqv','2','input');E('cf_period','6 أشهر');E('cf_start','2026-12-01');const end=document.getElementById('cf_end').value;
     document.getElementById('cf_save').click();await sl(150);
     const c=P()[pid].contracts.find(c=>c.unit==='Z-999');const u=P()[pid].units.find(u=>u.no==='Z-999');const reg=(S.db.parties?.owners||[]).some(r=>r.name==='مالك تجريبي جديد'&&r.phone==='0500000000');
     return JSON.stringify({unitOpts,ownGrp,ownN,totalOwners:allOwn.size,addBtn,nuShown,noShown,end,saved:!!c,unitCreated:!!u,ownerReg:reg,ownerOnUnit:u&&u.owner})})()`);
@@ -60,7 +60,7 @@ app.whenReady().then(async()=>{
     contractForm(false,{pid:np});await sl(60);const ui=document.querySelector('#cb_unit input');ui.focus();ui.dispatchEvent(new Event('focus'));await sl(40);out.unitListed=[...document.querySelectorAll('#cb_unit .cbo')].some(x=>x.textContent.includes('T-1'));
     document.querySelector('#cb_unit .cbo').dispatchEvent(new MouseEvent('mousedown',{bubbles:true}));await sl(40);out.ownerFilled=document.querySelector('#cb_owner input').value;
     const ti=document.querySelector('#cb_ten input');ti.value='مستأجر اختبار';ti.dispatchEvent(new Event('input'));
-    set('cf_count','4');set('cf_period','سنة');set('cf_start','2026-01-01');out.end=document.getElementById('cf_end').value;document.getElementById('cf_rent').value=30000;document.getElementById('cf_rent').dispatchEvent(new Event('input'));
+    set('cf_freq','3');set('cf_period','سنة');set('cf_start','2026-01-01');out.end=document.getElementById('cf_end').value;document.getElementById('cf_rent').value=30000;document.getElementById('cf_rent').dispatchEvent(new Event('input'));
     // missing required check
     set('cf_start','');document.getElementById('cf_save').click();await sl(50);out.reqErr=document.getElementById('cf_err').textContent;set('cf_start','2026-01-01');set('cf_period','سنة');
     document.getElementById('cf_save').click();await sl(150);const nc=P()[np].contracts[0];out.contract=!!nc;
@@ -78,6 +78,15 @@ app.whenReady().then(async()=>{
     // agreement + analysis from it
     agrForm(null);set('ag_pick',np+'|'+nc.id);document.getElementById('ag_pick').dispatchEvent(new Event('change',{bubbles:true}));await sl(50);document.getElementById('ag_save').click();await sl(120);out.agr=S.db.agreements.length;
     anForm(null);set('an_pick',np+'|'+nc.id);document.getElementById('an_pick').dispatchEvent(new Event('change',{bubbles:true}));await sl(60);document.getElementById('an_save').click();await sl(120);out.ana=S.db.analyses.length;
+    // v1.8 checks
+    {const c0=P()[np].contracts[0];payForm(np,c0.id,'');out.payAuto=document.getElementById('ff_from').value+'>'+document.getElementById('ff_to').value+' '+document.getElementById('ff_amount').value;document.getElementById('frm').close();
+    contractForm(false);const w=document.querySelector('[data-dt="cf_start"]'),d=w.querySelector('.dtd'),m=w.querySelector('.dtm'),y=w.querySelector('.dty');
+    d.value='٥';d.dispatchEvent(new Event('input',{bubbles:true}));m.value='11';m.dispatchEvent(new Event('change',{bubbles:true}));y.value='26';y.dispatchEvent(new Event('input',{bubbles:true}));y.dispatchEvent(new Event('focusout',{bubbles:true}));out.dt=document.getElementById('cf_start').value;
+    set('cf_period','__c');set('cf_pm','5');out.end5=document.getElementById('cf_end').value;set('cf_freq','s');set('cf_fqv','2');set('cf_rent','10000');out.sched5=document.querySelectorAll('#cf_sched .ch').length;
+    document.getElementById('frm').close();
+    const x1=P()[np].contracts[0];exitForm(np,x1.id);set('ff_date','2026-06-30');set('ff_rem','waive');document.getElementById('fsave').click();await sl(80);
+    const rr=calc(P()[np].contracts[0],MODE(),TODAY);out.early=rr.st+'/'+rr.rem+'/'+rr.late+'/'+unitInfo(P()[np],P()[np].units.find(u=>u.no==='T-1')).st;
+    attField('t1',[]);ATT.reg.t1.list.push({id:'x',name:'a.pdf',size:2048,f:'x.pdf'});out.att=attGet('t1').length;attDiscard();}
     return JSON.stringify(out)})()`);
   console.log('FLOWS',f2);
   await shot('contract_req');
