@@ -34,7 +34,7 @@ app.whenReady().then(async()=>{
   await ev(`S.rp.tab='tenant';S.rp.tenant=tenantNames(rows())[7];render()`);await shot('rep_tenant');
   await ev(`S.rp.tab='tab';S.rp.rep='age';render()`);await shot('rep_tab');
   await ev(`S.pr.tab='units';go('props')`);await shot('props_units');
-  await ev(`S.en.s='all';go('ended')`);await shot('ended_all');
+  await ev(`go('ended')`);await shot('ended_all');
   await ev(`go('contracts');contractForm(false)`);await sleep(200);await shot('contract_new');await ev(`document.getElementById('cf_save')&&(()=>{const E=(i,v)=>{const e=document.getElementById(i);e.value=v;e.dispatchEvent(new Event('change',{bubbles:true}))};E('cf_period','__c');document.getElementById('cf_pm').value=5;document.getElementById('cf_pm').dispatchEvent(new Event('input',{bubbles:true}));E('cf_freq','s');document.getElementById('cf_fqv').value=2;setDate('cf_start','2026-12-01');document.getElementById('cf_start').dispatchEvent(new Event('change',{bubbles:true}));document.getElementById('cf_rent').value=20000;document.getElementById('cf_rent').dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('#frm').scrollTo(0,400)})()`);await sleep(200);await shot('contract_new2');await ev(`(()=>{const pid=Object.keys(P())[0],c=P()[pid].contracts.find(c=>calc(c,MODE(),TODAY).st==='ساري'&&c.rent);document.getElementById('frm').close();payForm(pid,c.id,'')})()`);await sleep(200);await shot('pay_form');await ev(`(()=>{const pid=Object.keys(P())[0],c=P()[pid].contracts.find(c=>calc(c,MODE(),TODAY).st==='ساري');document.getElementById('frm').close();exitForm(pid,c.id)})()`);await sleep(200);await shot('exit_form');await ev(`document.getElementById('frm').close()`);
   const f1=await ev(`(async()=>{const sl=ms=>new Promise(r=>setTimeout(r,ms));contractForm(false);const E=(i,v,ev='change')=>{const e=document.getElementById(i);e.value=v;e.dispatchEvent(new Event(ev,{bubbles:true}))};
     const pids=Object.keys(P());const pid=pids[3];E('cf_pid',pid);await sl(50);
@@ -99,13 +99,20 @@ app.whenReady().then(async()=>{
     out.applyAll=P()[pidE].contracts.filter(c=>c.tenant==='مستأجر معدل ٩').length===sameT;
     // ended -> renewal exclusion
     const rx=rows().find(x=>x.r.st==='منتهي'&&endState(x.pid,x.c)==='pend');const before=renewalsOpen(rows(),90).length+'|'+endedList(rows()).length;
-    mutate(rx.pid,q=>{q.contracts.find(c=>c.id===rx.c.id).exit={date:rx.c.end}});const after=renewalsOpen(rows(),365).some(y=>y.c.id===rx.c.id);out.renExcluded=!after;S.en.s='pend';out.endedExcluded=!endedList(rows()).some(y=>y.c.id===rx.c.id);
+    mutate(rx.pid,q=>{q.contracts.find(c=>c.id===rx.c.id).exit={date:rx.c.end}});const after=renewalsOpen(rows(),365).some(y=>y.c.id===rx.c.id);out.renExcluded=!after;out.endedExcluded=!endedList(rows()).some(y=>y.c.id===rx.c.id);
     // unit off / on
     S.av={p:'',q:'',s:'avail'};const L0=availList(),a0=L0[0];const nA=L0.length;act.unitOff({dataset:{p:a0.pid,i:a0.u.id}});await sl2(60);document.getElementById('fsave').click();await sl2(100);
     out.offRemoved=availList().length===nA-1;S.av.s='unavail';out.offListed=availList().some(o=>o.u.id===a0.u.id);act.unitOn({dataset:{p:a0.pid,i:a0.u.id}});S.av.s='avail';out.onBack=availList().length===nA;
     // click outside closes
     const dt=document.getElementById('det');openDet(pidE,c0.id);const bd=dt.getBoundingClientRect();dt.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,clientX:2,clientY:2}));out.outsideClose=!dt.open;
     out.audit=auditData().length;}
+
+    // v1.9.1: filters work and archive is hidden
+    {const all=rows();S.f={p:'',q:'',s:''};const base=all.filter(x=>passC(x)).length;const arch=all.filter(x=>passC(x,'archive')).length;
+    out.filterAll=base+arch===all.length;
+    const btn=document.createElement('button');btn.dataset.s='late';act.cSt(btn);const lateN=document.querySelectorAll('#view tbody tr').length;out.filterLate=lateN===all.filter(x=>x.r.late_n).length;
+    S.f.s='ended';render();out.filterEnded=document.querySelectorAll('#view tbody tr').length===all.filter(x=>x.r.st==='منتهي'&&endState(x.pid,x.c)==='pend').length;S.f.s='';
+    go('ended');const pendN=document.querySelectorAll('#view tbody tr').length;out.endedOnlyPend=pendN===all.filter(x=>x.r.st==='منتهي'&&endState(x.pid,x.c)==='pend').length&&!document.querySelector('#view .ch.ok');}
     return JSON.stringify(out)})()`);
   console.log('FLOWS',f2);
   await shot('contract_req');
