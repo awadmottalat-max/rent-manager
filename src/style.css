@@ -246,3 +246,17 @@ ul.aud{margin:6px 0 12px;padding-inline-start:18px;display:grid;gap:4px;font-siz
 .lease .ls-sg b{display:block;color:#1c2f55}.lease .ls-sg small{display:block;color:#555}.lease .ls-sg i{position:absolute;bottom:22px;inset-inline:10px;border-top:1px dashed #777;font-style:normal;color:#777;font-size:9.5px;padding-top:2px}.lease .ls-sg em{position:absolute;bottom:4px;inset-inline:0;font-style:normal;font-size:10px}
 .lease .ls-f2{margin-top:8px;text-align:center;color:#666;font-size:9.5px;border-top:1px solid #ccc;padding-top:4px}
 @media print{.lease{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+
+/* ===== تحسينات عامة 1.11 ===== */
+::selection{background:#1f78b433}
+*{scrollbar-width:thin;scrollbar-color:#b9c3d6 transparent}
+.kpis.dk{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+@media(min-width:1000px){.kpis.sm{grid-template-columns:repeat(5,1fr)}}
+.kp{transition:transform .15s,box-shadow .15s,border-color .15s}.kp:hover{transform:translateY(-2px);box-shadow:0 6px 18px #14234b1c}
+.bar{flex-wrap:wrap;row-gap:8px}.bar select{min-width:150px;max-width:260px}
+.tw tbody tr{transition:background .12s}.tw tbody tr[data-a]:hover{background:#e8f2fb!important;cursor:pointer}
+.tw thead th{position:sticky;top:0;z-index:1}
+.btn{transition:background .12s,border-color .12s,box-shadow .12s,transform .08s}.btn:active{transform:translateY(1px)}
+.ch{letter-spacing:0}
+.empty{padding:26px 12px;text-align:center;color:var(--mut)}
+dialog select[data-ts]+input{width:100%}

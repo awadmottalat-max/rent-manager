@@ -1,6 +1,6 @@
 /* اتفاقيات التأجير والتحليل المالي */
 'use strict';
-Object.assign(S,{agr:{p:'',q:''},fin:{p:'',q:'',m:''}});
+Object.assign(S,{agr:{p:'',q:'',s:'',o:'',m:''},fin:{p:'',q:'',m:''}});
 const VATP=()=>Number(S.db.settings.vat??15);
 const A_=()=>S.db.agreements=S.db.agreements||[];
 const N_=()=>S.db.analyses=S.db.analyses||[];
@@ -18,9 +18,15 @@ const DEF_CLAUSES=`1. يلتزم الطرف الأول (المالك) بتسلي
 7. تسري هذه الاتفاقية طوال مدة عقد الإيجار، وتُرفع أي منازعة للجهات المختصة في المملكة العربية السعودية.`;
 
 /* ===== اتفاقيات التأجير ===== */
+const AGST={act:'سارية',fut:'لم تبدأ',end:'منتهية',nod:'بلا تواريخ'};
+function agrSt(a){const s=pd(a.start),e=pd(a.end);if(s==null&&e==null)return'nod';if(s!=null&&s>TODAY)return'fut';if(e!=null&&e<TODAY)return'end';return'act'}
+function agrFilters(){
+  const ow=[...new Set(A_().map(a=>String(a.owner||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar')),F=S.agr,o=(v,l,c)=>`<option value="${esc(v)}"${c===v?' selected':''}>${esc(l)}</option>`;
+  return `<select id="ag_s" aria-label="الحالة">${o('','كل الحالات',F.s)}${Object.entries(AGST).map(([k,l])=>o(k,l,F.s)).join('')}</select><select id="ag_o" aria-label="المالك">${o('','كل الملاك',F.o)}${ow.map(x=>o(x,x,F.o)).join('')}</select><select id="ag_m" aria-label="نوع الرسوم">${o('','كل أنواع الرسوم',F.m)}${o('pct','نسبة مئوية',F.m)}${o('fixed','مبلغ مقطوع',F.m)}</select>${(F.p||F.s||F.o||F.m||F.q)?'<button class="btn" data-a="agrReset">مسح الفلاتر</button>':''}`;
+}
 function agrRows(){
-  const q=S.agr.q.toLowerCase();
-  return A_().filter(a=>(!S.agr.p||a.pid===S.agr.p)&&(!q||txt(a.no,a.unit,a.owner,a.tenant,pname(a.pid)).includes(q)));
+  const q=S.agr.q.toLowerCase(),F=S.agr;
+  return A_().filter(a=>(!F.p||a.pid===F.p)&&(!F.o||nm(a.owner)===nm(F.o))&&(!F.m||a.mgmt?.type===F.m)&&(!F.s||agrSt(a)===F.s)&&(!q||txt(a.no,a.unit,a.owner,a.tenant,pname(a.pid)).includes(q)));
 }
 function vAgr(){
   const L=agrRows(),cols=[{h:'رقم',k:'d'},{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المستأجر',k:'t'},{h:'الإيجار السنوي',k:'n'},{h:'رسوم الإدارة',k:'t'},{h:'إجمالي الإدارة بالضريبة',k:'n'},{h:'رسوم العقد',k:'t'},{h:'',k:'ac'}];
@@ -29,7 +35,7 @@ function vAgr(){
       `<button class="btn sm p" data-a="agrPrint" data-i="${esc(a.id)}">طباعة</button> <button class="btn sm" data-a="agrPdf" data-i="${esc(a.id)}">PDF</button> <button class="btn sm" data-a="agrEdit" data-i="${esc(a.id)}">تعديل</button> <button class="btn sm" data-a="finFromAgr" data-i="${esc(a.id)}">تحليل</button> <button class="btn sm dng" data-a="agrDel" data-i="${esc(a.id)}">حذف</button>`]}});
   S.pm={title:'اتفاقيات التأجير',sub:'ثلاثية: المالك والمستأجر والمشغّل',cols,rows:rws,foot:['الإجمالي: '+L.length,'','','',fm(sum(L,a=>+a.annualRent||0)),'',fm(sum(L,a=>Fin.agrCalc(a,VATP()).mgmtTotal)),'','']};
   return `<h1>اتفاقيات التأجير</h1><p class="sub">اتفاقية ثلاثية بين المالك والمستأجر و${esc(S.db.settings.operator)}، تحدد الإيجار السنوي ورسوم إدارة الأملاك (نسبة أو مبلغ مقطوع) ورسوم عقد الإيجار والدفعات التي تُخصم منها. تُربط تلقائيًا بالتحليل المالي.</p>
-<div class="bar"><button class="btn p" data-a="agrNew">+ اتفاقية جديدة</button><select id="ag_p">${projOpts(S.agr.p,true)}</select><input type="search" id="ag_q" placeholder="بحث: وحدة، مالك، مستأجر" value="${esc(S.agr.q)}">${pbtn('list')}</div>
+<div class="bar"><button class="btn p" data-a="agrNew">+ اتفاقية جديدة</button><select id="ag_p">${projOpts(S.agr.p,true)}</select>${agrFilters()}<input type="search" id="ag_q" placeholder="بحث: وحدة، مالك، مستأجر" value="${esc(S.agr.q)}">${pbtn('list')}</div>
 ${rws.length?T(cols,rws,{foot:S.pm.foot}):'<div class="tw"><p class="empty">لا توجد اتفاقيات بعد. اضغط «اتفاقية جديدة» واختر العقد لتعبئة البيانات تلقائيًا.</p></div>'}`;
 }
 function agrInstRow(x,i,mode){
@@ -53,7 +59,8 @@ function agrForm(id,pre){
   const cs=[];for(const[pid,p]of Object.entries(P()))for(const c of p.contracts)cs.push([pid+'|'+c.id,p.name+' — '+c.unit+' — '+(c.tenant||'')]);
   const f=(l,el,full)=>`<label class="${full?'full':''}">${l}${el}</label>`,inp=(i,v,t='text')=>t==='date'?dateField(i,v):`<input id="${i}" type="${t}" ${t==='number'?'step="0.01"':''} value="${esc(v??'')}">`,sel=(i,o,v)=>`<select id="${i}">${o.map(([x,y])=>`<option value="${esc(x)}"${String(x)===String(v)?' selected':''}>${esc(y)}</option>`).join('')}</select>`;
   $('#frm').innerHTML=`<div class="dh"><h2>${id?'تعديل الاتفاقية':'اتفاقية تأجير جديدة'}</h2><button class="x" data-a="fclose" aria-label="إغلاق">✕</button></div>
-<div class="fg">${f('تعبئة من عقد قائم',sel('ag_pick',[['','— اختر عقدًا —'],...cs],''),1)}
+<div class="fg">${f('تصفية العقود حسب المشروع',`<select id="ag_pf">${projOpts('',true)}</select>`)}${f('بحث عن عقد (وحدة، مستأجر، مالك)',`<input id="ag_ps" type="search" placeholder="اكتب للتصفية">`)}
+${f('تعبئة من عقد قائم',`<select id="ag_pick"><option value="">— اختر عقدًا —</option>${cs.map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join('')}</select>`,1)}
 ${f('رقم الاتفاقية',inp('ag_no',a.no))}${f('تاريخ الاتفاقية',inp('ag_date',a.date,'date'))}
 ${f('المشروع',`<select id="ag_pid">${projOpts(a.pid,false)}</select>`)}${f('الوحدة',inp('ag_unit',a.unit))}${f('المالك (الطرف الأول)',inp('ag_owner',a.owner))}${f('المستأجر (الطرف الثاني)',inp('ag_tenant',a.tenant))}
 ${f('بداية الإيجار',inp('ag_start',a.start,'date'))}${f('نهاية الإيجار',inp('ag_end',a.end,'date'))}
@@ -77,6 +84,10 @@ ${f('بنود الاتفاقية (قابلة للتعديل)',`<textarea id="ag_
     persist();$('#frm').close();render();toast('تم حفظ الاتفاقية')};
   agrPreview();
 }
+function agrPickList(){
+  const pf=rv('ag_pf'),q=rv('ag_ps').toLowerCase(),el=document.getElementById('ag_pick');if(!el)return;let h='<option value="">— اختر عقدًا —</option>',n=0;
+  for(const[pid,p]of Object.entries(P())){if(pf&&pid!==pf)continue;for(const c of p.contracts){if(q&&!txt(c.unit,c.tenant,c.owner,p.name).includes(q))continue;n++;h+=`<option value="${esc(pid+'|'+c.id)}">${esc(p.name+' — '+c.unit+' — '+(c.tenant||''))}</option>`}}
+  el.innerHTML=h;if(n===1)el.selectedIndex=1}
 function agrPick(v){
   const[pid,cid]=v.split('|'),c=cOf(pid,cid);if(!c)return;
   const r=calc(c,MODE(),TODAY),ann=r.m&&r.m!==12?(r.total/r.m*12):r.total;
@@ -199,12 +210,12 @@ Object.assign(act,{
 });
 document.addEventListener('input',e=>{
   const id=e.target.id,v=e.target.value.trim();
-  if(id==='ag_q'){S.agr.q=v;render()}else if(id==='fn_q'){S.fin.q=v;render()}
+  if(id==='ag_q'){S.agr.q=v;render()}else if(id==='ag_ps'){agrPickList()}else if(id==='fn_q'){S.fin.q=v;render()}
   else if(e.target.closest('#frm')){if(id.startsWith('ag_')||e.target.closest('#ag_inst'))agrPreview();else if(id.startsWith('an_'))anPreview()}
 });
 document.addEventListener('change',e=>{
   const id=e.target.id,v=e.target.value;
-  if(id==='ag_p'){S.agr.p=v;render()}else if(id==='fn_p'){S.fin.p=v;render()}
+  if(id==='ag_p'){S.agr.p=v;render()}else if(id==='ag_s'){S.agr.s=v;render()}else if(id==='ag_o'){S.agr.o=v;render()}else if(id==='ag_m'){S.agr.m=v;render()}else if(id==='ag_pf'){agrPickList()}else if(id==='fn_p'){S.fin.p=v;render()}
   else if(id==='ag_pick'&&v)agrPick(v);
   else if(id==='an_pick'&&v){const[p,c]=v.split('|');$('#an_pid').value=p;$('#an_cid').value=c;const cc=cOf(p,c),ps=[...cc.payments].sort((x,y)=>String(x.date).localeCompare(String(y.date)));
     $('#an_pay').innerHTML='<option value="">— يدوي —</option>'+ps.map(q=>`<option value="${esc(q.id)}">${esc((q.date||'بلا تاريخ')+' — '+fm(q.amount))}</option>`).join('');if(ps.length)$('#an_pay').value=ps[ps.length-1].id;anPrefill()}
