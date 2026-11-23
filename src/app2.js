@@ -87,7 +87,7 @@ ${f('بنود الاتفاقية (قابلة للتعديل)',`<textarea id="ag_
 function agrPickList(){
   const pf=rv('ag_pf'),q=rv('ag_ps').toLowerCase(),el=document.getElementById('ag_pick');if(!el)return;let h='<option value="">— اختر عقدًا —</option>',n=0;
   for(const[pid,p]of Object.entries(P())){if(pf&&pid!==pf)continue;for(const c of p.contracts){if(q&&!txt(c.unit,c.tenant,c.owner,p.name).includes(q))continue;n++;h+=`<option value="${esc(pid+'|'+c.id)}">${esc(p.name+' — '+c.unit+' — '+(c.tenant||''))}</option>`}}
-  el.innerHTML=h;if(n===1)el.selectedIndex=1}
+  el.innerHTML=h;if(n===1){el.selectedIndex=1;agrPick(el.value)}}
 function agrPick(v){
   const[pid,cid]=v.split('|'),c=cOf(pid,cid);if(!c)return;
   const r=calc(c,MODE(),TODAY),ann=r.m&&r.m!==12?(r.total/r.m*12):r.total;

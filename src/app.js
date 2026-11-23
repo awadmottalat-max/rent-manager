@@ -528,7 +528,7 @@ function vUnitsTab(){
 function vProps(all){
   if(S.pr.tab==='units')return vUnitsTab();
   const q=S.pr.q.toLowerCase(),sm=Object.fromEntries(unitsSummary().map(x=>[x.pid,x]));
-  const list=Object.entries(P()).filter(([,p])=>!q||txt(p.name,p.no,p.address).includes(q)).sort((a,b)=>a[1].name.localeCompare(b[1].name,'ar')).map(([pid,p])=>{
+  const list=Object.entries(P()).filter(([,p])=>!q||txt(p.name,p.no,p.address,(p.units||[]).map(u=>u.no+' '+(u.owner||'')).join(' ')).includes(q)).sort((a,b)=>a[1].name.localeCompare(b[1].name,'ar')).map(([pid,p])=>{
     const rs=all.filter(x=>x.pid===pid),m=sm[pid];
     return{pid,p,units:m.total,occ:m.rented,av:m.avail,pd:m.pend,un:m.unavail,act:rs.filter(x=>x.r.st==='ساري').length,tot:sum(rs,x=>x.r.total||0),rem:sum(rs,x=>x.r.rem>0?x.r.rem:0),late:sum(rs,x=>x.r.late)}});
   const cols=[{h:'المشروع',k:'t'},{h:'رقم المشروع',k:'d'},{h:'الوحدات',k:'n'},{h:'مؤجرة',k:'n'},{h:'متاحة',k:'n'},{h:'بانتظار القرار',k:'n'},{h:'غير متاحة',k:'n'},{h:'الإشغال',k:'n'},{h:'عقود سارية',k:'n'},{h:'إجمالي العقود',k:'n'},{h:'المتبقي',k:'n'},{h:'المتأخر',k:'n'}];
@@ -536,7 +536,7 @@ function vProps(all){
   const foot=['الإجمالي ('+list.length+')','',sum(list,o=>o.units),sum(list,o=>o.occ),sum(list,o=>o.av),sum(list,o=>o.pd),sum(list,o=>o.un),'',sum(list,o=>o.act),fm(sum(list,o=>o.tot)),fm(sum(list,o=>o.rem)),fm(sum(list,o=>o.late))];
   S.pm={title:'تقرير المشاريع والوحدات',sub:'حالة الإشغال والوحدات المتاحة والتحصيل',cols,rows:rws,foot};
   return `<h1>المشاريع والوحدات</h1><p class="sub">سجل الأملاك: المشاريع ووحداتها وحالة الإشغال. تُضاف الوحدات تلقائيًا من العقود، ويمكنك إضافة وحدات متاحة يدويًا.</p>${propsTabs()}
-<div class="bar"><button class="btn p" data-a="newProj">+ مشروع جديد</button><input type="search" id="pq" placeholder="بحث باسم المشروع" value="${esc(S.pr.q)}">${pbtn('list')}</div>${T(cols,rws,{foot})}`;
+<div class="bar"><button class="btn p" data-a="newProj">+ مشروع جديد</button><input type="search" id="pq" placeholder="بحث باسم المشروع أو رقم الوحدة أو المالك" value="${esc(S.pr.q)}">${pbtn('list')}</div>${T(cols,rws,{foot})}`;
 }
 function projUnits(pid,print){
   const p=P()[pid],us=[...(p.units||[])].sort((a,b)=>String(a.no).localeCompare(String(b.no),'ar',{numeric:true}));

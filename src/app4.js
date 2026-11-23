@@ -1,6 +1,6 @@
 /* الملاك والمستأجرون: سجل قابل للإضافة والتعديل */
 'use strict';
-Object.assign(S,{tn:{q:''}});
+Object.assign(S,{tn:{q:'',p:'',u:''}});S.ow=Object.assign({p:'',u:''},S.ow);
 const PR=k=>{S.db.parties=S.db.parties||{owners:[],tenants:[]};S.db.parties[k]=S.db.parties[k]||[];return S.db.parties[k]};
 const FKEY={owners:'owner',tenants:'tenant'},PLAB={owners:'مالك',tenants:'مستأجر'};
 const nm=v=>String(v||'').trim();
@@ -18,8 +18,13 @@ function partyList(kind,all){
   return [...by.values()].map(o=>({...o,reg:reg[o.name]||null})).sort((a,b)=>a.name.localeCompare(b.name,'ar'));
 }
 function vParties(kind,all){
-  const q=S[kind==='owners'?'ow':'tn'].q.toLowerCase(),L=partyList(kind,all).filter(o=>!q||txt(o.name,o.reg?.phone,o.reg?.idno,o.projects.join(' ')).includes(q));
-  const ow=kind==='owners';
+  const F=S[kind==='owners'?'ow':'tn'],q=F.q.toLowerCase(),uq=String(F.u||'').toLowerCase();
+  const ow=kind==='owners',key=x=>nm(ow?x.c.owner:x.c.tenant)||(ow?'(بدون مالك)':'(بدون مستأجر)');
+  let ok=null;
+  if(F.p||uq){ok=new Set();
+    for(const x of all){if(F.p&&x.pid!==F.p)continue;if(uq&&!txt(x.c.unit).includes(uq))continue;ok.add(key(x))}
+    if(ow)for(const[pid,p]of Object.entries(P())){if(F.p&&pid!==F.p)continue;for(const u of p.units||[]){if(!nm(u.owner))continue;if(uq&&!txt(u.no).includes(uq))continue;ok.add(nm(u.owner))}}}
+  const L=partyList(kind,all).filter(o=>(!ok||ok.has(o.name))&&(!q||txt(o.name,o.reg?.phone,o.reg?.idno,o.projects.join(' ')).includes(q)));
   const cols=[{h:ow?'المالك':'المستأجر',k:'t'},{h:'الجوال',k:'t'},{h:'الهوية / السجل',k:'t'},{h:'المشاريع',k:'t'},{h:'وحدات',k:'n'},{h:'عقود',k:'n'},{h:'إجمالي الإيجار',k:'n'},{h:'المحصَّل',k:'n'},{h:'المتبقي',k:'n'},{h:'المتأخر',k:'n'},...(ow?[{h:'صافي المحصَّل',k:'n'}]:[]),{h:'',k:'ac'}];
   const rws=L.map(o=>({attrs:` data-a="${ow?'ownOpen':'tenOpen'}" data-n="${esc(o.name)}"`,cells:['<b>'+esc(o.name)+'</b>',esc(o.reg?.phone)||'—',esc(o.reg?.idno)||'—',esc(o.projects.join('، '))||'—',o.units,o.contracts,fm(o.total),fm(o.paid),fm(o.rem),o.late?fm(o.late):'—',...(ow?['<b>'+fm(o.net)+'</b>']:[]),
     `<button class="btn sm" data-a="partyEdit" data-k="${kind}" data-n="${esc(o.name)}">تعديل</button>`+(o.contracts?'':` <button class="btn sm dng" data-a="partyDel" data-k="${kind}" data-n="${esc(o.name)}">حذف</button>`)]}));
@@ -27,7 +32,7 @@ function vParties(kind,all){
   const foot=['الإجمالي ('+L.length+')','','','',sum(L,o=>o.units),sum(L,o=>o.contracts),fm(sum(L,o=>o.total)),fm(sum(L,o=>o.paid)),fm(sum(L,o=>o.rem)),fm(sum(L,o=>o.late)),...(ow?[fm(sum(L,o=>o.net))]:[]),''];
   S.pm={title:ow?'سجل الملاك':'سجل المستأجرين',sub:'عدد: '+L.length,cols:pcols,rows:rws.map(r=>({...r,cells:r.cells.slice(0,pcols.length)})),foot:foot.slice(0,pcols.length)};
   return `<h1>${ow?'الملاك':'المستأجرون'}</h1><p class="sub">${ow?'سجل الملاك مع كشف حساب لكل مالك: المحصَّل من الإيجارات ناقصًا رسوم الأملاك.':'سجل المستأجرين وعقودهم وأرصدتهم، وكشف حساب لكل مستأجر.'} انقر على الاسم لعرض الكشف. «إضافة» لتسجيل ${PLAB[kind]} جديد قبل ربطه بعقد، و«تعديل» لتحديث بياناته (تغيير الاسم يُحدَّث في كل عقوده).</p>
-<div class="bar"><button class="btn p" data-a="partyNew" data-k="${kind}">+ إضافة ${PLAB[kind]}</button><input type="search" id="${ow?'oq':'tq'}" placeholder="بحث بالاسم أو الجوال أو الهوية" value="${esc(S[ow?'ow':'tn'].q)}">${pbtn('list')}</div>${T(cols,rws,{foot})}`;
+<div class="bar"><button class="btn p" data-a="partyNew" data-k="${kind}">+ إضافة ${PLAB[kind]}</button><input type="search" id="${ow?'oq':'tq'}" placeholder="بحث بالاسم أو الجوال أو الهوية" value="${esc(F.q)}"><select id="pt_p" aria-label="المشروع">${projOpts(F.p,true)}</select><input type="search" id="pt_u" placeholder="رقم الوحدة" value="${esc(F.u||'')}" style="max-width:150px">${(F.p||F.u||F.q)?'<button class="btn" data-a="ptReset">مسح الفلاتر</button>':''}${pbtn('list')}</div>${T(cols,rws,{foot})}`;
 }
 VF.owners=a=>vParties('owners',a);VF.tenants=a=>vParties('tenants',a);
 function partyForm(kind,name){
@@ -48,4 +53,8 @@ Object.assign(act,{
   partyNew:b=>partyForm(b.dataset.k,''),partyEdit:b=>partyForm(b.dataset.k,b.dataset.n),
   partyDel:b=>arm(b,()=>{S.db.parties[b.dataset.k]=PR(b.dataset.k).filter(r=>nm(r.name)!==b.dataset.n);persist();render()}),
   tenOpen:b=>tenantDlg(b.dataset.n)});
+const PF=()=>S.view==='owners'?S.ow:S.tn;
+document.addEventListener('input',e=>{if(e.target.id==='pt_u'){PF().u=e.target.value.trim();render()}});
+document.addEventListener('change',e=>{if(e.target.id==='pt_p'){PF().p=e.target.value;render()}});
+Object.assign(act,{ptReset:()=>{const F=PF();F.p='';F.u='';F.q='';render()}});
 document.addEventListener('input',e=>{if(e.target.id==='tq'){S.tn.q=e.target.value.trim();render()}});
