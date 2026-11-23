@@ -1,6 +1,6 @@
 /* التقارير + تصدير Excel */
 'use strict';
-Object.assign(S,{rp:{tab:'ov',p:'',owner:'',tenant:'',from:'',to:'',rep:'pay',fo:'',ft:''}});
+Object.assign(S,{rp:{tab:'ov',p:'',owner:'',tenant:'',from:'',to:'',rep:'pay',fo:'',ft:'',kd:''}});
 const plain=h=>{const d=document.createElement('div');d.innerHTML=String(h??'');return d.textContent.replace(/\s+/g,' ').trim()};
 async function exportXlsx(name,m){
   if(!m){toast('لا يوجد تقرير لتصديره');return}
@@ -54,23 +54,82 @@ function tabOv(all){all=all.filter(x=>(!S.rp.p||x.pid===S.rp.p)&&nf(x,'owner',S.
   for(const x of all){for(const i of x.r.inst){const k=mkey(i.date);if(k in exp)exp[k]+=i.amount}for(const p of x.c.payments||[]){const t=pd(p.date);if(t!=null){const k=mkey(t);if(k in col)col[k]+=+p.amount||0}}}
   const age=[0,0,0,0];for(const x of all)for(const i of x.r.inst)if(i.late)age[bucketAge(Math.round((TODAY-i.date)/DAY))]+=i.due;
   const byP=Object.entries(P()).map(([pid,p])=>{const rs=all.filter(x=>x.pid===pid);return{l:p.name,a:sum(rs,x=>x.r.total||0),b:sum(rs,x=>x.r.paid||0)}}).sort((a,b)=>b.a-a.a);
-  const k=(l,v,i,c)=>`<div class="kp static ${c||''}"><span>${l}</span><b>${v}</b><i>${i||''}</i></div>`;
+  const KD=S.rp.kd,k=(l,v,i,c,key)=>`<button class="kp ${c||''}${KD===key?' on':''}" data-a="rpKd" data-k="${key}" title="اضغط لعرض كشف التفاصيل"><span>${l}</span><b>${v}</b><i>${i||''}</i></button>`;
   S.pm=null;
-  return `<div class="kpis">${k('إجمالي قيمة العقود',fm(T_),all.length+' عقدًا')}${k('المحصَّل',fm(P_),T_?Math.round(P_/T_*100)+'% من الإجمالي':'')}${k('المتبقي',fm(R_))}${k('المتأخر',fm(L_),all.filter(x=>x.r.late_n).length+' عقدًا','l')}${k('نسبة الإشغال',us('total')?Math.round(us('rented')/us('total')*100)+'%':'—',us('rented')+' من '+us('total')+' وحدة')}${k('متاحة للإيجار',us('avail'),'منتهية بانتظار القرار: '+us('pend'))}</div>
-<div class="g2"><div class="card"><h3>التحصيل مقابل المتوقع — آخر 12 شهرًا</h3>${barSvg(months.map(m=>m.slice(5)+'/'+m.slice(2,4)),months.map(m=>exp[m]),months.map(m=>col[m]),'المتوقع','المحصَّل')}</div>
+  const kdv=KD?(()=>{const m=kdModel(ALLR,KD);setPm(m.title,m.sub,m.cols,m.rows,m.foot);S.pm.footSpan=m.footSpan;return `<div class="row" style="margin:4px 0 10px;justify-content:space-between"><h3 style="margin:0">${esc(m.title)} <span class="bd2">${m.n}</span></h3><span><button class="btn" data-a="rpKd" data-k="">← عودة للنظرة العامة</button> ${pbtn('list')}</span></div>${m.n?T(m.cols,m.rows,{foot:m.foot,footSpan:m.footSpan}):'<div class="card empty">لا توجد بنود ضمن الفلاتر الحالية.</div>'}`})():'';
+  return `<div class="kpis">${k('إجمالي قيمة العقود',fm(T_),all.length+' عقدًا','','total')}${k('المحصَّل',fm(P_),T_?Math.round(P_/T_*100)+'% من الإجمالي':'','','paid')}${k('المتبقي',fm(R_),'','','rem')}${k('المتأخر',fm(L_),all.filter(x=>x.r.late_n).length+' عقدًا','l','late')}${k('نسبة الإشغال',us('total')?Math.round(us('rented')/us('total')*100)+'%':'—',us('rented')+' من '+us('total')+' وحدة','','occ')}${k('متاحة للإيجار',us('avail'),'منتهية بانتظار القرار: '+us('pend'),'','avail')}</div>
+${KD?kdv:`<div class="g2"><div class="card"><h3>التحصيل مقابل المتوقع — آخر 12 شهرًا</h3>${barSvg(months.map(m=>m.slice(5)+'/'+m.slice(2,4)),months.map(m=>exp[m]),months.map(m=>col[m]),'المتوقع','المحصَّل')}</div>
 <div class="card"><h3>الإشغال</h3>${donut([{l:'مؤجرة',v:us('rented'),c:CLR[0]},{l:'متاحة',v:us('avail'),c:CLR[1]},{l:'منتهية بانتظار القرار',v:us('pend'),c:'#e6b94d'},{l:'غير متاحة',v:us('unavail'),c:CLR[3]}])}</div></div>
 <div class="g2"><div class="card"><h3>المحصَّل / إجمالي العقود حسب المشروع</h3>${hbars(byP,fm)}</div>
-<div class="card"><h3>أعمار المتأخرات</h3>${barSvg(AGE,age,age.map(()=>0),'المتأخر','')}<p class="sub" style="margin:4px 0 0">إجمالي المتأخر ${fm(sum(age,v=>v))}</p></div></div>`;
+<div class="card"><h3>أعمار المتأخرات</h3>${barSvg(AGE,age,age.map(()=>0),'المتأخر','')}<p class="sub" style="margin:4px 0 0">إجمالي المتأخر ${fm(sum(age,v=>v))}</p></div></div>`}`;
+}
+
+/* ===== تفاصيل بطاقات النظرة العامة (كشف جاهز للطباعة والإرسال) ===== */
+const KD_LAB={total:'إجمالي قيمة العقود',paid:'المحصَّل (الدفعات)',rem:'المتبقي',late:'المتأخر',occ:'الوحدات المؤجرة (الإشغال)',avail:'الوحدات المتاحة للإيجار'};
+function kdModel(all,kd){
+  const D=S.rp;
+  const ownF=x=>nf(x,'owner',D.fo),tenF=x=>nf(x,'tenant',D.ft),proF=x=>!D.p||x.pid===D.p;
+  const filt=all.filter(x=>proF(x)&&ownF(x)&&tenF(x));
+  const base=[{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'بداية العقد',k:'d'},{h:'نهاية العقد',k:'d'}];
+  const bc=x=>[esc(x.c.owner)||'—',esc(x.c.tenant)||'—',esc(x.pn),'<b>'+esc(x.c.unit)+'</b>',fs_(x.c.start),fs_(x.c.end)];
+  const own=x=>String(x.c.owner||'').trim()||'(بدون مالك)';
+  let cols,rows=[],title=KD_LAB[kd],note='';
+  if(kd==='late'||kd==='rem'){
+    cols=[...base,{h:'استحقاق الدفعة',k:'d'},{h:'رقم القسط',k:'d'},{h:'قيمة القسط',k:'n'},{h:'المسدد',k:'n'},{h:'المتبقي',k:'n'},{h:kd==='late'?'أيام التأخر':'الحالة',k:'d'}];
+    for(const x of filt)for(const i of x.r.inst){if(!(i.due>0.005)||i.waived)continue;if(kd==='late'&&!i.late)continue;
+      const days=i.date!=null?Math.round((TODAY-i.date)/DAY):0;
+      rows.push({k:own(x),srt:[x.pn,String(x.c.unit),i.date??0],attrs:open_(x),cls:i.late?'late':'',v:{},cells:[...bc(x),i.date!=null?fd(i.date):'بلا تاريخ',i.n+' / '+x.r.k,fm(i.amount),fm(i.paid),'<b>'+fm(i.due)+'</b>',kd==='late'?days:(i.late?'متأخر '+days+' يومًا':i.soon?'خلال 30 يومًا':'لم يحن بعد')],
+        _n:[i.amount,i.paid,i.due]})}
+    if(kd==='rem')for(const x of filt){const sd=sum(x.r.inst,i=>i.due>0.005&&!i.waived?i.due:0),df=Fin.r2((x.r.rem>0?x.r.rem:0)-sd);
+      if(df>0.5)rows.push({k:own(x),srt:[x.pn,String(x.c.unit),9e15],attrs:open_(x),cls:'',cells:[...bc(x),'بلا تاريخ','رصيد غير مجدول',fm(df),fm(0),'<b>'+fm(df)+'</b>','أكمل جدول الأقساط'],_n:[df,0,df]})}
+    note=kd==='late'?'الأقساط المستحقة وغير المسددة بعد تاريخ استحقاقها':'كل الأقساط غير المسددة (متأخرة وقادمة)';
+  }else if(kd==='total'){
+    cols=[...base,{h:'أقدم/أقرب دفعة غير مسددة',k:'d'},{h:'رقم القسط',k:'d'},{h:'قيمة العقد',k:'n'},{h:'المسدد',k:'n'},{h:'المتبقي',k:'n'},{h:'الحالة',k:'t'}];
+    for(const x of filt){const nx=x.r.inst.find(i=>i.due>0.005&&!i.waived);
+      rows.push({k:own(x),attrs:open_(x),cls:x.r.late_n?'late':'',cells:[...bc(x),nx&&nx.date!=null?fd(nx.date):'—',nx?nx.n+' / '+x.r.k:'—',fm(x.r.total),fm(x.r.paid),'<b>'+fm(x.r.rem>0?x.r.rem:0)+'</b>',esc(x.r.st)+(x.r.late_n?' — متأخر':'')],_n:[x.r.total||0,x.r.paid||0,x.r.rem>0?x.r.rem:0],srt:[x.pn,String(x.c.unit),pd(x.c.start)||0]})}
+    note='كل العقود ضمن الفلاتر الحالية بقيمها ومسدّدها ومتبقيها';
+  }else if(kd==='paid'){
+    cols=[...base,{h:'تاريخ التحصيل',k:'d'},{h:'السند',k:'d'},{h:'المبلغ المحصَّل',k:'n'},{h:'طريقة السداد',k:'t'},{h:'ملاحظة',k:'t'}];
+    for(const x of filt)for(const p of x.c.payments||[]){const t=pd(p.date);
+      rows.push({k:own(x),attrs:open_(x),cells:[...bc(x),t!=null?fd(t):'—',p.rno?String(p.rno).padStart(5,'0'):'—','<b>'+fm(+p.amount||0)+'</b>',esc(p.method)||'—',esc(p.note)||'—'],_n:[+p.amount||0],srt:[x.pn,String(x.c.unit),t||0]})}
+    note='كل الدفعات المحصَّلة مرتبة بالمالك ثم الوحدة ثم التاريخ';
+  }else if(kd==='occ'){
+    cols=[...base,{h:'الدفعة القادمة',k:'d'},{h:'مبلغها',k:'n'},{h:'إجمالي العقد',k:'n'},{h:'المتبقي',k:'n'}];
+    for(const x of filt){if(x.r.st!=='ساري')continue;const nx=x.r.inst.find(i=>i.due>0.005);
+      rows.push({k:own(x),attrs:open_(x),cells:[...bc(x),nx&&nx.date!=null?fd(nx.date):'—',nx?fm(nx.due):'—',fm(x.r.total),fm(x.r.rem>0?x.r.rem:0)],_n:[nx?nx.due:0,x.r.total||0,x.r.rem>0?x.r.rem:0],srt:[x.pn,String(x.c.unit),0]})}
+    note='الوحدات المؤجرة حاليًا بعقود سارية';
+  }else{
+    cols=[{h:'المالك',k:'t'},{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'النوع',k:'t'},{h:'آخر مستأجر',k:'t'},{h:'بداية آخر عقد',k:'d'},{h:'نهاية آخر عقد',k:'d'},{h:'شاغرة منذ (يوم)',k:'d'},{h:'الإيجار المطلوب',k:'n'}];
+    for(const[pid,p]of Object.entries(P())){if(D.p&&pid!==D.p)continue;
+      for(const u of p.units||[]){const i=unitInfo(p,u);if(i.st!=='avail')continue;const l=i.last;
+        if(D.fo&&!String(u.owner||l?.c.owner||'').toLowerCase().includes(D.fo.toLowerCase()))continue;if(D.ft&&!String(l?.c.tenant||'').toLowerCase().includes(D.ft.toLowerCase()))continue;
+        const e=l?pd(l.c.end):null,days=e!=null&&e<TODAY?Math.round((TODAY-e)/DAY):0;
+        rows.push({k:String(u.owner||l?.c.owner||'').trim()||'(بدون مالك)',attrs:'',cells:[esc(u.owner||l?.c.owner)||'—',esc(p.name),'<b>'+esc(u.no)+'</b>',esc(u.type)||'—',l?esc(l.c.tenant)||'—':'لم تؤجَّر بعد',l?fs_(l.c.start):'—',l?fs_(l.c.end):'—',days||'—',u.askRent?fm(u.askRent):'—'],_n:[u.askRent||0],srt:[p.name,String(u.no),0]})}}
+    note='الوحدات التي لا عقد ساريًا أو قادمًا لها';
+  }
+  const fi=cols.findIndex(c=>c.k==='n'),ncols=cols.map((c,j)=>c.k==='n'?j:-1).filter(j=>j>=0);
+  const G=new Map();for(const r of rows){if(!G.has(r.k))G.set(r.k,[]);G.get(r.k).push(r)}
+  const srt=(a,b)=>a.srt[0].localeCompare(b.srt[0],'ar')||a.srt[1].localeCompare(b.srt[1],'ar',{numeric:true})||(a.srt[2]-b.srt[2]);
+  const out=[];
+  for(const k of [...G.keys()].sort((a,b)=>a.localeCompare(b,'ar'))){const L=G.get(k).sort(srt),sub=ncols.map((j,ix)=>sum(L,r=>r._n[ix]||0));
+    out.push({cls:'grp',span:fi,cells:['المالك: '+k+' — '+L.length+' بندًا',...cols.slice(fi).map((c,j)=>{const ix=ncols.indexOf(fi+j);return ix>=0?fm(sub[ix]):''})]});
+    for(const r of L)out.push({attrs:r.attrs,cls:r.cls,cells:r.cells})}
+  const tot=ncols.map((j,ix)=>sum(rows,r=>r._n[ix]||0));
+  const foot=['الإجمالي ('+rows.length+' بندًا)',...cols.slice(fi).map((c,j)=>{const ix=ncols.indexOf(fi+j);return ix>=0?fm(tot[ix]):''})];
+  const subT=[D.p?'المشروع: '+pname(D.p):'كل المشاريع',D.fo?'المالك: '+D.fo:'',D.ft?'المستأجر: '+D.ft:'','بتاريخ '+iso(TODAY)].filter(Boolean).join(' — ');
+  return{title:'كشف — '+title,sub:subT+' — '+note,cols,rows:out,foot,footSpan:fi,n:rows.length};
 }
 function ownerNames(all){return [...new Set(all.map(x=>String(x.c.owner||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'))}
 function tenantNames(all){return [...new Set(all.map(x=>String(x.c.tenant||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'))}
+function subFilt(kind){const D=S.rp,own=kind==='owner';
+  return `<select id="rp_p" aria-label="المشروع">${projOpts(D.p,true)}</select><input id="${own?'rp_ft':'rp_fo'}" list="${own?'dl_rpt':'dl_rpo'}" placeholder="${own?'فلتر باسم المستأجر…':'فلتر باسم المالك…'}" value="${esc(own?D.ft:D.fo)}"><datalist id="${own?'dl_rpt':'dl_rpo'}">${(own?tenantNames(ALLR):ownerNames(ALLR)).map(n=>`<option value="${esc(n)}">`).join('')}</datalist>${(D.p||(own?D.ft:D.fo))?'<button class="btn" data-a="rpClear">مسح الفلاتر</button>':''}`}
 function tabOwner(all){
-  const D=S.rp,names=ownerNames(all);
-  const sel=`<div class="bar"><input id="rp_owner" list="dl_rpo" placeholder="ابحث باسم المالك أو اخترْه…" value="${esc(D.owner)}" style="min-width:300px"><datalist id="dl_rpo">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist>${rpRange(D)}${D.owner?pbtn('list'):''}</div>`;
+  const D=S.rp;all=all.filter(x=>(!D.p||x.pid===D.p)&&nf(x,'tenant',D.ft));const names=ownerNames(all);
+  const sel=`<div class="bar"><input id="rp_owner" list="dl_rpo" placeholder="ابحث باسم المالك أو اخترْه…" value="${esc(D.owner)}" style="min-width:260px"><datalist id="dl_rpo">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist>${subFilt('owner')}${rpRange(D)}${D.owner?pbtn('list'):''}</div>`;
   if(!D.owner){S.pm=null;return sel+'<div class="card empty">اختر المالك لعرض كشف حسابه.</div>'}
   const exactO=names.includes(D.owner),mine=all.filter(x=>exactO?String(x.c.owner||'').trim()===D.owner:String(x.c.owner||'').toLowerCase().includes(D.owner.toLowerCase())),mv=[];
   for(const x of mine)for(const p of x.c.payments||[]){const t=pd(p.date);if(t!=null&&!rpIn(t,D))continue;mv.push({t:t??0,d:p.date||'',desc:'تحصيل دفعة'+(p.rno?' — سند '+String(p.rno).padStart(5,'0'):'')+(p.note?' — '+p.note:''),pn:x.pn,unit:x.c.unit,ten:x.c.tenant,cr:+p.amount||0,dr:0})}
-  for(const a of S.db.analyses||[]){if(!(exactO?String(a.owner||'').trim()===D.owner:String(a.owner||'').toLowerCase().includes(D.owner.toLowerCase())))continue;const t=pd(a.date);if(!rpIn(t,D))continue;const k=Fin.anaCalc(a,VATP());mv.push({t:t??0,d:a.date,desc:'خصومات التحليل المالي (إدارة وخدمات وضريبة وصيانة…)',pn:pname(a.pid),unit:a.unit,ten:a.tenant,cr:0,dr:k.totalDed})}
+  for(const a of S.db.analyses||[]){if(!(exactO?String(a.owner||'').trim()===D.owner:String(a.owner||'').toLowerCase().includes(D.owner.toLowerCase())))continue;if(D.p&&a.pid!==D.p)continue;if(D.ft&&!String(a.tenant||'').toLowerCase().includes(D.ft.toLowerCase()))continue;const t=pd(a.date);if(!rpIn(t,D))continue;const k=Fin.anaCalc(a,VATP());mv.push({t:t??0,d:a.date,desc:'خصومات التحليل المالي (إدارة وخدمات وضريبة وصيانة…)',pn:pname(a.pid),unit:a.unit,ten:a.tenant,cr:0,dr:k.totalDed})}
   mv.sort((a,b)=>a.t-b.t);let bal=0;
   const cols=[{h:'التاريخ',k:'d'},{h:'البيان',k:'t'},{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المستأجر',k:'t'},{h:'محصَّل',k:'n'},{h:'مخصوم',k:'n'},{h:'الرصيد المستحق للمالك',k:'n'}];
   const rws=mv.map(m=>{bal=Fin.r2(bal+m.cr-m.dr);return{cells:[fs_(m.d),esc(m.desc),esc(m.pn),'<b>'+esc(m.unit)+'</b>',esc(m.ten)||'—',m.cr?fm(m.cr):'—',m.dr?fm(m.dr):'—','<b>'+fm(bal)+'</b>']}});
@@ -82,8 +141,8 @@ function tabOwner(all){
   return sel+`<div class="kpis"><div class="kp static"><span>إجمالي المحصَّل</span><b>${fm(tc)}</b></div><div class="kp static"><span>إجمالي الخصومات</span><b>${fm(td)}</b></div><div class="kp static"><span>صافي المستحق للمالك</span><b>${fm(tc-td)}</b></div><div class="kp static"><span>عدد العقود</span><b>${mine.length}</b></div></div><h3>حركة الحساب</h3>${t1}<h3>عقود المالك</h3>${t2}`;
 }
 function tabTenant(all){
-  const D=S.rp,names=tenantNames(all);
-  const sel=`<div class="bar"><input id="rp_tenant" list="dl_rpt" placeholder="ابحث باسم المستأجر أو اخترْه…" value="${esc(D.tenant)}" style="min-width:300px"><datalist id="dl_rpt">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist>${rpRange(D)}${D.tenant?pbtn('list'):''}</div>`;
+  const D=S.rp;all=all.filter(x=>(!D.p||x.pid===D.p)&&nf(x,'owner',D.fo));const names=tenantNames(all);
+  const sel=`<div class="bar"><input id="rp_tenant" list="dl_rpt" placeholder="ابحث باسم المستأجر أو اخترْه…" value="${esc(D.tenant)}" style="min-width:260px"><datalist id="dl_rpt">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist>${subFilt('tenant')}${rpRange(D)}${D.tenant?pbtn('list'):''}</div>`;
   if(!D.tenant){S.pm=null;return sel+'<div class="card empty">اختر المستأجر لعرض كشف حسابه.</div>'}
   const exactT=names.includes(D.tenant),mine=all.filter(x=>exactT?String(x.c.tenant||'').trim()===D.tenant:String(x.c.tenant||'').toLowerCase().includes(D.tenant.toLowerCase())),mv=[];
   for(const x of mine){
@@ -139,7 +198,7 @@ function vRep(all){
 <div class="tabs">${RT.map(([k,l])=>`<button data-a="rpTab" data-t="${k}" class="${D.tab===k?'on':''}">${l}</button>`).join('')}</div>${body}`;
 }
 VF.rep=vRep;
-Object.assign(act,{rpClear:()=>{Object.assign(S.rp,{fo:'',ft:'',p:''});render()},rpTab:b=>{S.rp.tab=b.dataset.t;render()},xlsx:()=>exportXlsx(S.pm?.title||'report',S.pm)});
+Object.assign(act,{rpKd:b=>{S.rp.kd=b.dataset.k||'';render()},rpClear:()=>{Object.assign(S.rp,{fo:'',ft:'',p:''});render()},rpTab:b=>{S.rp.tab=b.dataset.t;render()},xlsx:()=>exportXlsx(S.pm?.title||'report',S.pm)});
 document.addEventListener('change',e=>{
   const id=e.target.id,v=e.target.value,D=S.rp;
   if(id==='rp_owner')D.owner=v;else if(id==='rp_tenant')D.tenant=v;else if(id==='rp_from')D.from=v;else if(id==='rp_to')D.to=v;else if(id==='rp_p')D.p=v;else if(id==='rp_rep')D.rep=v;else if(id==='rp_fo')D.fo=v.trim();else if(id==='rp_ft')D.ft=v.trim();else return;

@@ -21,7 +21,7 @@ const agoTxt=t=>{const d=Math.floor((Date.now()-t)/864e5);return d<=0?'اليو�
 function alertItems(all){
   const late=[],soon=[];
   for(const x of all){if(x.r.st==='منتهي'&&endState(x.pid,x.c)!=='pend')continue;if(x.c.exit&&pd(x.c.exit.date)<=TODAY)continue;
-    const L=x.r.inst.filter(i=>i.due>0.005&&i.late),U=x.r.inst.filter(i=>i.due>0.005&&!i.late&&i.date!=null&&i.date>=TODAY&&i.date-TODAY<=DAY7*DAY);
+    const L=x.r.inst.filter(i=>i.due>0.005&&i.late),U=x.r.inst.filter(i=>i.due>0.005&&!i.waived&&!i.late&&i.date!=null&&i.date>=TODAY&&i.date-TODAY<=DAY7*DAY);
     if(L.length){const old=Math.min(...L.map(i=>i.date));late.push({x,inst:L,amount:sum(L,i=>i.due),first:old,days:Math.round((TODAY-old)/DAY)})}
     else if(U.length){const f=Math.min(...U.map(i=>i.date));soon.push({x,inst:U,amount:sum(U,i=>i.due),first:f,days:Math.round((f-TODAY)/DAY)})}}
   late.sort((a,b)=>b.days-a.days);soon.sort((a,b)=>a.first-b.first);return{late,soon};
