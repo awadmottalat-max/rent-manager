@@ -102,7 +102,7 @@ function go(v){S.view=v;render();$('main').scrollTop=0}
 function renderNav(all){
   const late=all.filter(x=>x.r.late_n).length,ren=renewalsOpen(all,90).length;
   const pendN=all.filter(x=>x.r.st==='منتهي'&&endState(x.pid,x.c)==='pend').length;
-  const bd={alerts:(()=>{const n=alertCount(all);return n?`<span class="bd">${n}</span>`:''})(),ended:pendN?`<span class="bd">${pendN}</span>`:'',due:late?`<span class="bd">${late}</span>`:'',renew:ren?`<span class="bd">${ren}</span>`:''};
+  const bd={alerts:(()=>{const n=typeof alertCount==='function'?alertCount(all):0;return n?`<span class="bd">${n}</span>`:''})(),ended:pendN?`<span class="bd">${pendN}</span>`:'',due:late?`<span class="bd">${late}</span>`:'',renew:ren?`<span class="bd">${ren}</span>`:''};
   $('#nav').innerHTML=VIEWS.map(([k,l])=>`<button data-a="go" data-v="${k}" class="${S.view===k?'on':''}">${ico(NAVIC[k])}<span>${l}</span>${bd[k]||''}</button>`).join('');
   $('#sidefoot').innerHTML='التاريخ المعتمد: <bdi>'+iso(TODAY)+'</bdi><br>الإصدار <bdi>'+esc(S.ver||'')+'</bdi> · <button class="link" data-a="chkUpd">التحقق من التحديث</button>';
 }
@@ -760,6 +760,7 @@ native.onUpdate(d=>{
   try{const r=await native.load();S.dir=r.dir;
     if(r.data){S.db=normalize(r.data);if(r.recovered)toast('الملف الرئيسي تالف، استُعيدت آخر نسخة سليمة: '+r.recovered)}}
   catch(e){toast('تعذّر تحميل البيانات')}
+  if(document.readyState!=='complete')await new Promise(r=>addEventListener('load',r,{once:true}));
   render();
   try{const u=await native.getIcon();if(u&&$('#iconprev'))$('#iconprev').src=u}catch{}
 })();
