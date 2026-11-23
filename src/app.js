@@ -76,6 +76,7 @@ function listDoc(){const m=S.pm;return docHtml({title:m.title,sub:m.sub,land:tru
 
 /* ---------- أيقونات ---------- */
 const IC={
+  bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
 dash:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
 key:'<circle cx="8" cy="15" r="4"/><path d="M10.8 12.2 20 3M16 7l3 3M14 9l2 2"/>',
 file:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
@@ -92,16 +93,16 @@ db:'<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3
 alert:'<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/>',
 clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'};
 const ico=(k,c)=>`<svg class="ic ${c||''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[k]||''}</svg>`;
-const NAVIC={dash:'dash',avail:'key',contracts:'file',ended:'filex',due:'wallet',flow:'trend',renew:'refresh',props:'building',owners:'users',tenants:'users',agr:'sign',fin:'calc',rep:'chart',settings:'db'};
+const NAVIC={alerts:'bell',dash:'dash',avail:'key',contracts:'file',ended:'filex',due:'wallet',flow:'trend',renew:'refresh',props:'building',owners:'users',tenants:'users',agr:'sign',fin:'calc',rep:'chart',settings:'db'};
 
 /* ---------- التنقل ---------- */
-const VIEWS=[['dash','لوحة التحكم'],['avail','الشقق المتاحة'],['contracts','العقود'],['ended','العقود المنتهية'],['due','المستحقات'],['flow','التدفقات النقدية'],['renew','التجديدات'],['props','المشاريع والوحدات'],['owners','الملاك'],['tenants','المستأجرون'],['agr','اتفاقيات التأجير'],['fin','التحليل المالي'],['rep','التقارير'],['settings','البيانات والنسخ الاحتياطي']];
+const VIEWS=[['dash','لوحة التحكم'],['alerts','التنبيهات'],['avail','الشقق المتاحة'],['contracts','العقود'],['ended','العقود المنتهية'],['due','المستحقات'],['flow','التدفقات النقدية'],['renew','التجديدات'],['props','المشاريع والوحدات'],['owners','الملاك'],['tenants','المستأجرون'],['agr','اتفاقيات التأجير'],['fin','التحليل المالي'],['rep','التقارير'],['settings','البيانات والنسخ الاحتياطي']];
 const VF={};
 function go(v){S.view=v;render();$('main').scrollTop=0}
 function renderNav(all){
   const late=all.filter(x=>x.r.late_n).length,ren=renewalsOpen(all,90).length;
   const pendN=all.filter(x=>x.r.st==='منتهي'&&endState(x.pid,x.c)==='pend').length;
-  const bd={ended:pendN?`<span class="bd">${pendN}</span>`:'',due:late?`<span class="bd">${late}</span>`:'',renew:ren?`<span class="bd">${ren}</span>`:''};
+  const bd={alerts:(()=>{const n=alertCount(all);return n?`<span class="bd">${n}</span>`:''})(),ended:pendN?`<span class="bd">${pendN}</span>`:'',due:late?`<span class="bd">${late}</span>`:'',renew:ren?`<span class="bd">${ren}</span>`:''};
   $('#nav').innerHTML=VIEWS.map(([k,l])=>`<button data-a="go" data-v="${k}" class="${S.view===k?'on':''}">${ico(NAVIC[k])}<span>${l}</span>${bd[k]||''}</button>`).join('');
   $('#sidefoot').innerHTML='التاريخ المعتمد: <bdi>'+iso(TODAY)+'</bdi><br>الإصدار <bdi>'+esc(S.ver||'')+'</bdi> · <button class="link" data-a="chkUpd">التحقق من التحديث</button>';
 }
@@ -237,6 +238,7 @@ function unitTypes(){const x=new Set(UT);for(const p of Object.values(P()))for(c
 function formDlg({title,fields,vals={},save,onSave}){
   const fl=f=>{const v=vals[f.k]??f.def??'';let el;
     if(f.t==='utype'){const L=unitTypes(),own=L.includes(v);el=`<select data-ts="${f.k}"><option value=""${!v?' selected':''}>— غير محدد —</option>${L.map(t=>`<option value="${esc(t)}"${t===v?' selected':''}>${esc(t)}</option>`).join('')}<option value="__o"${v&&!own?' selected':''}>أخرى (اكتب المسمى)</option></select><input id="ff_${f.k}" value="${esc(v)}" placeholder="اكتب المسمى الجديد" style="margin-top:6px;${v&&!own?'':'display:none'}">`;return `<label>${f.l}${el}</label>`}
+    if(f.t==='info')return `<div class="full remi">${f.html}</div>`;
     if(f.t==='select')el=`<select id="ff_${f.k}">${f.opts.map(([a,b])=>`<option value="${esc(a)}"${String(a)===String(v)?' selected':''}>${esc(b)}</option>`).join('')}</select>`;
     else if(f.t==='date')el=dateField('ff_'+f.k,v);
     else if(f.t==='files')el=attField('ff_'+f.k,vals[f.k]);
@@ -245,7 +247,7 @@ function formDlg({title,fields,vals={},save,onSave}){
     return f.t==='files'?`<div class="full"><span class="fl">${f.l}</span>${el}</div>`:`<label class="${f.full?'full':''}">${f.l}${el}</label>`};
   $('#frm').innerHTML=`<div class="dh"><h2>${title}</h2><button class="x" data-a="fclose" aria-label="إغلاق">✕</button></div><div class="fg">${fields.map(fl).join('')}</div><div class="ft"><button class="btn p" id="fsave">${save||'حفظ'}</button><button class="btn" data-a="fclose">إلغاء</button></div>`;
   $('#frm').querySelectorAll('select[data-ts]').forEach(sel=>sel.onchange=()=>{const i=document.getElementById('ff_'+sel.dataset.ts);if(sel.value==='__o'){i.style.display='';i.value='';i.focus()}else{i.style.display='none';i.value=sel.value}});
-  $('#fsave').onclick=()=>{const o={};for(const f of fields)o[f.k]=f.t==='files'?attGet('ff_'+f.k):document.getElementById('ff_'+f.k).value.trim();
+  $('#fsave').onclick=()=>{const o={};for(const f of fields){if(f.t==='info')continue;o[f.k]=f.t==='files'?attGet('ff_'+f.k):document.getElementById('ff_'+f.k).value.trim()}
     document.querySelectorAll('#frm .bad').forEach(e=>e.classList.remove('bad'));
     const err=onSave(o);if(err){toast(err);const m=fields.find(f=>err.includes(f.l.replace(/[ *].*$/,'').slice(0,6)));const el=document.getElementById('ff_'+(m?.k||fields[0].k));if(el){(el.type==='hidden'?el.closest('.dtf'):el).classList.add('bad');(el.closest('.dtf')?.querySelector('.dtd')||el).focus()}}else{attCommit();$('#frm').close()}};
   $('#frm').onkeydown=e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();$('#fsave')?.click()}};
@@ -344,7 +346,7 @@ function dueModel(all,D){
   const rws=[],lim=D.print?1e9:800;let last=null,gi=null,shown=0;const G=[];
   const lineRow=o=>{const x=o.x,u=`<td></td>`;
     return act?{attrs:open_(x),cells:[o.t==null?'بلا تاريخ':fd(o.t),...pu(x),esc(x.c.owner)||'—',esc(x.c.tenant)||'—','<b>'+fm(o.amount)+'</b>',fs_(o.pm.from),fs_(o.pm.to),o.pm.rno?String(o.pm.rno).padStart(5,'0'):'—',esc(o.note)||'—']}
-    :{cls:o.i.late?'late':o.i.soon?'soon':'',attrs:open_(x),cells:[fd(o.t),...pu(x),esc(x.c.owner)||'—',esc(x.c.tenant)||'—',o.n,fm(o.amount),fm(o.paid),'<b>'+fm(o.due)+'</b>',chip(o.i),o.i.status!=='paid'?`<button class="btn sm p" data-a="qpay" data-p="${esc(x.pid)}" data-c="${esc(x.c.id)}" data-v="${o.due}" data-n="${o.n}">دفعة</button>`:'']}};
+    :{cls:o.i.late?'late':o.i.soon?'soon':'',attrs:open_(x),cells:[fd(o.t),...pu(x),esc(x.c.owner)||'—',esc(x.c.tenant)||'—',o.n,fm(o.amount),fm(o.paid),'<b>'+fm(o.due)+'</b>',chip(o.i),o.i.status!=='paid'?`<button class="btn sm p" data-a="qpay" data-p="${esc(x.pid)}" data-c="${esc(x.c.id)}" data-v="${o.due}" data-n="${o.n}">دفعة</button>`+(o.i.late||o.i.soon?` <button class="btn sm" data-a="remind" data-p="${esc(x.pid)}" data-c="${esc(x.c.id)}" title="تذكير بالسداد عبر واتساب">تذكير</button>`:''):'']}};
   if(D.g!=='none'){for(const o of L){const k=gk(o);if(k!==last){gi={k,n:0,amount:0,paid:0,due:0};G.push(gi);last=k}gi.n++;gi.amount+=o.amount;gi.paid+=o.paid;gi.due+=o.due}
     let idx=-1;last=null;
     for(const o of L){if(shown>=lim)break;const k=gk(o);if(k!==last){idx++;const g=G[idx];last=k;

@@ -1,0 +1,16 @@
+const{app,BrowserWindow}=require('electron');const fs=require('fs'),path=require('path'),os=require('os');
+app.setPath('userData',fs.mkdtempSync(path.join(os.tmpdir(),'rent-')));app.commandLine.appendSwitch('no-sandbox');require('../main.js');
+const bk=fs.readdirSync('/mnt/user-data/uploads').find(x=>x.startsWith('61565ea0'));const D=JSON.parse(fs.readFileSync('/mnt/user-data/uploads/'+bk,'utf8'));
+app.whenReady().then(async()=>{await new Promise(r=>setTimeout(r,2500));const w=BrowserWindow.getAllWindows()[0];w.setSize(1500,950);
+ const out=await w.webContents.executeJavaScript(`(async()=>{try{const d=${JSON.stringify(D.db||D)};normalize(d);S.db=d;const R={};
+  let opened=null;native.openExt=async u=>{opened=u;return true};
+  go('alerts');R.nav=!!document.querySelector('[data-v=alerts]');R.rows=document.querySelectorAll('.tw tbody tr').length;R.late=alertItems(rows()).late.length;
+  const b=document.querySelector('[data-a=remind]');R.btn=!!b;b.click();await new Promise(r=>setTimeout(r,300));
+  R.dlg=document.getElementById('frm').open;R.text=document.getElementById('ff_text').value.slice(0,80);R.logBefore=RM().length;
+  document.getElementById('ff_phone').value='0555123456';document.getElementById('ff_text').value+=' (معدل)';
+  window.__shot=1;return JSON.stringify(R)}catch(e){return 'ERR '+e.stack}})()`);console.log(out);
+ fs.writeFileSync('/tmp/rem-dlg.png',(await w.webContents.capturePage()).toPNG());
+ const o2=await w.webContents.executeJavaScript(`(async()=>{const R={};document.getElementById('fsave').click();await new Promise(r=>setTimeout(r,400));R.logAfter=RM().length;R.entry=RM()[0]&&{phone:RM()[0].phone,amt:RM()[0].amount,t:RM()[0].text.slice(-12)};
+  R.badRemind=document.querySelector('.ch.ok')?.textContent;go('alerts');S.al.s='log';render();R.logRows=document.querySelectorAll('.tw tbody tr').length;
+  S.al.s='all';render();return JSON.stringify(R)})()`);console.log(o2);
+ await new Promise(r=>setTimeout(r,500));fs.writeFileSync('/tmp/rem-scr.png',(await w.webContents.capturePage()).toPNG());app.exit(0)});

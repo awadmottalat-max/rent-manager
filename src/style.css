@@ -260,3 +260,7 @@ ul.aud{margin:6px 0 12px;padding-inline-start:18px;display:grid;gap:4px;font-siz
 .ch{letter-spacing:0}
 .empty{padding:26px 12px;text-align:center;color:var(--mut)}
 dialog select[data-ts]+input{width:100%}
+
+/* ===== التنبيهات والتذكير ===== */
+.alh{margin:20px 0 8px;font-size:16px;display:flex;align-items:center;gap:8px}.bd2{background:#e4f1fd;color:#1f78b4;border-radius:20px;padding:1px 10px;font-size:13px}
+.remi .sum{margin-bottom:0}#frm textarea{line-height:1.7}

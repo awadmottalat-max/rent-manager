@@ -85,6 +85,7 @@ if(!lock)app.quit();else{
     ipcMain.handle('att:del',(_e,f)=>{try{fs.unlinkSync(attPath(f))}catch{}return true});
     ipcMain.handle('att:dir',()=>shell.openPath(attDir()));
     ipcMain.handle('dir:open',()=>shell.openPath(dataDir));
+    ipcMain.handle('ext:open',(_e,u)=>{u=String(u||'');if(!/^https:\/\/(wa\.me|api\.whatsapp\.com)\//.test(u))return false;shell.openExternal(u);return true});
     ipcMain.handle('dir:info',()=>dataDir);
     ipcMain.handle('dir:change',async()=>{
       const r=await dialog.showOpenDialog(win,{title:'اختر مجلد التخزين',properties:['openDirectory','createDirectory']});

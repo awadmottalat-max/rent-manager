@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('native',{
   backups:()=>ipc.invoke('backup:list'),
   readBackup:n=>ipc.invoke('backup:read',n),
   openDir:()=>ipc.invoke('dir:open'),
+  openExt:u=>ipc.invoke('ext:open',u),
   dirInfo:()=>ipc.invoke('dir:info'),
   changeDir:()=>ipc.invoke('dir:change'),
   openFile:f=>ipc.invoke('file:open',f),
