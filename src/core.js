@@ -28,7 +28,10 @@ function calc(c,mode,today){
   const rent=(c.rent===''||c.rent==null)?null:Number(c.rent),ok=rent!=null&&isFinite(rent);
   const total=ok?(mode==='annual'&&m>12?rent*m/12:rent):null;
   const inst=[];
-  if(ok&&m&&k){
+  /* دفعات غير متساوية: جدول يدوي (تاريخ + مبلغ) يحل محل التقسيم المتساوي */
+  const plan=Array.isArray(c.plan)?c.plan.map(x=>({date:pd(x.date),amount:Number(x.amount)})).filter(x=>x.date!=null&&isFinite(x.amount)&&x.amount>0).sort((a,b)=>a.date-b.date):[];
+  if(ok&&plan.length){plan.forEach((x,i)=>inst.push({n:i+1,date:x.date,amount:r2(x.amount)}))}
+  else if(ok&&m&&k){
     const M=r2(total/k);
     for(let i=1;i<=k;i++){
       let d=null;
@@ -60,9 +63,10 @@ function calc(c,mode,today){
   if(s==null)iss.push('تاريخ البداية ناقص');
   if(e==null)iss.push('تاريخ النهاية ناقص أو غير صالح');
   if(s!=null&&e!=null&&e<s)iss.push('النهاية قبل البداية');
-  if(!k)iss.push('عدد الأقساط غير صالح');
+  if(!k&&!plan.length)iss.push('عدد الأقساط غير صالح');
+  if(plan.length&&total!=null&&Math.abs(plan.reduce((a,x)=>a+x.amount,0)-total)>0.01)iss.push('مجموع الدفعات لا يساوي قيمة العقد');
   if(!waived&&rem!=null&&rem<-0.005)iss.push('المسدد أكبر من الإجمالي');
-  return{m,k,total:total2,paid,rem,waived,inst,late,next,st,iss,M:inst.length?inst[0].amount:null,
+  return{m,k:plan.length||k,plan:plan.length>0,total:total2,paid,rem,waived,inst,late,next,st,iss,M:inst.length?inst[0].amount:null,
     late_n:inst.filter(x=>x.late).length,soon:inst.some(x=>x.soon),
     daysToEnd:e!=null?Math.round((e-today)/DAY):null};
 }
