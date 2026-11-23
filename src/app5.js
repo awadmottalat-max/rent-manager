@@ -163,8 +163,9 @@ ${ed?'<div class="full ovbox" id="cf_all" hidden></div>':''}
       if(miss.length)return mark(miss.map(m=>m[1]),'أكمل الحقول الإلزامية: '+miss.map(m=>m[2]).join('، '));
       if(!(Number(o.rent)>0))return mark(['cf_rent'],'قيمة الإيجار يجب أن تكون أكبر من صفر');
       if(o.end<o.start)return mark(['cf_end'],'نهاية الإيجار قبل بدايته');
-      const t=calc({start:o.start,end:o.end,rent:o.rent,count:o.count,period:o.period},MODE(),TODAY);
-      if(!t.inst.length||t.inst.some(i=>i.date==null))return mark(['cf_freq'],'تعذّر حساب الأقساط وتواريخ الاستحقاق — راجع دورة الدفع والتواريخ');
+    }
+    {const t=calc({start:o.start,end:o.end,rent:o.rent,count:o.count,period:o.period},MODE(),TODAY);
+      if(!t.inst.length||t.inst.some(i=>i.date==null))return mark(['cf_freq'],'لكل عقد جدول أقساط بتواريخ استحقاق: حدّد دورة الدفع والتواريخ وقيمة الإيجار');
     }
     if(!o.unit&&!o.tenant)return mark(['cb_unit'],'أدخل رقم الوحدة أو اسم المستأجر');
     const d={unit:o.unit,tenant:o.tenant,owner:o.owner,ejar:o.ejar,sap:o.sap,rent:o.rent===''?'':Number(o.rent),fee:o.fee===''?'':Number(o.fee),signDate:o.signDate,grace:o.grace,vatRate:Number(o.vatRate)||0,deposit:o.deposit===''?'':Number(o.deposit),svc:o.svc===''?'':Number(o.svc),conditions:o.conditions,start:o.start,end:o.end,period:o.period,count:o.count===''?(ed?c.count:''):Number(o.count),freq:o.freq,fval:o.fval,notes:o.notes,files:attGet('cf')};

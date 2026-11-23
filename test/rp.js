@@ -9,5 +9,5 @@ app.whenReady().then(async()=>{await new Promise(r=>setTimeout(r,2500));const w=
   S.rp.p=Object.keys(P()).find(k=>P()[k].name.includes('ماربيلا'));render();R.lateMar=document.querySelectorAll('.tw tbody tr').length;S.rp.p='';
   S.rp.tab='owner';S.rp.fo='';S.rp.ft='';S.rp.owner='';render();R.ownBar=['rp_p','rp_ft','rp_owner'].map(i=>!!document.getElementById(i));
   S.rp.tab='tenant';render();R.tenBar=['rp_p','rp_fo','rp_tenant'].map(i=>!!document.getElementById(i));
-  S.rp.tab='ov';S.rp.kd='late';render();R.ok=1}catch(e){R.err=e.stack}return JSON.stringify(R)})()`);console.log(out);
+  S.rp.tab='ov';S.rp.kd='late';render();R.ban=0;S.rp.tab='ov';S.rp.kd='rem';render();R.ban=document.querySelector('.warnbox')?.textContent.slice(0,200);R.ok=1}catch(e){R.err=e.stack}return JSON.stringify(R)})()`);console.log(out);
  await new Promise(r=>setTimeout(r,500));fs.writeFileSync('/tmp/rp-late.png',(await w.webContents.capturePage()).toPNG());app.exit(0)});
