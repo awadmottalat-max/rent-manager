@@ -1,0 +1,10 @@
+const{app,BrowserWindow}=require('electron');const fs=require('fs'),path=require('path'),os=require('os');
+app.setPath('userData',fs.mkdtempSync(path.join(os.tmpdir(),'rent-')));app.commandLine.appendSwitch('no-sandbox');require('../main.js');
+const D=JSON.parse(fs.readFileSync('/tmp/db2.json','utf8'));
+app.whenReady().then(async()=>{await new Promise(r=>setTimeout(r,2500));const w=BrowserWindow.getAllWindows()[0];w.setSize(1600,950);
+ w.webContents.on('console-message',(e,l,m)=>{if(l>=2)console.log('CONSOLE',m)});
+ const kd=process.env.KD||'rem';
+ console.log(await w.webContents.executeJavaScript(`(()=>{try{const d=${JSON.stringify(D)};normalize(d);S.db=d;S.rp.tab='ov';S.rp.kd='${kd}';S.rp.p=Object.keys(P()).find(k=>P()[k].name.includes('ماربيلا'));go('rep');
+  document.getElementById('printarea').innerHTML=listDoc();document.body.classList.add('pr');return 'ok '+S.pm.rows.length}catch(e){return 'ERR '+e.stack}})()`));
+ await new Promise(r=>setTimeout(r,500));fs.writeFileSync('/tmp/kd-scr.png',(await w.webContents.capturePage()).toPNG());
+ fs.writeFileSync('/tmp/kd.pdf',await w.webContents.printToPDF({printBackground:true,landscape:true,pageSize:'A4'}));app.exit(0)});

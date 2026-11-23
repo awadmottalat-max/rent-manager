@@ -72,7 +72,7 @@ async function printArea(html,pdfName){
 }
 const safe=s=>String(s).replace(/[\\/:*?"<>|]/g,'_');
 const pbtn=k=>`<button class="btn" data-a="print" data-k="${k}">طباعة</button><button class="btn" data-a="pdf" data-k="${k}">حفظ PDF</button>${k==='list'?'<button class="btn" data-a="xlsx">تصدير Excel</button>':''}`;
-function listDoc(){const m=S.pm;return docHtml({title:m.title,sub:m.sub,land:true,body:T(m.cols,m.rows,{print:true,foot:m.foot,footSpan:m.footSpan})})}
+function listDoc(){const m=S.pm;return docHtml({title:m.title,sub:m.sub,land:true,body:(m.pre||'')+T(m.cols,m.rows,{print:true,foot:m.foot,footSpan:m.footSpan})+(m.post||'')})}
 
 /* ---------- أيقونات ---------- */
 const IC={
