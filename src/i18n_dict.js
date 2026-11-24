@@ -1370,5 +1370,19 @@ window.I18N_EN={
 "مرحّل من": "Carried over from",
 "رسوم الخدمات والمياه على المالك": "Service and water fees charged to the owner",
 "تم حذف الرسم": "Fee deleted",
-"سداد: ": "Payment: "
+"سداد: ": "Payment: ",
+"استيراد وحدات وملاك ورسوم (Excel)": "Import units, owners & fees (Excel)",
+"تنزيل قالب Excel": "Download Excel template",
+"لم أجد صف العناوين (المشروع، رقم الوحدة…). استخدم القالب.": "Header row not found (Project, Unit no.…). Please use the template.",
+"لا توجد صفوف صالحة": "No valid rows",
+"مراجعة استيراد الرسوم": "Review fee import",
+"استيراد": "Import",
+"صفوف صالحة": "Valid rows",
+"وحدات جديدة (للرسوم فقط)": "New units (fees only)",
+"وحدات موجودة مسبقًا": "Units already existing",
+"ملاك في الملف": "Owners in the file",
+"رسوم ستُصدَر": "Fees to be issued",
+"رسوم مكررة ستُتخطى": "Duplicate fees to be skipped",
+"الوحدات الجديدة تُسجَّل للرسوم فقط ولا تظهر في شاشات الإيجار. الوحدات الموجودة في الإيجار تُستخدم كما هي دون تكرار.": "New units are registered for fees only and do not appear in the rental screens. Units already in rentals are used as they are, without duplication.",
+"صفوف متجاهلة": "Ignored rows"
 };

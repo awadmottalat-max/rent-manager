@@ -754,7 +754,7 @@ document.addEventListener('change',e=>{
   else if(id==='rp'){S.ren.p=v;render()}else if(id==='rw'){S.ren.win=v;render()}
   else if(id==='mode'){S.db.settings.mode=v;persist();render();toast('تم حفظ الإعداد')}
 });
-function normalize(d){d.projects=d.projects||{};delete d.maint;d.mreq=Array.isArray(d.mreq)?d.mreq:[];d.svc=Array.isArray(d.svc)?d.svc:[];d.settings=d.settings||{mode:'total'};d.settings.vat=d.settings.vat??15;d.settings.nextReceipt=d.settings.nextReceipt||1;d.settings.operator=d.settings.operator||'شركة كثيب للتشغيل والصيانة';d.agreements=d.agreements||[];d.parties=d.parties||{owners:[],tenants:[]};d.parties.owners=d.parties.owners||[];d.parties.tenants=d.parties.tenants||[];d.analyses=d.analyses||[];d.v=1;
+function normalize(d){d.projects=d.projects||{};delete d.maint;d.mreq=Array.isArray(d.mreq)?d.mreq:[];d.svc=Array.isArray(d.svc)?d.svc:[];d.feeUnits=Array.isArray(d.feeUnits)?d.feeUnits:[];d.settings=d.settings||{mode:'total'};d.settings.vat=d.settings.vat??15;d.settings.nextReceipt=d.settings.nextReceipt||1;d.settings.operator=d.settings.operator||'شركة كثيب للتشغيل والصيانة';d.agreements=d.agreements||[];d.parties=d.parties||{owners:[],tenants:[]};d.parties.owners=d.parties.owners||[];d.parties.tenants=d.parties.tenants||[];d.analyses=d.analyses||[];d.v=1;
   for(const p of Object.values(d.projects)){p.contracts=p.contracts||[];p.units=p.units||[];for(const u of p.units){const t=String(u.type||'').trim();if(t==='شقه')u.type='شقة';else if(t==='ستديو'||t==='استديو')u.type='استديو شقة'}for(const c of p.contracts){c.payments=c.payments||[];ensureUnit(p,c)}}return d}
 native.onUpdate(d=>{
   const b=$('#upd');if(!b)return;

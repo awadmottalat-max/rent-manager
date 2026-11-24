@@ -1,0 +1,16 @@
+const{app,BrowserWindow}=require('electron');const fs=require('fs'),path=require('path'),os=require('os');
+app.setPath('userData',fs.mkdtempSync(path.join(os.tmpdir(),'rent-')));app.commandLine.appendSwitch('no-sandbox');require('../main.js');
+const D=JSON.parse(fs.readFileSync('/tmp/db2.json','utf8'));
+app.whenReady().then(async()=>{await new Promise(r=>setTimeout(r,2500));const w=BrowserWindow.getAllWindows()[0];w.setSize(1500,1000);
+ w.webContents.on('console-message',(e,l,m)=>{if(l>=2)console.log('CONSOLE',m)});
+ console.log(await w.webContents.executeJavaScript(`(async()=>{const R={};try{const d=${JSON.stringify(D)};normalize(d);S.db=d;const sl=ms=>new Promise(r=>setTimeout(r,ms));
+  const pid=Object.keys(P())[0],pn=P()[pid].name,u0=P()[pid].units[0].no;const un0=unitsSummary().reduce((a,x)=>a+x.total,0);
+  const aoa=[SV_H,[pn,u0,'مالك أ','0555',1000,'','',''],[pn,'ZZ1','مالك ب','0566',2000,'رسوم خدمات',2026,'','اتحاد الملاك'],[pn,'ZZ1','مالك ب','',300,'رسوم مياه',2026],[pn,'zz1','مالك ب','',2000,'رسوم خدمات',2026],['مشروع وهمي','Q1','x',1,1],[pn,'ZZ2','مالك ج','',0]];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(aoa),'s');const bytes=new Uint8Array(XLSX.write(wb,{type:'array',bookType:'xlsx'}));
+  try{native.openFile=async()=>({bytes})}catch(e){R.nf=1}go('svc');await sl(150);R.v=document.querySelector('#view').innerHTML.includes('svImp');R.n=document.querySelectorAll('#view .bar button').length;svImport({bytes});await sl(500);
+  R.prev=document.querySelector('#frm .sum')?.innerText.replace(/\\s+/g,' ');R.bad=/صفوف متجاهلة/.test(document.getElementById('frm').innerText);
+  document.getElementById('fsave').click();await sl(300);
+  R.fu=FU().map(f=>f.no+':'+f.owner+':'+f.amt).join(',');R.svc=SV().map(x=>x.unit+x.type+x.year+x.payee+x.name).join('|');
+  R.same=unitsSummary().reduce((a,x)=>a+x.total,0)===un0;R.mt=mtUnits(pid).includes('ZZ1');
+  document.querySelector('[data-a=svTpl]')&&(R.tplBtn=true);
+    }catch(e){R.e=e.stack}return JSON.stringify(R)})()`));app.exit(0)});

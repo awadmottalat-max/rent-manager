@@ -1,4 +1,5 @@
 /* الصيانة والنظافة: طلبات تُنفَّذ عبر شركة كثيب للتشغيل والصيانة — تحمّل المالك / المستأجر / ضمان */
+const FU=()=>S.db.feeUnits||(S.db.feeUnits=[]);
 const MT=()=>S.db.mreq||(S.db.mreq=[]);
 const MT_ST=[['new','جديد'],['prog','قيد التنفيذ'],['wait','بانتظار الموافقة'],['done','مكتمل'],['cancel','ملغي']];
 const MT_STL=Object.fromEntries(MT_ST);
@@ -16,13 +17,13 @@ const mtLate=x=>mtRem(x)>0.005&&x.due&&pd(x.due)<TODAY;
 const mtPer=(x,f)=>{if(!f)return true;const d=String(x.date||'').slice(0,10),t=iso(TODAY),y=+t.slice(0,4),m=+t.slice(5,7),pm=(yy,mm)=>yy+'-'+String(mm).padStart(2,'0');
   if(f==='m0')return d.slice(0,7)===t.slice(0,7);if(f==='m1')return d.slice(0,7)===(m===1?pm(y-1,12):pm(y,m-1));if(f==='y')return d.slice(0,4)===String(y);if(f==='q')return d>=iso(TODAY-92*DAY);return true};
 const mtTime=()=>new Date().toLocaleString('en-GB',{hour12:false}).replace(',','');
-const mtUnits=pid=>{const p=P()[pid];if(!p)return[];const m=new Map();for(const u of p.units||[])if(u.no)m.set(normU(u.no),u.no);for(const c of p.contracts||[])if(c.unit&&!m.has(normU(c.unit)))m.set(normU(c.unit),c.unit);return[...m.values()].sort((a,b)=>String(a).localeCompare(String(b),'ar',{numeric:true}))};
+const mtUnits=pid=>{const p=P()[pid];if(!p)return[];const m=new Map();for(const u of p.units||[])if(u.no)m.set(normU(u.no),u.no);for(const c of p.contracts||[])if(c.unit&&!m.has(normU(c.unit)))m.set(normU(c.unit),c.unit);for(const f of FU())if(f.pid===pid&&!m.has(normU(f.no)))m.set(normU(f.no),f.no);return[...m.values()].sort((a,b)=>String(a).localeCompare(String(b),'ar',{numeric:true}))};
 function mtCtx(pid,unit){
   const p=P()[pid];if(!p||!unit)return{owners:[],tenants:[],owner:'',tenant:''};const k=normU(unit);
   const cs=(p.contracts||[]).filter(c=>normU(c.unit)===k).map(c=>({c,st:calc(c,MODE(),TODAY).st})).sort((a,b)=>(pd(b.c.end)||0)-(pd(a.c.end)||0));
   const act=cs.filter(z=>z.st==='ساري'),u=(p.units||[]).find(u=>normU(u.no)===k);
-  const uniq=a=>[...new Set(a.filter(Boolean))];
-  return{owner:(act[0]&&act[0].c.owner)||(cs[0]&&cs[0].c.owner)||(u&&u.owner)||'',tenant:(act[0]&&act[0].c.tenant)||'',
+  const uniq=a=>[...new Set(a.filter(Boolean))],fu=FU().find(f=>f.pid===pid&&normU(f.no)===k);
+  return{owner:(act[0]&&act[0].c.owner)||(cs[0]&&cs[0].c.owner)||(u&&u.owner)||(fu&&fu.owner)||'',tenant:(act[0]&&act[0].c.tenant)||'',
     tenants:uniq([...act.map(z=>z.c.tenant),...cs.map(z=>z.c.tenant)]),hasAct:act.length>0};
 }
 const mtLog=(x,t)=>{(x.notes=x.notes||[]).push({at:mtTime(),text:t})};
