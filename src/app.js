@@ -102,7 +102,7 @@ const ico=(k,c)=>`<svg class="ic ${c||''}" viewBox="0 0 24 24" fill="none" strok
 const NAVIC={alerts:'bell',dash:'dash',avail:'key',contracts:'file',ext:'ext',maint:'tool',ended:'filex',due:'wallet',flow:'trend',renew:'refresh',props:'building',owners:'users',tenants:'users',agr:'sign',fin:'calc',rep:'chart',settings:'db'};
 
 /* ---------- التنقل ---------- */
-const VIEWS=[['dash','لوحة التحكم'],['alerts','التنبيهات'],['avail','الشقق المتاحة'],['contracts','العقود'],['ext','العقود الخارجية'],['maint','الصيانة والنظافة'],['ended','العقود المنتهية'],['due','المستحقات'],['flow','التدفقات النقدية'],['renew','التجديدات'],['props','المشاريع والوحدات'],['owners','الملاك'],['tenants','المستأجرون'],['agr','اتفاقيات التأجير'],['fin','التحليل المالي'],['rep','التقارير'],['settings','البيانات والنسخ الاحتياطي']];
+const VIEWS=[['dash','لوحة التحكم'],['alerts','التنبيهات'],['avail','الشقق المتاحة'],['contracts','العقود'],['ext','العقود الخارجية'],['ended','العقود المنتهية'],['due','المستحقات'],['flow','التدفقات النقدية'],['renew','التجديدات'],['props','المشاريع والوحدات'],['owners','الملاك'],['tenants','المستأجرون'],['agr','اتفاقيات التأجير'],['fin','التحليل المالي'],['maint','الصيانة والنظافة'],['rep','التقارير'],['settings','البيانات والنسخ الاحتياطي']];
 const VF={};
 function go(v){S.view=v;render();$('main').scrollTop=0}
 function renderNav(all){

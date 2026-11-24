@@ -7,37 +7,41 @@ const MT_PL={owner:'المالك',tenant:'المستأجر',warranty:'ضمان'}
 const MT_KIND=[['maint','صيانة'],['clean','نظافة']];
 const MT_CATS=['سباكة','كهرباء','تكييف','دهان','نجارة وأبواب','أجهزة وتجهيزات','نظافة عامة','نظافة بعد الإخلاء','نظافة قبل التسليم','تنظيف مكيفات','تنظيف خزانات','أخرى'];
 const MT_PRIO=[['normal','عادي'],['urgent','عاجل']];
-Object.assign(S,{mt:{p:'',k:'',s:'open',y:'',r:'',q:''}});
+Object.assign(S,{mt:{p:'',k:'',s:'open',y:'',r:'',q:'',c:'',v:'',d:'',o:'new'}});
 const mtOpenQ=x=>['new','prog','wait'].includes(x.status);
 const mtPaid=x=>r2((x.pays||[]).reduce((a,p)=>a+(+p.amount||0),0));
 const mtCost=x=>+x.cost||0;
 const mtRem=x=>x.payer==='tenant'&&x.status!=='cancel'?Math.max(0,r2(mtCost(x)-mtPaid(x))):0;
 const mtLate=x=>mtRem(x)>0.005&&x.due&&pd(x.due)<TODAY;
+const mtPer=(x,f)=>{if(!f)return true;const d=String(x.date||'').slice(0,10),t=iso(TODAY),y=+t.slice(0,4),m=+t.slice(5,7),pm=(yy,mm)=>yy+'-'+String(mm).padStart(2,'0');
+  if(f==='m0')return d.slice(0,7)===t.slice(0,7);if(f==='m1')return d.slice(0,7)===(m===1?pm(y-1,12):pm(y,m-1));if(f==='y')return d.slice(0,4)===String(y);if(f==='q')return d>=iso(TODAY-92*DAY);return true};
 const mtTime=()=>new Date().toLocaleString('en-GB',{hour12:false}).replace(',','');
+const mtUnits=pid=>{const p=P()[pid];if(!p)return[];const m=new Map();for(const u of p.units||[])if(u.no)m.set(normU(u.no),u.no);for(const c of p.contracts||[])if(c.unit&&!m.has(normU(c.unit)))m.set(normU(c.unit),c.unit);return[...m.values()].sort((a,b)=>String(a).localeCompare(String(b),'ar',{numeric:true}))};
 function mtCtx(pid,unit){
-  const p=P()[pid];if(!p)return{};const k=normU(unit);
-  const cs=(p.contracts||[]).filter(c=>normU(c.unit)===k).sort((a,b)=>(pd(b.end)||0)-(pd(a.end)||0));
-  const c=cs[0],u=(p.units||[]).find(u=>normU(u.no)===k);
-  return{owner:(c&&c.owner)||(u&&u.owner)||'',tenant:c&&calc(c,MODE(),TODAY).st==='ساري'?c.tenant:(c?c.tenant:'')};
+  const p=P()[pid];if(!p||!unit)return{owners:[],tenants:[],owner:'',tenant:''};const k=normU(unit);
+  const cs=(p.contracts||[]).filter(c=>normU(c.unit)===k).map(c=>({c,st:calc(c,MODE(),TODAY).st})).sort((a,b)=>(pd(b.c.end)||0)-(pd(a.c.end)||0));
+  const act=cs.filter(z=>z.st==='ساري'),u=(p.units||[]).find(u=>normU(u.no)===k);
+  const uniq=a=>[...new Set(a.filter(Boolean))];
+  return{owner:(act[0]&&act[0].c.owner)||(cs[0]&&cs[0].c.owner)||(u&&u.owner)||'',tenant:(act[0]&&act[0].c.tenant)||'',
+    tenants:uniq([...act.map(z=>z.c.tenant),...cs.map(z=>z.c.tenant)]),hasAct:act.length>0};
 }
 const mtLog=(x,t)=>{(x.notes=x.notes||[]).push({at:mtTime(),text:t})};
 const mtById=id=>MT().find(x=>x.id===id);
 const mtKindL=x=>x.kind==='clean'?'نظافة':'صيانة';
 function mtForm(id){
   const x=id?mtById(id):null,v=x||{pid:S.mt.p||Object.keys(P())[0],kind:'maint',prio:'normal',status:'new',date:iso(TODAY),payer:'owner',vendor:'شركة كثيب للتشغيل والصيانة'};
-  const units=[...new Set(Object.values(P()).flatMap(p=>(p.units||[]).map(u=>u.no)))].slice(0,3000);
   formDlg({title:x?'تعديل طلب رقم '+x.no:'طلب صيانة / نظافة جديد',save:'حفظ الطلب',vals:v,fields:[
-    {k:'pid',l:'المشروع',t:'select',opts:Object.entries(P()).map(([k,p])=>[k,p.name])},{k:'unit',l:'رقم الوحدة',dl:units},
+    {k:'pid',l:'المشروع',t:'select',opts:Object.entries(P()).map(([k,p])=>[k,p.name])},{k:'unit',l:'رقم الوحدة (من وحدات المشروع المختار)',dl:mtUnits(v.pid)},
     {k:'kind',l:'النوع',t:'select',opts:MT_KIND},{k:'cat',l:'التصنيف (سباكة، كهرباء، نظافة…)',dl:MT_CATS},
     {k:'prio',l:'الأولوية',t:'select',opts:MT_PRIO},{k:'date',l:'تاريخ الطلب',t:'date'},
     {k:'desc',l:'وصف الطلب',t:'area',full:1},
     {k:'payer',l:'من يتحمل التكلفة',t:'select',opts:MT_PAYER},{k:'cost',l:'التكلفة (ريال)',t:'number'},
     {k:'due',l:'تاريخ استحقاق المبلغ على المستأجر (إن كان هو المتحمل)',t:'date'},{k:'status',l:'الحالة',t:'select',opts:MT_ST},
     {k:'vendor',l:'الجهة / الفني المنفذ'},{k:'vphone',l:'جوال الفني (واتساب)'},
-    {k:'owner',l:'المالك (يُعبأ تلقائيًا من العقد)'},{k:'tenant',l:'المستأجر (يُعبأ تلقائيًا من العقد)'},
+    {k:'owner',l:'المالك (يُعبأ تلقائيًا من العقد)'},{k:'tenant',l:'المستأجر (صاحب العقد الساري — يُعبأ تلقائيًا)',dl:[]},
     {k:'files',l:'المرفقات (صور قبل / بعد، عرض سعر، فاتورة…)',t:'files'}],
     onSave:o=>{
-      if(!o.pid||!P()[o.pid])return 'اختر المشروع';if(!o.unit)return 'أدخل رقم الوحدة';if(!o.desc)return 'اكتب وصف الطلب';
+      if(!o.pid||!P()[o.pid])return 'اختر المشروع';if(!o.unit)return 'أدخل رقم الوحدة';if(!mtUnits(o.pid).some(u=>normU(u)===normU(o.unit)))return 'رقم الوحدة غير موجود في المشروع المختار';if(!o.desc)return 'اكتب وصف الطلب';
       if(!numOk(o.cost))return 'التكلفة غير صحيحة';if(o.payer==='tenant'&&Number(o.cost)>0&&!o.due)o.due=iso(TODAY);
       const cx=mtCtx(o.pid,o.unit),r=x||{id:'m'+uid(),no:(S.db.settings.nextMaint||1),notes:[],pays:[],created:iso(TODAY)};
       if(!x){S.db.settings.nextMaint=r.no+1}
@@ -46,6 +50,19 @@ function mtForm(id){
       if(o.status==='done'&&!r.done)r.done=iso(TODAY);if(o.status!=='done')r.done='';
       if(!x){MT().unshift(r);mtLog(r,'تم إنشاء الطلب')}else if(old!==r.status)mtLog(r,'الحالة: '+MT_STL[r.status]);
       persist();toast(x?'تم حفظ الطلب':'تم إنشاء الطلب رقم '+r.no);S.mtId=r.id;render();if($('#stm').open||!x)mtDlg(r.id)}});
+  mtFormWire();
+}
+function mtFormWire(isNew){
+  const g=i=>document.getElementById('ff_'+i),pidEl=g('pid'),uEl=g('unit'),oEl=g('owner'),tEl=g('tenant');if(!pidEl||!uEl)return;
+  const dl=(id,a)=>{const d=document.getElementById('dl_'+id);if(d)d.innerHTML=a.map(o=>`<option value="${esc(o)}">`).join('')};
+  let hint=document.getElementById('mt_hint');if(!hint){hint=document.createElement('div');hint.id='mt_hint';hint.className='full sub';tEl.closest('label').after(hint)}
+  const fill=force=>{const c=mtCtx(pidEl.value,uEl.value.trim());dl('tenant',c.tenants);
+    if(force){oEl.value=c.owner;tEl.value=c.tenant}
+    hint.textContent=uEl.value.trim()?(c.hasAct?'':(c.tenants.length?'لا يوجد عقد ساري لهذه الوحدة — اختر المستأجر يدويًا من القائمة إن لزم.':'لا توجد عقود لهذه الوحدة (وحدة شاغرة).')):'';};
+  pidEl.addEventListener('change',()=>{dl('unit',mtUnits(pidEl.value));uEl.value='';oEl.value='';tEl.value='';fill(false)});
+  const onU=()=>{const k=uEl.value.trim();if(mtUnits(pidEl.value).some(u=>normU(u)===normU(k)))fill(true)};
+  uEl.addEventListener('change',onU);uEl.addEventListener('input',onU);
+  fill(false);
 }
 function mtDlg(id){
   const x=mtById(id);if(!x)return;S.mtId=id;
@@ -84,7 +101,9 @@ function mtWaForm(id){
 }
 function vMaint(){
   const E=S.mt,all=MT(),pn=id=>P()[id]?.name||'—';
-  const q=E.q.toLowerCase(),L=all.filter(x=>(!E.p||x.pid===E.p)&&(!E.k||x.kind===E.k)&&(!E.y||x.payer===E.y)&&(!E.r||x.prio===E.r)&&(E.s===''||(E.s==='open'?mtOpenQ(x):E.s==='late'?mtLate(x):x.status===E.s))&&(!q||txt(x.unit,x.tenant,x.owner,x.desc,x.vendor,pn(x.pid),x.no).includes(q)));
+  const q=E.q.toLowerCase(),L=all.filter(x=>(!E.p||x.pid===E.p)&&(!E.k||x.kind===E.k)&&(!E.y||x.payer===E.y)&&(!E.r||x.prio===E.r)&&(!E.c||x.cat===E.c)&&(!E.v||x.vendor===E.v)&&mtPer(x,E.d)&&(E.s===''||(E.s==='open'?mtOpenQ(x):E.s==='late'?mtLate(x):x.status===E.s))&&(!q||txt(x.unit,x.tenant,x.owner,x.desc,x.vendor,pn(x.pid),x.no).includes(q)));
+  const SO={new:(a,b)=>String(b.date).localeCompare(String(a.date))||b.no-a.no,old:(a,b)=>String(a.date).localeCompare(String(b.date))||a.no-b.no,cost:(a,b)=>mtCost(b)-mtCost(a),urg:(a,b)=>(b.prio==='urgent')-(a.prio==='urgent')||String(a.date).localeCompare(String(b.date))};L.sort(SO[E.o]||SO.new);
+  const cats=[...new Set(all.map(x=>x.cat).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar')),vens=[...new Set(all.map(x=>x.vendor).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
   const open=all.filter(mtOpenQ),sm=(f,g)=>sum(all.filter(f),g);
   const kp=(l,v,i,c)=>`<div class="kp static ${c||''}"><span>${l}</span><b>${v}</b><i>${i||''}</i></div>`;
   const cols=[{h:'الرقم',k:'d'},{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'النوع',k:'t'},{h:'الوصف',k:'t'},{h:'الأولوية',k:'d'},{h:'الحالة',k:'d'},{h:'يتحملها',k:'d'},{h:'التكلفة',k:'n'},{h:'المتبقي على المستأجر',k:'n'},{h:'تاريخ الطلب',k:'d'},{h:'الجهة المنفذة',k:'t'}];
@@ -97,7 +116,7 @@ function vMaint(){
   const smry=L.length?`<div class="mtsm"><div><h3>التكلفة حسب من يتحملها</h3>${T([{h:'الجهة',k:'t'},{h:'الطلبات',k:'n'},{h:'التكلفة',k:'n'}],byY.map(o=>({cells:[o.l,o.n,fm(o.c)]})),{foot:['الإجمالي',sum(byY,o=>o.n),fm(sum(byY,o=>o.c))],footSpan:0})}</div>${byP.length>1?`<div><h3>التكلفة حسب المشروع</h3>${T([{h:'المشروع',k:'t'},{h:'الطلبات',k:'n'},{h:'التكلفة',k:'n'}],byP.map(([id,o])=>({cells:[esc(pn(id)),o.n,fm(o.c)]})),{foot:['الإجمالي',sum(byP,([,o])=>o.n),fm(sum(byP,([,o])=>o.c))],footSpan:0})}</div>`:''}</div>`:'';
   const sel=(id,v,opts)=>`<select id="${id}">${opts.map(([a,b])=>`<option value="${esc(a)}"${String(a)===String(v)?' selected':''}>${esc(b)}</option>`).join('')}</select>`;
   return `<h1>الصيانة والنظافة</h1><p class="sub">طلبات الصيانة والنظافة التي تنفذها شركة كثيب للتشغيل والصيانة. التكلفة يتحملها المالك (تُخصم من كشفه) أو المستأجر (مبلغ مستحق عليه) أو الضمان (على الشركة المالكة للمشروع). اضغط الطلب لعرض تفاصيله ومتابعته.</p>
-<div class="bar">${sel('mt_p',E.p,[['','كل المشاريع'],...Object.entries(P()).map(([k,p])=>[k,p.name])])}${sel('mt_k',E.k,[['','صيانة ونظافة'],...MT_KIND])}${sel('mt_s',E.s,[['open','المفتوحة'],['','كل الحالات'],...MT_ST,['late','مستحق متأخر على مستأجر']])}${sel('mt_y',E.y,[['','كل من يتحمل'],...MT_PAYER.map(([a,b])=>[a,a==='warranty'?'ضمان':b])])}${sel('mt_r',E.r,[['','كل الأولويات'],...MT_PRIO])}
+<div class="bar">${sel('mt_p',E.p,[['','كل المشاريع'],...Object.entries(P()).map(([k,p])=>[k,p.name])])}${sel('mt_k',E.k,[['','صيانة ونظافة'],...MT_KIND])}${sel('mt_s',E.s,[['open','المفتوحة'],['','كل الحالات'],...MT_ST,['late','مستحق متأخر على مستأجر']])}${sel('mt_y',E.y,[['','كل من يتحمل'],...MT_PAYER.map(([a,b])=>[a,a==='warranty'?'ضمان':b])])}${sel('mt_r',E.r,[['','كل الأولويات'],...MT_PRIO])}${sel('mt_c',E.c,[['','كل التصنيفات'],...cats.map(c=>[c,c])])}${sel('mt_v',E.v,[['','كل الجهات المنفذة'],...vens.map(c=>[c,c])])}${sel('mt_d',E.d,[['','كل الفترات'],['m0','هذا الشهر'],['m1','الشهر الماضي'],['q','آخر 3 أشهر'],['y','هذه السنة']])}${sel('mt_o',E.o,[['new','الأحدث أولًا'],['old','الأقدم أولًا'],['cost','الأعلى تكلفة'],['urg','العاجل أولًا']])}
 <input type="search" id="mt_q" placeholder="بحث: وحدة، مستأجر، وصف، فني" value="${esc(E.q)}"><button class="btn p" data-a="mtNew">+ طلب جديد</button>${pbtn('list')}</div>
 <div class="kpis sm">${kp('طلبات مفتوحة',open.length,'جديد وقيد التنفيذ وبانتظار الموافقة')}${kp('عاجلة مفتوحة',open.filter(x=>x.prio==='urgent').length,'','lt')}${kp('بانتظار موافقة',all.filter(x=>x.status==='wait').length)}${kp('مكتملة هذا الشهر',all.filter(x=>x.status==='done'&&String(x.done).slice(0,7)===iso(TODAY).slice(0,7)).length)}${kp('مستحق على مستأجرين',fm(sum(all,mtRem)),all.filter(mtLate).length?all.filter(mtLate).length+' متأخر':'','lt')}${kp('تكلفة الضمان',fm(sm(x=>x.payer==='warranty'&&x.status!=='cancel',mtCost)),'على الشركة المالكة للمشروع')}</div>
 ${L.length?T(cols,rws,{foot:S.pm.foot}):'<p class="empty">لا توجد طلبات مطابقة. اضغط «+ طلب جديد» لتسجيل طلب صيانة أو نظافة.</p>'}${smry}`;
@@ -117,4 +136,4 @@ Object.assign(act,{mtNew:()=>mtForm(),mtOpen:b=>mtDlg(b.dataset.i),mtEdit:b=>mtF
   mtPayDel:b=>arm(b,()=>{const x=mtById(b.dataset.i);if(!x)return;x.pays=(x.pays||[]).filter(q=>q.id!==b.dataset.q);mtLog(x,'حُذفت دفعة مسجلة');mtRefresh()}),
   mtDel:b=>arm(b,()=>{S.db.mreq=MT().filter(x=>x.id!==b.dataset.i);$('#stm').close();persist();render();toast('تم حذف الطلب')})});
 document.addEventListener('input',e=>{if(e.target.id==='mt_q'){S.mt.q=e.target.value.trim();render()}});
-document.addEventListener('change',e=>{const m={mt_p:'p',mt_k:'k',mt_s:'s',mt_y:'y',mt_r:'r'}[e.target.id];if(m){S.mt[m]=e.target.value;render()}});
+document.addEventListener('change',e=>{const m={mt_p:'p',mt_k:'k',mt_s:'s',mt_y:'y',mt_r:'r',mt_c:'c',mt_v:'v',mt_d:'d',mt_o:'o'}[e.target.id];if(m){S.mt[m]=e.target.value;render()}});

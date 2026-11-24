@@ -1281,5 +1281,20 @@ window.I18N_EN={
 "تم حذف الطلب": "Request deleted",
 "أُرسل الطلب للفني عبر واتساب": "Request sent to technician via WhatsApp",
 "الحالة: ": "Status: ",
-"سداد من المستأجر: ": "Tenant payment: "
+"سداد من المستأجر: ": "Tenant payment: ",
+"كل التصنيفات": "All categories",
+"كل الجهات المنفذة": "All executors",
+"هذا الشهر": "This month",
+"الشهر الماضي": "Last month",
+"آخر 3 أشهر": "Last 3 months",
+"هذه السنة": "This year",
+"الأحدث أولًا": "Newest first",
+"الأقدم أولًا": "Oldest first",
+"الأعلى تكلفة": "Highest cost",
+"العاجل أولًا": "Urgent first",
+"رقم الوحدة (من وحدات المشروع المختار)": "Unit no. (from the selected project)",
+"المستأجر (صاحب العقد الساري — يُعبأ تلقائيًا)": "Tenant (active-contract holder — auto-filled)",
+"رقم الوحدة غير موجود في المشروع المختار": "Unit not found in the selected project",
+"لا يوجد عقد ساري لهذه الوحدة — اختر المستأجر يدويًا من القائمة إن لزم.": "No active contract for this unit — pick the tenant manually from the list if needed.",
+"لا توجد عقود لهذه الوحدة (وحدة شاغرة).": "No contracts for this unit (vacant)."
 };

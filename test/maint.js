@@ -8,7 +8,7 @@ app.whenReady().then(async()=>{await new Promise(r=>setTimeout(r,2500));const w=
   const pid=Object.keys(P())[0];const c0=P()[pid].contracts.find(c=>c.owner&&c.unit);
   go('maint');await sl(200);R.v0=document.querySelector('#view h1').textContent;
   document.querySelector('[data-a=mtNew]').click();await sl(200);
-  set('ff_pid',pid);set('ff_unit',c0.unit);set('ff_desc','تسريب مياه');set('ff_payer','owner');set('ff_cost',500);set('ff_status','done');
+  set('ff_pid',pid);R.dl=document.querySelectorAll('#dl_unit option').length+'/'+mtUnits(pid).length;const pid2=Object.keys(P())[1];set('ff_pid',pid2);R.dl2=document.querySelectorAll('#dl_unit option').length;set('ff_pid',pid);set('ff_unit',c0.unit);R.auto=[document.getElementById('ff_owner').value===mtCtx(pid,c0.unit).owner,document.getElementById('ff_tenant').value,mtCtx(pid,c0.unit).hasAct];set('ff_desc','تسريب مياه');set('ff_payer','owner');set('ff_cost',500);set('ff_status','done');
   document.getElementById('fsave').click();await sl(300);
   R.n=MT().length;R.x=MT()[0]&&[MT()[0].owner===c0.owner,MT()[0].done,MT()[0].no];R.dlg=document.querySelector('#stm h2')?.textContent;
   act.mtSt({dataset:{i:MT()[0].id,s:'prog'}});R.st=MT()[0].status+':'+MT()[0].notes.length;
@@ -17,6 +17,6 @@ app.whenReady().then(async()=>{await new Promise(r=>setTimeout(r,2500));const w=
   S.on=c0.owner;R.own=/الصيانة والنظافة المحمَّلة/.test(ownerBody(c0.owner,false));
   MT().push({id:'t2',no:2,pid,unit:c0.unit,kind:'clean',payer:'tenant',cost:300,due:'2026-01-01',status:'new',pays:[],notes:[],date:'2026-01-01',desc:'x'});
   R.rem=mtRem(MT()[1]);R.late=mtLate(MT()[1]);mtPayForm('t2');set('ff_amount',100);document.getElementById('fsave').click();await sl(200);R.rem2=mtRem(MT()[1]);
-  S.mt.s='';go('maint');await sl(200);R.nav=document.querySelector('nav')?.innerText.includes('الصيانة');
+  S.mt.s='';go('maint');await sl(200);R.order=VIEWS.map(v=>v[0]).join();S.mt.c='x';go('maint');await sl(100);R.fl=document.querySelectorAll('.bar select').length;R.nav=document.querySelector('nav')?.innerText.includes('الصيانة');
     }catch(e){R.e=e.stack}return JSON.stringify(R)})()`));
  await new Promise(r=>setTimeout(r,200));fs.writeFileSync('/tmp/maint.png',(await w.webContents.capturePage()).toPNG());app.exit(0)});
