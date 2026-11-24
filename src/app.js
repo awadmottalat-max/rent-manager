@@ -80,6 +80,7 @@ function listDoc(){const m=S.pm;return docHtml({title:m.title,sub:m.sub,land:tru
 
 /* ---------- أيقونات ---------- */
 const IC={
+  tool:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.4 2.4-2.1-.6-.6-2.1z"/>',
   ext:'<path d="M14 3h7v7"/><path d="M21 3l-9 9"/><path d="M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/>',
   bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
 dash:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
@@ -98,16 +99,16 @@ db:'<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3
 alert:'<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/>',
 clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'};
 const ico=(k,c)=>`<svg class="ic ${c||''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[k]||''}</svg>`;
-const NAVIC={alerts:'bell',dash:'dash',avail:'key',contracts:'file',ext:'ext',ended:'filex',due:'wallet',flow:'trend',renew:'refresh',props:'building',owners:'users',tenants:'users',agr:'sign',fin:'calc',rep:'chart',settings:'db'};
+const NAVIC={alerts:'bell',dash:'dash',avail:'key',contracts:'file',ext:'ext',maint:'tool',ended:'filex',due:'wallet',flow:'trend',renew:'refresh',props:'building',owners:'users',tenants:'users',agr:'sign',fin:'calc',rep:'chart',settings:'db'};
 
 /* ---------- التنقل ---------- */
-const VIEWS=[['dash','لوحة التحكم'],['alerts','التنبيهات'],['avail','الشقق المتاحة'],['contracts','العقود'],['ext','العقود الخارجية'],['ended','العقود المنتهية'],['due','المستحقات'],['flow','التدفقات النقدية'],['renew','التجديدات'],['props','المشاريع والوحدات'],['owners','الملاك'],['tenants','المستأجرون'],['agr','اتفاقيات التأجير'],['fin','التحليل المالي'],['rep','التقارير'],['settings','البيانات والنسخ الاحتياطي']];
+const VIEWS=[['dash','لوحة التحكم'],['alerts','التنبيهات'],['avail','الشقق المتاحة'],['contracts','العقود'],['ext','العقود الخارجية'],['maint','الصيانة والنظافة'],['ended','العقود المنتهية'],['due','المستحقات'],['flow','التدفقات النقدية'],['renew','التجديدات'],['props','المشاريع والوحدات'],['owners','الملاك'],['tenants','المستأجرون'],['agr','اتفاقيات التأجير'],['fin','التحليل المالي'],['rep','التقارير'],['settings','البيانات والنسخ الاحتياطي']];
 const VF={};
 function go(v){S.view=v;render();$('main').scrollTop=0}
 function renderNav(all){
   const late=all.filter(x=>x.r.late_n).length,ren=renewalsOpen(all,90).length;
   const pendN=all.filter(x=>x.r.st==='منتهي'&&endState(x.pid,x.c)==='pend').length;
-  const bd={ext:(()=>{const n=rows().filter(x=>x.ext&&x.f.late_n).length;return n?`<span class="bd">${n}</span>`:''})(),alerts:(()=>{const n=typeof alertCount==='function'?alertCount(all):0;return n?`<span class="bd">${n}</span>`:''})(),ended:pendN?`<span class="bd">${pendN}</span>`:'',due:late?`<span class="bd">${late}</span>`:'',renew:ren?`<span class="bd">${ren}</span>`:''};
+  const bd={maint:(()=>{const n=(S.db.mreq||[]).filter(x=>x.status==='new'||x.status==='wait').length;return n?`<span class="bd">${n}</span>`:''})(),ext:(()=>{const n=rows().filter(x=>x.ext&&x.f.late_n).length;return n?`<span class="bd">${n}</span>`:''})(),alerts:(()=>{const n=typeof alertCount==='function'?alertCount(all):0;return n?`<span class="bd">${n}</span>`:''})(),ended:pendN?`<span class="bd">${pendN}</span>`:'',due:late?`<span class="bd">${late}</span>`:'',renew:ren?`<span class="bd">${ren}</span>`:''};
   $('#nav').innerHTML=VIEWS.map(([k,l])=>`<button data-a="go" data-v="${k}" class="${S.view===k?'on':''}">${ico(NAVIC[k])}<span>${l}</span>${bd[k]||''}</button>`).join('');
 }
 function render(){
@@ -248,7 +249,7 @@ function formDlg({title,fields,vals={},save,onSave}){
     else if(f.t==='date')el=dateField('ff_'+f.k,v);
     else if(f.t==='files')el=attField('ff_'+f.k,vals[f.k]);
     else if(f.t==='area')el=`<textarea id="ff_${f.k}" rows="2">${esc(v)}</textarea>`;
-    else el=`<input id="ff_${f.k}" type="${f.t||'text'}" ${f.t==='number'?'step="0.01"':''} value="${esc(v)}" ${f.ph?`placeholder="${esc(f.ph)}"`:''}>`;
+    else el=`<input id="ff_${f.k}" type="${f.t||'text'}" ${f.t==='number'?'step="0.01"':''} value="${esc(v)}" ${f.ph?`placeholder="${esc(f.ph)}"`:''} ${f.dl?`list="dl_${f.k}" autocomplete="off"`:''}>${f.dl?`<datalist id="dl_${f.k}">${f.dl.map(o=>`<option value="${esc(o)}">`).join('')}</datalist>`:''}`;
     return f.t==='files'?`<div class="full"><span class="fl">${f.l}</span>${el}</div>`:`<label class="${f.full?'full':''}">${f.l}${el}</label>`};
   $('#frm').innerHTML=`<div class="dh"><h2>${title}</h2><button class="x" data-a="fclose" aria-label="إغلاق">✕</button></div><div class="fg">${fields.map(fl).join('')}</div><div class="ft"><button class="btn p" id="fsave">${save||'حفظ'}</button><button class="btn" data-a="fclose">إلغاء</button></div>`;
   $('#frm').querySelectorAll('select[data-ts]').forEach(sel=>sel.onchange=()=>{const i=document.getElementById('ff_'+sel.dataset.ts);if(sel.value==='__o'){i.style.display='';i.value='';i.focus()}else{i.style.display='none';i.value=sel.value}});
@@ -590,7 +591,7 @@ function ownerBody(name,print){
   const all=ownerRows(name),o=ownerStatements(all)[0]||{total:0,paid:0,rem:0,late:0,fees:0,net:0};
   return `<div class="sum"><div><span>إجمالي الإيجار</span><b>${fm(o.total)}</b></div><div><span>المحصَّل</span><b>${fm(o.paid)}</b></div><div><span>المتبقي</span><b>${fm(o.rem)}</b></div><div><span>المتأخر</span><b>${fm(o.late)}</b></div><div><span>رسوم الأملاك</span><b>${fm(o.fees)}</b></div><div><span>صافي المحصَّل</span><b>${fm(o.net)}</b></div></div>
 <h3>عقود المالك</h3>${T([{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المستأجر',k:'t'},{h:'بداية الإيجار',k:'d'},{h:'نهاية الإيجار',k:'d'},{h:'الإجمالي',k:'n'},{h:'المسدد',k:'n'},{h:'المتبقي',k:'n'},{h:'الرسوم',k:'n'}],
-  all.map(x=>({attrs:'',cells:[esc(x.pn),'<b>'+esc(x.c.unit)+'</b>',esc(x.c.tenant)||'—',fs_(x.c.start),fs_(x.c.end),fm(x.r.total),fm(x.r.paid),fm(x.r.rem),fm(x.c.fee)]})),{print,foot:['الإجمالي','','','','',fm(sum(all,x=>x.r.total||0)),fm(sum(all,x=>x.r.paid||0)),fm(sum(all,x=>x.r.rem>0?x.r.rem:0)),fm(sum(all,x=>+x.c.fee||0))],footSpan:0})}`;
+  all.map(x=>({attrs:'',cells:[esc(x.pn),'<b>'+esc(x.c.unit)+'</b>',esc(x.c.tenant)||'—',fs_(x.c.start),fs_(x.c.end),fm(x.r.total),fm(x.r.paid),fm(x.r.rem),fm(x.c.fee)]})),{print,foot:['الإجمالي','','','','',fm(sum(all,x=>x.r.total||0)),fm(sum(all,x=>x.r.paid||0)),fm(sum(all,x=>x.r.rem>0?x.r.rem:0)),fm(sum(all,x=>+x.c.fee||0))],footSpan:0})}${typeof mtOwnerSec==='function'?mtOwnerSec(name,print):''}`;
 }
 function ownerDlg(name){
   S.on=name;
@@ -753,7 +754,7 @@ document.addEventListener('change',e=>{
   else if(id==='rp'){S.ren.p=v;render()}else if(id==='rw'){S.ren.win=v;render()}
   else if(id==='mode'){S.db.settings.mode=v;persist();render();toast('تم حفظ الإعداد')}
 });
-function normalize(d){d.projects=d.projects||{};delete d.maint;d.settings=d.settings||{mode:'total'};d.settings.vat=d.settings.vat??15;d.settings.nextReceipt=d.settings.nextReceipt||1;d.settings.operator=d.settings.operator||'شركة كثيب للتشغيل والصيانة';d.agreements=d.agreements||[];d.parties=d.parties||{owners:[],tenants:[]};d.parties.owners=d.parties.owners||[];d.parties.tenants=d.parties.tenants||[];d.analyses=d.analyses||[];d.v=1;
+function normalize(d){d.projects=d.projects||{};delete d.maint;d.mreq=Array.isArray(d.mreq)?d.mreq:[];d.settings=d.settings||{mode:'total'};d.settings.vat=d.settings.vat??15;d.settings.nextReceipt=d.settings.nextReceipt||1;d.settings.operator=d.settings.operator||'شركة كثيب للتشغيل والصيانة';d.agreements=d.agreements||[];d.parties=d.parties||{owners:[],tenants:[]};d.parties.owners=d.parties.owners||[];d.parties.tenants=d.parties.tenants||[];d.analyses=d.analyses||[];d.v=1;
   for(const p of Object.values(d.projects)){p.contracts=p.contracts||[];p.units=p.units||[];for(const u of p.units){const t=String(u.type||'').trim();if(t==='شقه')u.type='شقة';else if(t==='ستديو'||t==='استديو')u.type='استديو شقة'}for(const c of p.contracts){c.payments=c.payments||[];ensureUnit(p,c)}}return d}
 native.onUpdate(d=>{
   const b=$('#upd');if(!b)return;
