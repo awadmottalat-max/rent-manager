@@ -24,7 +24,8 @@ function mutate(pid,fn){const p=structuredClone(P()[pid]);fn(p);P()[pid]=p;persi
 
 /* ---------- بيانات مشتقة ---------- */
 const MODE=()=>S.db.settings.mode||'total';
-function rows(){const o=[];for(const[pid,p]of Object.entries(P()))for(const c of p.contracts||[])o.push({pid,pn:p.name,c,r:calc(c,MODE(),TODAY)});return o}
+function rows(){const o=[];for(const[pid,p]of Object.entries(P()))for(const c of p.contracts||[])o.push({pid,pn:p.name,c,ext:c.kind==='ext',r:calc(c,MODE(),TODAY)});return o}
+const rowsI=()=>rows().filter(x=>!x.ext);
 const key=x=>x.r.late_n?0:x.r.soon?1:2;
 const sorted=a=>a.sort((a,b)=>key(a)-key(b)||((a.r.next?.date??9e15)-(b.r.next?.date??9e15))||a.pn.localeCompare(b.pn,'ar')||String(a.c.unit).localeCompare(String(b.c.unit),'ar',{numeric:true}));
 const projOpts=(sel,all)=>(all?'<option value="">كل المشاريع</option>':'')+Object.entries(P()).sort((a,b)=>a[1].name.localeCompare(b[1].name,'ar')).map(([k,p])=>`<option value="${esc(k)}"${k===sel?' selected':''}>${esc(p.name)}</option>`).join('');
@@ -76,6 +77,7 @@ function listDoc(){const m=S.pm;return docHtml({title:m.title,sub:m.sub,land:tru
 
 /* ---------- أيقونات ---------- */
 const IC={
+  ext:'<path d="M14 3h7v7"/><path d="M21 3l-9 9"/><path d="M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/>',
   bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
 dash:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
 key:'<circle cx="8" cy="15" r="4"/><path d="M10.8 12.2 20 3M16 7l3 3M14 9l2 2"/>',
@@ -93,10 +95,10 @@ db:'<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3
 alert:'<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/>',
 clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'};
 const ico=(k,c)=>`<svg class="ic ${c||''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[k]||''}</svg>`;
-const NAVIC={alerts:'bell',dash:'dash',avail:'key',contracts:'file',ended:'filex',due:'wallet',flow:'trend',renew:'refresh',props:'building',owners:'users',tenants:'users',agr:'sign',fin:'calc',rep:'chart',settings:'db'};
+const NAVIC={alerts:'bell',dash:'dash',avail:'key',contracts:'file',ext:'ext',ended:'filex',due:'wallet',flow:'trend',renew:'refresh',props:'building',owners:'users',tenants:'users',agr:'sign',fin:'calc',rep:'chart',settings:'db'};
 
 /* ---------- التنقل ---------- */
-const VIEWS=[['dash','لوحة التحكم'],['alerts','التنبيهات'],['avail','الشقق المتاحة'],['contracts','العقود'],['ended','العقود المنتهية'],['due','المستحقات'],['flow','التدفقات النقدية'],['renew','التجديدات'],['props','المشاريع والوحدات'],['owners','الملاك'],['tenants','المستأجرون'],['agr','اتفاقيات التأجير'],['fin','التحليل المالي'],['rep','التقارير'],['settings','البيانات والنسخ الاحتياطي']];
+const VIEWS=[['dash','لوحة التحكم'],['alerts','التنبيهات'],['avail','الشقق المتاحة'],['contracts','العقود'],['ext','العقود الخارجية'],['ended','العقود المنتهية'],['due','المستحقات'],['flow','التدفقات النقدية'],['renew','التجديدات'],['props','المشاريع والوحدات'],['owners','الملاك'],['tenants','المستأجرون'],['agr','اتفاقيات التأجير'],['fin','التحليل المالي'],['rep','التقارير'],['settings','البيانات والنسخ الاحتياطي']];
 const VF={};
 function go(v){S.view=v;render();$('main').scrollTop=0}
 function renderNav(all){
@@ -107,10 +109,10 @@ function renderNav(all){
   $('#sidefoot').innerHTML='التاريخ المعتمد: <bdi>'+iso(TODAY)+'</bdi><br>الإصدار <bdi>'+esc(S.ver||'')+'</bdi> · <button class="link" data-a="chkUpd">التحقق من التحديث</button>';
 }
 function render(){
-  const all=rows();renderNav(all);
+  const allX=rows(),all=allX.filter(x=>!x.ext);renderNav(all);
   const v=$('#view'),kf=document.activeElement&&document.activeElement.id;
   S.pm=null;
-  v.innerHTML=(VF[S.view]||vDash)(all);
+  v.innerHTML=(VF[S.view]||vDash)(S.view==='ext'?allX.filter(x=>x.ext):all);
   if(kf){const el=document.getElementById(kf);if(el&&el.matches('input[type=search]')){el.focus();const l=el.value.length;try{el.setSelectionRange(l,l)}catch{}}}
   if(S.cur&&$('#det').open)fillDet();
   if(S.view==='settings')native.getIcon().then(u=>{if(u&&$('#iconprev'))$('#iconprev').src=u}).catch(()=>{});
@@ -193,11 +195,11 @@ const endBtns=x=>{if(x.r.st==='ساري'||x.r.st==='لم يبدأ')return x.c.ex
   if(x.r.st!=='منتهي')return'';const e=endState(x.pid,x.c);
   if(e==='renewed')return' <span class="ch ok">مجدد</span>';if(e==='term')return' <span class="ch">انتهى الإيجار</span>';
   return `<span class="eb"><button class="btn sm p" data-a="endRenew" data-p="${esc(x.pid)}" data-c="${esc(x.c.id)}">تجديد</button><button class="btn sm dng" data-a="endExit" data-p="${esc(x.pid)}" data-c="${esc(x.c.id)}">إنهاء</button></span>`};
-const cur=()=>{const p=P()[S.cur?.pid];const c=p?.contracts.find(c=>c.id===S.cur.cid);return c?{pid:S.cur.pid,pn:p.name,c,r:calc(c,MODE(),TODAY)}:null};
+const cur=()=>{const p=P()[S.cur?.pid];const c=p?.contracts.find(c=>c.id===S.cur.cid);return c?{pid:S.cur.pid,pn:p.name,c,ext:c.kind==='ext',r:calc(c,MODE(),TODAY)}:null};
 function infoGrid(x){
   const{c,r}=x,i=(l,v)=>`<div><span>${l}</span><b>${v||'—'}</b></div>`;
   return `<div class="info">${i('المشروع',esc(x.pn))}${i('رقم الوحدة',esc(c.unit))}${i('المالك',esc(c.owner))}${i('المستأجر',esc(c.tenant))}${i('بداية الإيجار',fs_(c.start))}${i('نهاية الإيجار',fs_(c.end))}
-${i('مدة العقد',r.m?r.m+' شهرًا':esc(c.period))}${i('قيمة الإيجار المسجلة',fm(c.rent))}${i('عدد الأقساط',r.k?r.k+' قسطًا':esc(c.count))}${i('رسوم الأملاك',fm(c.fee))}${c.ejar?i('رقم عقد إيجار',esc(c.ejar)):''}${c.sap?i('رقم ساب SAP',esc(c.sap)):''}${i('المتبقي المسجل قبل التعديل',fm(c.prevRemaining))}${i('الحالة',r.late_n?'متأخر ('+r.late_n+' قسط)':r.st)}</div>`;
+${i('مدة العقد',r.m?r.m+' شهرًا':esc(c.period))}${i('قيمة الإيجار المسجلة',fm(c.rent))}${i('عدد الأقساط',r.k?r.k+' قسطًا':esc(c.count))}${i('رسوم الأملاك',fm(c.fee))}${c.ejar?i('رقم عقد إيجار',esc(c.ejar)):''}${c.sap?i('رقم ساب SAP',esc(c.sap)):''}${x.ext?'':i('المتبقي المسجل قبل التعديل',fm(c.prevRemaining))}${i('الحالة',!x.ext&&r.late_n?'متأخر ('+r.late_n+' قسط)':r.st)}</div>`;
 }
 function instTable(x,print){
   const r=x.r;
@@ -217,17 +219,17 @@ function fillDet(){
   const x=cur();if(!x){$('#det').close();return}
   const{c,r,pn}=x;
   $('#det').innerHTML=`<div class="dh"><div><h2>الوحدة ${esc(c.unit)||'—'} <small style="display:inline">— ${esc(pn)}</small></h2><p>المستأجر: ${esc(c.tenant)||'—'} · المالك: ${esc(c.owner)||'—'}</p></div><button class="x" data-a="close" aria-label="إغلاق">✕</button></div>
-<div class="db"><div class="sum"><div><span>إجمالي العقد</span><b>${fm(r.total)}</b></div><div><span>المسدد</span><b>${fm(r.paid)}</b></div>
-<div><span>المتبقي</span><b>${fm(r.rem)}</b></div><div><span>المتأخر</span><b>${fm(r.late)}</b></div><div><span>الأقساط</span><b>${r.k?r.k+' × '+fm(r.M):'—'}</b></div></div>
+<div class="db">${x.ext?`<p class="warnbox" style="background:var(--soft,#eef3fb);border-color:#b9cbe8">عقد خارجي — يُسدَّد الإيجار من المستأجر إلى المالك مباشرة، ولا يدخل في المحصَّل أو المتبقي أو المتأخر. هنا للمتابعة فقط.</p><div class="sum"><div><span>قيمة الإيجار</span><b>${fm(r.total)}</b></div><div><span>رسوم إدارة الأملاك</span><b>${fm(c.fee)}</b></div><div><span>الأقساط</span><b>${r.k?r.k+(r.plan?' دفعات':' × '+fm(r.M)):'—'}</b></div></div>`:`<div class="sum"><div><span>إجمالي العقد</span><b>${fm(r.total)}</b></div><div><span>المسدد</span><b>${fm(r.paid)}</b></div>
+<div><span>المتبقي</span><b>${fm(r.rem)}</b></div><div><span>المتأخر</span><b>${fm(r.late)}</b></div><div><span>الأقساط</span><b>${r.k?r.k+' × '+fm(r.M):'—'}</b></div></div>`}
 ${c.exit?`<p class="warnbox"><button class="btn sm" style="float:left" data-a="endUndo" data-p="${esc(x.pid)}" data-c="${esc(c.id)}">تراجع عن الإنهاء</button>${r.waived?'أُنهي العقد بتسوية — أُسقط المتبقي '+fm(r.waived)+' · ':'أُنهي العقد · '}${c.exit.date>iso(TODAY)?'ينتهي بتاريخ ':'بتاريخ '}${fs_(c.exit.date)}${c.exit.reason?' — '+esc(c.exit.reason):''}</p>`:''}${r.iss.length?'<p class="warnbox">يلزم استكمال: '+r.iss.map(esc).join('، ')+'</p>':''}
 <div class="acts"><button class="btn" data-a="edit">تعديل بيانات العقد</button><button class="btn" data-a="renewC">تجديد العقد</button>${r.st==='منتهي'&&endState(x.pid,c)==='pend'?`<button class="btn dng" data-a="endExit" data-p="${esc(x.pid)}" data-c="${esc(c.id)}">انتهاء الإيجار (خروج المستأجر)</button>`:''}${!c.exit&&(r.st==='ساري'||r.st==='لم يبدأ')?`<button class="btn dng" data-a="endExit" data-p="${esc(x.pid)}" data-c="${esc(c.id)}">إنهاء العقد</button>`:''}${c.exit?`<button class="btn" data-a="endUndo" data-p="${esc(x.pid)}" data-c="${esc(c.id)}">إلغاء الإنهاء</button>`:''}<button class="btn p" data-a="print" data-k="contract">طباعة ملف العقد</button><button class="btn" data-a="pdf" data-k="contract">حفظ PDF</button><button class="btn dng" data-a="delC">حذف العقد</button></div>
 <h3>بيانات العقد</h3>${infoGrid(x)}${c.notes?`<p style="margin:6px 0;font-size:13.5px"><b>ملاحظات:</b> ${esc(c.notes)}</p>`:''}
 ${(c.oldDates||[]).length?`<small>تواريخ مسجلة سابقًا: ${c.oldDates.map(d=>'<bdi>'+esc(d)+'</bdi>').join('، ')}</small>`:''}
-<h3>جدول الأقساط</h3>${r.inst.length?instTable(x):'<p class="empty">يظهر الجدول بعد استكمال القيمة والتواريخ وعدد الأقساط.</p>'}
+<h3>جدول الأقساط</h3>${r.inst.length?(x.ext?extInstTable(x):instTable(x)):'<p class="empty">يظهر الجدول بعد استكمال القيمة والتواريخ وعدد الأقساط.</p>'}
 <h3>المرفقات</h3>${attSummary(c)}
-<h3>الدفعات المسجلة</h3>
+${x.ext?'':`<h3>الدفعات المسجلة</h3>
 <div class="acts"><button class="btn p" data-a="addPay" data-v="${r.next?r.next.due:''}">+ تسجيل دفعة</button></div>
-${(c.payments||[]).length||+c.extra?payTable(c,false,true):'<div class="tw"><p class="empty">لا توجد دفعات مسجلة.</p></div>'}</div>`;
+${(c.payments||[]).length||+c.extra?payTable(c,false,true):'<div class="tw"><p class="empty">لا توجد دفعات مسجلة.</p></div>'}`}</div>`;
 }
 function openDet(pid,cid){S.cur={pid,cid};fillDet();if(!$('#det').open)$('#det').showModal()}
 function contractDoc(x){return leaseDoc(x)}
@@ -257,7 +259,7 @@ function formDlg({title,fields,vals={},save,onSave}){
 const numOk=s=>s===''||!isNaN(Number(s));
 function renewForm(pid,c){
   const m=Core.months(c)||12,s=c.end?iso(pd(c.end)+DAY):iso(TODAY);
-  contractForm(false,{pid,unit:c.unit,tenant:c.tenant,owner:c.owner,fee:c.fee,rent:c.rent,count:c.count,start:s,end:iso(edate(pd(s),m)-DAY),period:c.period,notes:''});
+  contractForm(false,{pid,unit:c.unit,tenant:c.tenant,owner:c.owner,fee:c.fee,kind:c.kind,rent:c.rent,count:c.count,start:s,end:iso(edate(pd(s),m)-DAY),period:c.period,notes:''});
 }
 function payForm(pid,cid,amount,instNo){
   const c=P()[pid]?.contracts.find(c=>c.id===cid);if(!c)return;
@@ -580,7 +582,7 @@ function vOwners(all){
   return `<h1>الملاك</h1><p class="sub">كشف حساب لكل مالك: المحصَّل من الإيجارات ناقصًا رسوم الأملاك. انقر على المالك لعرض الكشف وطباعته.</p>
 <div class="bar"><input type="search" id="oq" placeholder="بحث باسم المالك" value="${esc(S.ow.q)}">${pbtn('list')}</div>${T(cols,rws,{foot})}`;
 }
-const ownerRows=name=>rows().filter(x=>(String(x.c.owner||'').trim()||'(بدون مالك)')===name).sort((a,b)=>a.pn.localeCompare(b.pn,'ar')||String(a.c.unit).localeCompare(String(b.c.unit),'ar',{numeric:true}));
+const ownerRows=name=>rowsI().filter(x=>(String(x.c.owner||'').trim()||'(بدون مالك)')===name).sort((a,b)=>a.pn.localeCompare(b.pn,'ar')||String(a.c.unit).localeCompare(String(b.c.unit),'ar',{numeric:true}));
 function ownerBody(name,print){
   const all=ownerRows(name),o=ownerStatements(all)[0]||{total:0,paid:0,rem:0,late:0,fees:0,net:0};
   return `<div class="sum"><div><span>إجمالي الإيجار</span><b>${fm(o.total)}</b></div><div><span>المحصَّل</span><b>${fm(o.paid)}</b></div><div><span>المتبقي</span><b>${fm(o.rem)}</b></div><div><span>المتأخر</span><b>${fm(o.late)}</b></div><div><span>رسوم الأملاك</span><b>${fm(o.fees)}</b></div><div><span>صافي المحصَّل</span><b>${fm(o.net)}</b></div></div>
@@ -653,12 +655,12 @@ async function saveText(name,txt){const f=await native.saveFile(name,new TextEnc
 async function saveWb(name,wb){const b=XLSX.write(wb,{type:'array',bookType:'xlsx'});const f=await native.saveFile(name,new Uint8Array(b));if(f)toast('تم الحفظ')}
 function contractsCsv(){
   const h=['المشروع','الوحدة','المالك','المستأجر','بداية الإيجار','نهاية الإيجار','إجمالي العقد','المسدد','المتبقي','الاستحقاق القادم','مبلغ القادم','المتأخر','الحالة'];
-  const l=sorted(rows().filter(x=>passC(x))).map(({pn,c,r})=>[pn,c.unit,c.owner,c.tenant,c.start,c.end,r.total,r.paid,r.rem,r.next?iso(r.next.date):'',r.next?r.next.due:'',r.late,r.st].map(csvq).join(','));
+  const l=sorted(rowsI().filter(x=>passC(x))).map(({pn,c,r})=>[pn,c.unit,c.owner,c.tenant,c.start,c.end,r.total,r.paid,r.rem,r.next?iso(r.next.date):'',r.next?r.next.due:'',r.late,r.st].map(csvq).join(','));
   return[h.map(csvq).join(','),...l].join('\r\n');
 }
 function printDoc(k,pdf){
   let html,name;
-  if(k==='list'){if(S.view==='due'||S.view==='flow'){const D=S.view==='due'?S.due:S.flow;D.print=true;S.pm=dueModel(rows(),D);D.print=false}html=listDoc();name=safe(S.pm.title)+'.pdf'}
+  if(k==='list'){if(S.view==='due'||S.view==='flow'){const D=S.view==='due'?S.due:S.flow;D.print=true;S.pm=dueModel(rowsI(),D);D.print=false}html=listDoc();name=safe(S.pm.title)+'.pdf'}
   else if(k==='contract'){const x=cur();if(!x)return;html=contractDoc(x);name='contract-'+safe(x.c.unit)+'.pdf'}
   else if(k==='owner'){html=docHtml({title:'كشف حساب مالك: '+esc(S.on),sub:'بتاريخ '+iso(TODAY),body:ownerBody(S.on,true)});name='statement-'+safe(S.on)+'.pdf'}
   else if(k==='proj'){const p=P()[S.pj];html=docHtml({title:'وحدات مشروع: '+esc(p.name),sub:esc(p.address||''),body:projUnits(S.pj,true)});name='units-'+safe(p.name)+'.pdf'}
@@ -679,7 +681,7 @@ const act={
   availCsv:()=>{const L=availList(),o=[['المشروع','الوحدة','المالك','النوع','المساحة','الغرف','الإيجار المطلوب'].map(csvq).join(','),...L.map(x=>[x.p.name,x.u.no,x.u.owner,x.u.type,x.u.area,x.u.rooms,x.u.askRent].map(csvq).join(','))];saveText('available-units.csv',o.join('\r\n'))},
   print:b=>printDoc(b.dataset.k,false),pdf:b=>printDoc(b.dataset.k,true),
   csv:()=>saveText('rent-contracts.csv',contractsCsv()),
-  dueCsv:b=>{const D=b.dataset.d==='fl'?S.flow:S.due,act=D.mode==='act',L=dueList(rows(),D);
+  dueCsv:b=>{const D=b.dataset.d==='fl'?S.flow:S.due,act=D.mode==='act',L=dueList(rowsI(),D);
     const h=act?['التاريخ','المشروع','الوحدة','المالك','المستأجر','المبلغ','ملاحظة']:['الاستحقاق','المشروع','الوحدة','المالك','المستأجر','القسط','مبلغ القسط','المسدد','المتبقي'];
     const out=[h.map(csvq).join(','),...L.map(o=>(act?[o.t?iso(o.t):'',o.x.pn,o.x.c.unit,o.x.c.owner,o.x.c.tenant,o.amount,o.note]:[o.t?iso(o.t):'',o.x.pn,o.x.c.unit,o.x.c.owner,o.x.c.tenant,o.n,o.amount,o.paid,o.due]).map(csvq).join(','))];
     saveText('cashflow.csv',out.join('\r\n'))},

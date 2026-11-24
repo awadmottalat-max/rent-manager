@@ -1,0 +1,26 @@
+const{app,BrowserWindow}=require('electron');const fs=require('fs'),path=require('path'),os=require('os');
+app.setPath('userData',fs.mkdtempSync(path.join(os.tmpdir(),'rent-')));app.commandLine.appendSwitch('no-sandbox');require('../main.js');
+const D=JSON.parse(fs.readFileSync('/tmp/db2.json','utf8'));
+app.whenReady().then(async()=>{await new Promise(r=>setTimeout(r,2500));const w=BrowserWindow.getAllWindows()[0];w.setSize(1500,1000);
+ w.webContents.on('console-message',(e,l,m)=>{if(l>=2)console.log('CONSOLE',m)});
+ console.log(await w.webContents.executeJavaScript(`(async()=>{const R={};try{const d=${JSON.stringify(D)};normalize(d);S.db=d;const sl=ms=>new Promise(r=>setTimeout(r,ms));
+  const tot=()=>{const a=rowsI();return [a.length,sum(a,x=>x.r.total||0),sum(a,x=>x.r.paid||0),sum(a,x=>x.r.late||0),alertCount(a)]};
+  R.before=tot();const pid=Object.keys(P()).find(k=>P()[k].name.includes('ماربيلا'));
+  go('ext');await sl(200);R.emptyMsg=document.querySelector('#view .empty')?.textContent;
+  document.querySelector('[data-a=newExt]').click();await sl(300);
+  R.title=document.querySelector('#frm h2').textContent;R.kind=document.getElementById('cf_kind').value;
+  document.getElementById('cf_pid').value=pid;document.getElementById('cf_pid').dispatchEvent(new Event('change',{bubbles:true}));
+  const ci=(id,v)=>{const i=document.querySelector('#'+id+' input');i.value=v;i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));i.dispatchEvent(new Event('blur',{bubbles:true}))};
+  ci('cb_unit','EXT1');ci('cb_owner','مالك خارجي');ci('cb_ten','مستأجر خارجي');
+  document.getElementById('cf_rent').value=60000;document.getElementById('cf_fee').value=3000;
+  const fr=document.getElementById('cf_freq');fr.value='3';fr.dispatchEvent(new Event('change',{bubbles:true}));
+  const pe=document.getElementById('cf_period');pe.value='سنة';pe.dispatchEvent(new Event('change',{bubbles:true}));setDate('cf_start','2026-10-01');document.getElementById('cf_start').dispatchEvent(new Event('change',{bubbles:true}));await sl(200);
+  document.getElementById('cf_save').click();await sl(500);R.err=document.getElementById('cf_err')?.textContent;
+  const c=P()[pid].contracts.find(z=>z.unit==='EXT1');R.saved=c&&{kind:c.kind,fee:c.fee,rent:c.rent};
+  R.after=tot();render();
+  go('ext');await sl(300);R.kpis=[...document.querySelectorAll('#view .kp')].map(k=>k.textContent);R.rows=document.querySelectorAll('#view tbody tr').length;
+  S.cur={pid,cid:c.id};fillDet();R.det=document.querySelector('#det .sum').textContent.replace(/\\s+/g,' ');R.pay=/تسجيل دفعة/.test(document.querySelector('#det').innerHTML);R.inst=document.querySelectorAll('#det table tbody tr').length;
+  go('contracts');await sl(200);R.inList=document.querySelector('#view').innerText.includes('EXT1');R.cnt=rowsI().length;
+  go('ext');await sl(300);R.err2='ok'
+  }catch(e){R.e=e.stack}return JSON.stringify(R)})()`));
+await new Promise(r=>setTimeout(r,300));fs.writeFileSync('/tmp/ext.png',(await w.webContents.capturePage()).toPNG());app.exit(0)});
