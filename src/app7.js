@@ -26,7 +26,7 @@ function alertItems(all){
     else if(U.length){const f=Math.min(...U.map(i=>i.date));soon.push({x,inst:U,amount:sum(U,i=>i.due),first:f,days:Math.round((f-TODAY)/DAY)})}}
   late.sort((a,b)=>b.days-a.days);soon.sort((a,b)=>a.first-b.first);return{late,soon};
 }
-function alertCount(all){try{const a=alertItems(all);return a.late.length+a.soon.length+renewalsOpen(all,60).length}catch{return 0}}
+function alertCount(all){try{const a=alertItems(all);return a.late.length+a.soon.length+renewalsOpen(all,60).length+(typeof feeAlerts==='function'?feeAlerts().length:0)}catch{return 0}}
 
 /* ===== نافذة تأكيد التذكير ===== */
 function fillTpl(t,o){return t.replace(/\{المستأجر\}/g,o.tenant).replace(/\{الوحدة\}/g,o.unit).replace(/\{المشروع\}/g,o.project).replace(/\{المبلغ\}/g,money(o.amount)).replace(/\{الاستحقاق\}/g,o.when)}
@@ -57,13 +57,14 @@ function remindDlg(pid,cid){
 }
 
 /* ===== شاشة التنبيهات ===== */
-const ALS={all:'كل التنبيهات',late:'أقساط متأخرة',soon:'تستحق خلال 7 أيام',exp:'عقود تنتهي خلال 60 يومًا',pend:'منتهية بانتظار قرار',log:'سجل التذكيرات'};
+const ALS={all:'كل التنبيهات',fee:'رسوم إدارة أملاك',late:'أقساط متأخرة',soon:'تستحق خلال 7 أيام',exp:'عقود تنتهي خلال 60 يومًا',pend:'منتهية بانتظار قرار',log:'سجل التذكيرات'};
 function vAlerts(all){
   const F=S.al,q=(F.q||'').toLowerCase(),A=alertItems(all.filter(x=>(!F.p||x.pid===F.p)&&(!q||txt(x.c.unit,x.c.tenant,x.c.owner,x.pn).includes(q))));
   const rn=renewalsOpen(all,60).filter(x=>x.days>=0&&(!F.p||x.pid===F.p)&&(!q||txt(x.c.unit,x.c.tenant,x.c.owner,x.pn).includes(q))).sort((a,b)=>a.days-b.days);
   const pend=all.filter(x=>x.r.st==='منتهي'&&endState(x.pid,x.c)==='pend'&&(!F.p||x.pid===F.p)&&(!q||txt(x.c.unit,x.c.tenant,x.c.owner,x.pn).includes(q))).sort((a,b)=>(pd(b.c.end)||0)-(pd(a.c.end)||0));
   const log=RM().filter(r=>(!F.p||r.pid===F.p)&&(!q||txt(r.unit,r.tenant,r.project).includes(q)));
-  const cnt={late:A.late.length,soon:A.soon.length,exp:rn.length,pend:pend.length,log:log.length};
+  const FA=feeAlerts().filter(o=>(!F.p||o.x.pid===F.p)&&(!q||txt(o.x.c.unit,o.x.c.tenant,o.x.c.owner,o.x.pn).includes(q)));
+  const cnt={fee:FA.length,late:A.late.length,soon:A.soon.length,exp:rn.length,pend:pend.length,log:log.length};
   const show=k=>F.s==='all'?k!=='log':F.s===k;
   const remCell=o=>{const r=lastRem(o.x.c.id);return r?`<span class="ch ok">ذُكِّر ${agoTxt(r.at)}</span>`:'<span class="ch">لم يُذكَّر</span>'};
   const btns=o=>`<button class="btn sm p" data-a="remind" data-p="${esc(o.x.pid)}" data-c="${esc(o.x.c.id)}">تذكير واتساب</button> <button class="btn sm" data-a="qpay" data-p="${esc(o.x.pid)}" data-c="${esc(o.x.c.id)}" data-v="${o.amount}" data-n="${o.inst[0].n}">دفعة</button>`;
@@ -77,11 +78,12 @@ function vAlerts(all){
   const pendT=pend.length?T([{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المستأجر',k:'t'},{h:'انتهى في',k:'d'},{h:'المتبقي',k:'n'},{h:'الإجراء',k:'ac'}],pend.map(x=>({attrs:open_(x),cells:[esc(x.pn),'<b>'+esc(x.c.unit)+'</b>',esc(x.c.tenant)||'—',fs_(x.c.end),fm(x.r.rem>0?x.r.rem:0),endBtns(x)]}))):empty('لا عقود منتهية بانتظار قرار.');
   const logT=log.length?T([{h:'التاريخ والوقت',k:'t'},{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المستأجر',k:'t'},{h:'الجوال',k:'t'},{h:'المبلغ',k:'n'},{h:'الرسالة',k:'t'},{h:'',k:'ac'}],log.slice(0,300).map(r=>{const d=new Date(r.at),z=n=>String(n).padStart(2,'0'),ds=d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+' '+z(d.getHours())+':'+z(d.getMinutes());
     return{cells:[`<bdi>${ds}</bdi>`,esc(r.project),'<b>'+esc(r.unit)+'</b>',esc(r.tenant)||'—','<bdi>'+esc(r.phone)+'</bdi>',fm(r.amount),`<small title="${esc(r.text)}">${esc(String(r.text).replace(/\s+/g,' ').slice(0,70))}…</small>`,`<button class="btn sm" data-a="remind" data-p="${esc(r.pid)}" data-c="${esc(r.cid)}">تذكير مجددًا</button>`]}})):empty('لم يُرسَل أي تذكير بعد. يُسجَّل التذكير هنا بعد تأكيدك وفتح واتساب.');
+  const feeT=FA.length?T([{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المالك',k:'t'},{h:'الجوال',k:'t'},{h:'رسوم الإدارة المستحقة',k:'n'},{h:'الاستحقاق',k:'d'},{h:'آخر تذكير',k:'t'},{h:'',k:'ac'}],FA.map(o=>({cls:o.late&&o.days>30?'late':'',attrs:open_(o.x),cells:[esc(o.x.pn),'<b>'+esc(o.x.c.unit)+'</b>',esc(o.x.c.owner)||'—',esc(ownPhone(o.x.c.owner))||'<small>غير مسجل</small>','<b>'+fm(o.amount)+'</b>',fd(o.first)+'<small>'+(o.late?'متأخر '+o.days+' يومًا':o.days===0?'اليوم':'بعد '+o.days+' يومًا')+'</small>',remCell(o),`<button class="btn sm p" data-a="feeRemind" data-p="${esc(o.x.pid)}" data-c="${esc(o.x.c.id)}">تذكير واتساب</button> <button class="btn sm" data-a="feePayQ" data-p="${esc(o.x.pid)}" data-c="${esc(o.x.c.id)}" data-v="${o.amount}">سداد</button>`]})),{foot:['الإجمالي: '+FA.length+' عقدًا','','','',fm(sum(FA,o=>o.amount)),'','','']}):empty('لا رسوم إدارة متأخرة أو قريبة الاستحقاق.');
   const kp=(k,l,n,cls='')=>`<button class="kp ${cls}${F.s===k?' on':''}" data-a="alSt" data-s="${k}"><span>${l}</span><b>${n}</b></button>`;
   return `<h1>التنبيهات</h1><p class="sub">ما يحتاج متابعتك اليوم: أقساط متأخرة أو قادمة خلال 7 أيام مع تذكير واتساب بنقرة (بعد تأكيدك فقط)، وعقود تنتهي قريبًا، وسجل بكل تذكير أُرسل.</p>
 <div class="bar"><select id="al_p">${projOpts(F.p,true)}</select><input type="search" id="al_q" placeholder="بحث: وحدة، مستأجر، مالك" value="${esc(F.q)}"><button class="btn" data-a="remTpl">تعديل نص التذكير الافتراضي</button></div>
-<div class="kpis sm">${kp('all','الكل',cnt.late+cnt.soon+cnt.exp+cnt.pend)}${kp('late',ALS.late,cnt.late,'l')}${kp('soon',ALS.soon,cnt.soon)}${kp('exp',ALS.exp,cnt.exp)}${kp('pend',ALS.pend,cnt.pend)}${kp('log',ALS.log,cnt.log)}</div>
-${sec('late','🔴 '+ALS.late,lateT,cnt.late)}${sec('soon','🟡 '+ALS.soon,soonT,cnt.soon)}${sec('exp','🟠 '+ALS.exp,expT,cnt.exp)}${sec('pend','⚪ '+ALS.pend,pendT,cnt.pend)}${sec('log','🕘 '+ALS.log,logT,cnt.log)}`;
+<div class="kpis sm">${kp('all','الكل',cnt.fee+cnt.late+cnt.soon+cnt.exp+cnt.pend)}${kp('fee',ALS.fee,cnt.fee,cnt.fee?'l':'')}${kp('late',ALS.late,cnt.late,'l')}${kp('soon',ALS.soon,cnt.soon)}${kp('exp',ALS.exp,cnt.exp)}${kp('pend',ALS.pend,cnt.pend)}${kp('log',ALS.log,cnt.log)}</div>
+${sec('fee','🟣 رسوم إدارة أملاك (عقود خارجية)',feeT,cnt.fee)}${sec('late','🔴 '+ALS.late,lateT,cnt.late)}${sec('soon','🟡 '+ALS.soon,soonT,cnt.soon)}${sec('exp','🟠 '+ALS.exp,expT,cnt.exp)}${sec('pend','⚪ '+ALS.pend,pendT,cnt.pend)}${sec('log','🕘 '+ALS.log,logT,cnt.log)}`;
 }
 function remTplDlg(){
   formDlg({title:'نص التذكير الافتراضي',vals:{t:remTpl()},fields:[{t:'info',html:'<p style="margin:0;color:var(--mut);font-size:13px">يمكنك استخدام: <bdi>{المستأجر}</bdi> <bdi>{الوحدة}</bdi> <bdi>{المشروع}</bdi> <bdi>{المبلغ}</bdi> <bdi>{الاستحقاق}</bdi> — تُستبدل تلقائيًا عند كل تذكير، وتبقى قابلة للتعديل قبل الإرسال.</p>'},{k:'t',l:'نص الرسالة',t:'area',full:1}],

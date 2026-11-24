@@ -1,5 +1,5 @@
 /* العقود الخارجية: إدارة أملاك فقط — لا تدخل في المحصَّل/المتبقي/المتأخر/التنبيهات */
-Object.assign(S,{ex:{p:'',q:'',s:'',o:'',f:''}});
+Object.assign(S,{ex:{p:'',q:'',s:'',o:'',f:'',m:''}});
 function extInstTable(x,print){
   return T([{h:'#',k:'d'},{h:'الاستحقاق',k:'d'},{h:'المبلغ',k:'n'},{h:'الحالة',k:'t'}],
     x.r.inst.map(i=>({cells:[i.n,fd(i.date),fm(i.amount),i.date!=null&&i.date<TODAY?'<span class="ch">حلّ موعده</span>':i.date!=null&&i.date<=TODAY+30*DAY?'<span class="ch warn">خلال 30 يومًا</span>':'<span class="ch">لم يحن بعد</span>']})),{print});
@@ -25,8 +25,23 @@ function feePayForm(amount){
       mutate(pid,p=>{const c=p.contracts.find(c=>c.id===cid);(c.feePays=c.feePays||[]).push({id:'f'+uid(),date:o.date,amount:a,method:o.method,note:o.note})});toast('تم تسجيل سداد الرسوم')}});
   setTimeout(()=>$('#ff_amount')?.focus(),90);
 }
+function vExtMonth(all,list,E){
+  const[y,mo]=E.m.split('-').map(Number),ms=Date.UTC(y,mo-1,1),me=Date.UTC(y,mo,1)-DAY,inM=t=>t!=null&&t>=ms&&t<=me;
+  const MN=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'][mo-1]+' '+y;
+  const R=list.map(x=>{const due=sum(x.f.inst.filter(i=>inM(i.date)),i=>i.amount),pays=(x.c.feePays||[]).filter(p=>inM(pd(p.date))),col=sum(pays,p=>+p.amount||0);return{x,due,col,pays}}).filter(o=>o.due>0||o.col>0||o.x.f.late>0);
+  const td=sum(R,o=>o.due),tc=sum(R,o=>o.col),tl=sum(R,o=>o.x.f.late),tr=sum(R,o=>o.x.r.total||0);
+  const cols=[{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'قيمة الإيجار',k:'n'},{h:'مستحق الشهر',k:'n'},{h:'المحصَّل خلال الشهر',k:'n'},{h:'المتأخر حتى اليوم',k:'n'},{h:'الحالة',k:'d'}];
+  const rws=R.map(o=>({cls:o.x.f.late_n?'late':'',attrs:open_(o.x),cells:[...pu(o.x),esc(o.x.c.owner)||'—',esc(o.x.c.tenant)||'—',fm(o.x.r.total||0),fm(o.due),fm(o.col),o.x.f.late?'<span style="color:var(--late)">'+fm(o.x.f.late)+'</span>':'—',feeSt(o.x)]}));
+  const pl=R.flatMap(o=>o.pays.map(p=>({o,p}))).sort((a,b)=>String(a.p.date).localeCompare(String(b.p.date)));
+  const post=pl.length?`<h3 style="margin:16px 0 6px">الرسوم المحصَّلة خلال ${MN}</h3>${T([{h:'التاريخ',k:'d'},{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المالك',k:'t'},{h:'المبلغ',k:'n'},{h:'ملاحظة',k:'t'}],pl.map(({o,p})=>({cells:[fs_(p.date),esc(o.x.pn),'<b>'+esc(o.x.c.unit)+'</b>',esc(o.x.c.owner)||'—',fm(p.amount),esc([p.method,p.note].filter(Boolean).join(' — '))||'—']})),{print:true,foot:['الإجمالي','','','',fm(tc),''],footSpan:0})}`:'';
+  S.pm={title:'التقرير الشهري لإدارة الأملاك — '+MN,sub:'المشروع: '+(E.p?esc(pname(E.p)):'الكل')+(E.o?' — المالك: '+esc(E.o):'')+' — عقود الشهر: '+R.length,cols,rows:rws,foot:['الإجمالي ('+R.length+')','','','',fm(tr),fm(td),fm(tc),fm(tl),''],footSpan:0,post:`<p style="margin:12px 0"><b>نسبة التحصيل من مستحق الشهر:</b> ${td?Math.round(Math.min(tc,td)/td*100)+'%':'—'}</p>`+post};
+  const k=(l,v,i,c)=>`<div class="kp static ${c||''}"><span>${l}</span><b>${v}</b><i>${i||''}</i></div>`;
+  return `<div class="kpis sm">${k('عقود الشهر',R.length,MN)}${k('رسوم مستحقة في الشهر',fm(td))}${k('المحصَّل خلال الشهر',fm(tc),td?Math.round(Math.min(tc,td)/td*100)+'% من المستحق':'')}${k('المتأخر حتى اليوم',fm(tl),'','lt')}</div>
+${R.length?T(cols,rws,{foot:S.pm.foot}):'<p class="empty">لا استحقاقات أو تحصيلات رسوم في هذا الشهر.</p>'}${post}`;
+}
 function vExt(all){
   const E=S.ex,list=all.filter(exPass).sort((a,b)=>a.pn.localeCompare(b.pn,'ar')||String(a.c.unit).localeCompare(String(b.c.unit),'ar',{numeric:true}));
+  if(E.m)S.exM=1;else S.exM=0;
   const rent=x=>x.r.total||0,pct=(f,r)=>r?(f/r*100).toFixed(1)+'%':'—';
   const owners=[...new Set(all.map(x=>String(x.c.owner||'').trim()||'(بدون مالك)'))].sort((a,b)=>a.localeCompare(b,'ar'));
   const cols=[{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'بداية الإيجار',k:'d'},{h:'نهاية الإيجار',k:'d'},{h:'قيمة الإيجار',k:'n'},{h:'رسوم الإدارة',k:'n'},{h:'المسدد',k:'n'},{h:'المتبقي',k:'n'},{h:'المتأخر',k:'n'},{h:'الاستحقاق القادم',k:'d'},{h:'حالة الرسوم',k:'d'}];
@@ -42,11 +57,50 @@ function vExt(all){
 <select id="ex_s" aria-label="حالة العقد">${[['','كل العقود'],['active','سارية'],['future','لم تبدأ'],['ended','منتهية']].map(([v,l])=>`<option value="${v}"${E.s===v?' selected':''}>${l}</option>`).join('')}</select>
 <select id="ex_f" aria-label="حالة الرسوم">${[['','كل حالات الرسوم'],['late','رسوم متأخرة'],['open','عليها متبقٍ'],['paid','مسددة']].map(([v,l])=>`<option value="${v}"${E.f===v?' selected':''}>${l}</option>`).join('')}</select>
 <input type="search" id="ex_q" placeholder="بحث: وحدة، مستأجر، مالك" value="${esc(E.q)}" aria-label="بحث">
+<label class="mlb">تقرير شهري <input type="month" id="ex_m" value="${esc(E.m)}"></label>${E.m?'<button class="btn" data-a="exM0">عرض كل الفترات</button>':''}
 <button class="btn p" data-a="newExt">+ عقد خارجي</button>${pbtn('list')}</div>
-<div class="kpis sm">${k('العقود الخارجية',list.length,'إيجارها '+fm(tr))}${k('رسوم الإدارة المستحقة',fm(tf),pct(tf,tr)+' من الإيجار')}${k('المحصَّل من الرسوم',fm(tp),tf?Math.round(tp/tf*100)+'% من المستحق':'')}${k('المتبقي من الرسوم',fm(trm))}${k('المتأخر من الرسوم',fm(tl),'','lt')}</div>
-${list.length?T(cols,rws,{foot:S.pm.foot}):'<p class="empty">لا توجد عقود خارجية. أضف عقدًا واختر «نوع العقد: خارجي».</p>'}${sm}`;
+${E.m?vExtMonth(all,list,E):''}${E.m?'':`<div class="kpis sm">${k('العقود الخارجية',list.length,'إيجارها '+fm(tr))}${k('رسوم الإدارة المستحقة',fm(tf),pct(tf,tr)+' من الإيجار')}${k('المحصَّل من الرسوم',fm(tp),tf?Math.round(tp/tf*100)+'% من المستحق':'')}${k('المتبقي من الرسوم',fm(trm))}${k('المتأخر من الرسوم',fm(tl),'','lt')}</div>
+${list.length?T(cols,rws,{foot:S.pm.foot}):'<p class="empty">لا توجد عقود خارجية. أضف عقدًا واختر «نوع العقد: خارجي».</p>'}${sm}`}`;
 }
 VF.ext=vExt;
-Object.assign(act,{feePay:b=>feePayForm(b.dataset.v!==''?+b.dataset.v:''),feeDel:b=>arm(b,()=>{const{pid,cid}=S.cur;mutate(pid,p=>{const c=p.contracts.find(c=>c.id===cid);c.feePays=(c.feePays||[]).filter(z=>z.id!==b.dataset.i)});if(cur())fillDet()}),newExt:()=>contractForm(false,{kind:'ext',_new:1,pid:S.ex.p||undefined})});
+Object.assign(act,{exM0:()=>{S.ex.m='';render()},feePay:b=>feePayForm(b.dataset.v!==''?+b.dataset.v:''),feeDel:b=>arm(b,()=>{const{pid,cid}=S.cur;mutate(pid,p=>{const c=p.contracts.find(c=>c.id===cid);c.feePays=(c.feePays||[]).filter(z=>z.id!==b.dataset.i)});if(cur())fillDet()}),newExt:()=>contractForm(false,{kind:'ext',_new:1,pid:S.ex.p||undefined})});
 document.addEventListener('input',e=>{if(e.target.id==='ex_q'){S.ex.q=e.target.value.trim();render()}});
-document.addEventListener('change',e=>{const id=e.target.id,v=e.target.value;if(id==='ex_p'){S.ex.p=v;render()}else if(id==='ex_o'){S.ex.o=v;render()}else if(id==='ex_s'){S.ex.s=v;render()}else if(id==='ex_f'){S.ex.f=v;render()}});
+document.addEventListener('change',e=>{const id=e.target.id,v=e.target.value;if(id==='ex_p'){S.ex.p=v;render()}else if(id==='ex_o'){S.ex.o=v;render()}else if(id==='ex_s'){S.ex.s=v;render()}else if(id==='ex_f'){S.ex.f=v;render()}else if(id==='ex_m'){S.ex.m=v;render()}});
+
+/* ===== تنبيهات رسوم الإدارة وتذكيرها ===== */
+const ownPhone=name=>(PR('owners').find(r=>nm(r.name)===nm(name))||{}).phone||'';
+function feeAlerts(){
+  const out=[];
+  for(const x of rows().filter(z=>z.ext)){const f=x.f;if(!(f.total>0))continue;
+    if(x.r.st==='منتهي'&&endState(x.pid,x.c)!=='pend'&&!f.late_n)continue;
+    const L=f.inst.filter(i=>i.due>0.005&&i.late),U=f.inst.filter(i=>i.due>0.005&&!i.late&&i.date!=null&&i.date>=TODAY&&i.date-TODAY<=7*DAY);
+    if(L.length){const o=Math.min(...L.map(i=>i.date));out.push({x,late:true,amount:sum(L,i=>i.due),first:o,days:Math.round((TODAY-o)/DAY),inst:L})}
+    else if(U.length){const o=Math.min(...U.map(i=>i.date));out.push({x,late:false,amount:sum(U,i=>i.due),first:o,days:Math.round((o-TODAY)/DAY),inst:U})}}
+  return out.sort((a,b)=>(b.late-a.late)||(b.days*(b.late?1:-1))-(a.days*(a.late?1:-1)));
+}
+const FEE_TPL=()=>S.db.settings.remTplFee||`السلام عليكم ورحمة الله وبركاته،
+عزيزنا {المستلم}، نرجو أن تكونوا بخير 🌷
+نذكّركم بلطف باستحقاق رسوم إدارة الأملاك للوحدة {الوحدة} ({المشروع}) بمبلغ {المبلغ} ريال، {الاستحقاق}.
+نشكر لكم تعاونكم، وإن كان السداد قد تمّ فنعتذر عن التذكير.
+${S.db.settings.operator||'شركة كثيب لإدارة الأملاك'}`;
+function feeRemindDlg(pid,cid){
+  const x=rows().find(z=>z.pid===pid&&z.c.id===cid&&z.ext);if(!x)return toast('العقد غير موجود');
+  const it=feeAlerts().find(o=>o.x.pid===pid&&o.x.c.id===cid),inst=it?it.inst:x.f.inst.filter(i=>i.due>0.005).slice(0,1);
+  if(!inst.length)return toast('لا رسوم مستحقة على هذا العقد');
+  const amount=sum(inst,i=>i.due),first=Math.min(...inst.map(i=>i.date??1e12)),late=inst.some(i=>i.late);
+  const when=first>=1e12?'والمستحقة حاليًا':late?'وأقدمها بتاريخ '+iso(first)+' (متأخرة)':'وتستحق بتاريخ '+iso(first);
+  const who=t=>t==='ten'?(nm(x.c.tenant)||'المستأجر الكريم'):(nm(x.c.owner)||'المالك الكريم'),ph=t=>t==='ten'?tenPhone(x.c.tenant):ownPhone(x.c.owner);
+  const mk=t=>FEE_TPL().replace(/\{المستلم\}/g,who(t)).replace(/\{الوحدة\}/g,x.c.unit||'').replace(/\{المشروع\}/g,x.pn).replace(/\{المبلغ\}/g,money(amount)).replace(/\{الاستحقاق\}/g,when);
+  formDlg({title:'تأكيد إرسال تذكير برسوم الإدارة',save:'نعم، افتح واتساب وأرسل التذكير الآن',vals:{to:'own',phone:ph('own'),text:mk('own'),saveTpl:'no'},
+    fields:[{t:'info',html:`<div class="sum"><div><span>الوحدة</span><b>${esc(x.c.unit)} — ${esc(x.pn)}</b></div><div><span>الرسوم المطلوب تذكيرها</span><b>${fm(amount)}</b></div></div>`},
+      {k:'to',l:'إرسال إلى',t:'select',opts:[['own','المالك: '+(nm(x.c.owner)||'—')],['ten','المستأجر: '+(nm(x.c.tenant)||'—')]]},
+      {k:'phone',l:'الجوال (واتساب)',ph:'05xxxxxxxx'},{k:'text',l:'نص الرسالة (قابل للتعديل)',t:'area',full:1},
+      {k:'saveTpl',l:'حفظ هذا النص كنص افتراضي لتذكير الرسوم؟',t:'select',opts:[['no','لا'],['yes','نعم']],def:'no'}],
+    onSave:v=>{const p=waPhone(v.phone);if(!p||p.length<10)return 'أدخل رقم جوال صحيح للواتساب (مثل 05xxxxxxxx)';if(!v.text.trim())return 'نص الرسالة فارغ';
+      native.openExt('https://wa.me/'+p+'?text='+encodeURIComponent(v.text)).then(ok=>{if(!ok){toast('تعذّر فتح واتساب');return}
+        RM().unshift({id:'m'+uid(),pid,cid,tenant:(v.to==='ten'?'':'المالك: ')+who(v.to),unit:x.c.unit,project:x.pn,phone:p,amount,inst:inst.map(i=>i.n),at:Date.now(),text:v.text.trim(),ch:'whatsapp',fee:true});
+        if(v.saveTpl==='yes')S.db.settings.remTplFee=v.text.trim();persist();toast('فُتح واتساب وسُجِّل التذكير');render()})}});
+  const sel=document.getElementById('ff_to');if(sel)sel.onchange=()=>{const t=sel.value;document.getElementById('ff_phone').value=ph(t);document.getElementById('ff_text').value=mk(t)};
+  const ta=document.getElementById('ff_text');if(ta)ta.rows=8;
+}
+Object.assign(act,{feeRemind:b=>feeRemindDlg(b.dataset.p,b.dataset.c),feePayQ:b=>{S.cur={pid:b.dataset.p,cid:b.dataset.c};feePayForm(+b.dataset.v||'')}});

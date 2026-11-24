@@ -95,7 +95,7 @@ function ownerStatements(rows){
 }
 /* رسوم إدارة الأملاك (للعقود الخارجية): مربوطة بدفعات الإيجار (افتراضي) أو دفعة واحدة */
 function feeCalc(c,r,today){
-  const total=Math.max(0,Number(c.fee)||0),inst=[];
+  const total=c.feeType==='pct'&&r.total>0?Math.max(0,r2(r.total*(Number(c.feePct)||0)/100)):Math.max(0,Number(c.fee)||0),inst=[];
   if(total>0){
     if(c.feeMode==='once'||!r.inst.length||!(r.total>0)){inst.push({n:1,date:pd(c.feeDate)??pd(c.start),amount:total})}
     else{let acc=0;r.inst.forEach((i,k)=>{const a=k===r.inst.length-1?r2(total-acc):r2(total*i.amount/r.total);acc=r2(acc+a);inst.push({n:i.n,date:i.date,amount:a})})}
