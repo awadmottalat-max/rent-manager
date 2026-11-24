@@ -328,3 +328,20 @@ main::-webkit-scrollbar,.tw::-webkit-scrollbar{width:10px;height:10px}main::-web
 main::-webkit-scrollbar-thumb:hover,.tw::-webkit-scrollbar-thumb:hover{background:#8ea5c6;background-clip:padding-box;border:2px solid transparent}
 ::selection{background:#b8935a40}
 }
+
+.sidefoot{display:none}.side{padding-bottom:10px}@media screen{#nav button{padding:8px 12px}#nav{gap:2px}}
+
+/* ===== English (LTR) ===== */
+@media screen{
+html[lang=en] body{font-family:"IBM Plex Sans Arabic","Segoe UI",Tahoma,Arial,sans-serif}
+html[lang=en] th.n,html[lang=en] td.n{text-align:right;direction:ltr}
+html[lang=en] th,html[lang=en] td{text-align:start}
+html[lang=en] th.d,html[lang=en] td.d{text-align:center}
+html[lang=en] .kp b,html[lang=en] .hero .hk b{text-align:start}
+html[lang=en] #nav button:hover{padding-inline-start:15px}
+html[lang=en] #lg{margin-inline-start:8px}
+html[lang=en] main>#view>h1::after{inset-inline-start:0}
+}
+#lg{min-width:44px;font-weight:700}
+html[lang=en] .dtf{direction:ltr}
+html[lang=en] .dtf .dtm{text-align-last:center}

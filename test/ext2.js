@@ -11,11 +11,11 @@ app.whenReady().then(async()=>{await new Promise(r=>setTimeout(r,2500));const w=
   ci('cb_unit','EXT2');ci('cb_owner','مالك ب');ci('cb_ten','مستأجر ب');
   const set=(id,v)=>{const e=document.getElementById(id);e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}))};
   set('cf_rent',80000);set('cf_freq','3');set('cf_period','سنة');setDate('cf_start','2026-08-01');document.getElementById('cf_start').dispatchEvent(new Event('change',{bubbles:true}));
-  set('cf_kind','ext');set('cf_ftype','pct');set('cf_fpct',5);await sl(200);R.feeAuto=document.getElementById('cf_fee').value;R.ro=document.getElementById('cf_fee').readOnly;
+  set('cf_kind','ext');set('cf_ftype','pct');set('cf_fpct',5);set('cf_cfee',575);set('cf_cfx','no');setDate('cf_cfd','2026-08-01');await sl(200);R.bd=document.getElementById('cf_fbd').textContent;R.feeAuto=document.getElementById('cf_fee').value;R.ro=document.getElementById('cf_fee').readOnly;
   document.getElementById('cf_save').click();await sl(500);R.err=document.getElementById('cf_err')?.textContent;
   const c=P()[pid].contracts.find(z=>z.unit==='EXT2');R.saved=c&&[c.fee,c.feeType,c.feePct];
   const x=rows().find(z=>z.c.id===c.id);R.f=[x.f.total,x.f.inst.map(i=>i.amount+':'+(i.late?'L':'')).join(',')];
-  R.alerts=feeAlerts().length;go('alerts');await sl(300);R.alSec=/رسوم إدارة أملاك \\(عقود خارجية\\)/.test(document.querySelector('#view').innerText);
+  R.f2=[x.f.mg.total,x.f.ls.total,x.f.total,x.f.inst.length];S.cur={pid,cid:c.id};feePayForm(575);await sl(200);R.item=!!document.getElementById('ff_item');document.getElementById('ff_item').value='ls';document.querySelector('#frm .ft .p, #frm button.p')?.click();await sl(300);const x3=rows().find(z=>z.c.id===c.id);R.f3=[x3.f.ls.paid,x3.f.mg.paid,x3.f.rem];R.alerts=feeAlerts().length;go('alerts');await sl(300);R.alSec=/رسوم إدارة أملاك \\(عقود خارجية\\)/.test(document.querySelector('#view').innerText);
   const rb=document.querySelector('[data-a=feeRemind]');R.rb=!!rb;if(rb){rb.click();await sl(300);R.dlg=document.querySelector('#frm h2').textContent;R.ph=document.getElementById('ff_phone').value;document.getElementById('ff_to').value='ten';document.getElementById('ff_to').dispatchEvent(new Event('change'));R.txt=document.getElementById('ff_text').value.slice(0,80);document.querySelector('#frm .x').click()}
   S.ex.m='2026-11';go('ext');await sl(300);R.month=document.querySelector('#view').innerText.replace(/\\s+/g,' ').slice(0,400);R.pmT=S.pm.title;
     }catch(e){R.e=e.stack}return JSON.stringify(R)})()`));

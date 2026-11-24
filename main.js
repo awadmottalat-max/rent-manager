@@ -35,7 +35,7 @@ function load(){
   return{data:d,recovered,dir:dataDir};
 }
 function save(data){
-  if(Date.now()-lastBackup>6*3600e3)backup('auto');
+  if(Date.now()-lastBackup>24*3600e3)backup('auto');
   atomicWrite(dataFile(),JSON.stringify(data));return true;
 }
 /* ---------- أيقونة مخصصة ---------- */

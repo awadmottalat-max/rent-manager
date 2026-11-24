@@ -16,8 +16,11 @@ function arm(b,fn){if(b.dataset.armed){fn();return}b.dataset.t=b.textContent;b.d
 
 /* ---------- التخزين ---------- */
 let dirty=false,st=null;
-function persist(){dirty=true;clearTimeout(st);st=setTimeout(flush,250)}
-async function flush(){if(!dirty)return;dirty=false;try{await native.save(S.db)}catch(e){dirty=true;toast('تعذّر الحفظ على القرص: '+(e.message||e))}}
+let lastFlush=0;
+const SAVE_MS=()=>{const m=Number(S.db?.settings?.saveEvery);return(isFinite(m)&&m>=0?m:5)*60e3};
+function persist(){dirty=true;clearTimeout(st);const w=Math.max(250,lastFlush+SAVE_MS()-Date.now());st=setTimeout(flush,w)}
+async function flush(){if(!dirty)return;dirty=false;lastFlush=Date.now();try{await native.save(S.db)}catch(e){dirty=true;toast('تعذّر الحفظ على القرص: '+(e.message||e))}}
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&dirty){clearTimeout(st);flush()}});
 window.addEventListener('beforeunload',()=>{if(dirty){clearTimeout(st);native.saveSync(S.db);dirty=false}});
 const P=()=>S.db.projects;
 function mutate(pid,fn){const p=structuredClone(P()[pid]);fn(p);P()[pid]=p;persist();render()}
@@ -67,7 +70,7 @@ function docHtml({title,sub,body,land}){
 }
 async function printArea(html,pdfName){
   const done=()=>{document.body.classList.remove('pr');$('#printarea').innerHTML=''};
-  $('#printarea').innerHTML=html;document.body.classList.add('pr');
+  const pa=$('#printarea');pa.toggleAttribute('data-noi18n',/class="(rcv|lease)/.test(html));pa.innerHTML=html;document.body.classList.add('pr');if(window.i18nApply)i18nApply(pa);
   if(pdfName){try{const f=await native.pdf(pdfName);if(f)toast('تم الحفظ')}finally{done()}}
   else{window.addEventListener('afterprint',done,{once:true});setTimeout(done,180000);await native.print(html.includes('class="rcv"'))}
 }
@@ -106,7 +109,6 @@ function renderNav(all){
   const pendN=all.filter(x=>x.r.st==='منتهي'&&endState(x.pid,x.c)==='pend').length;
   const bd={ext:(()=>{const n=rows().filter(x=>x.ext&&x.f.late_n).length;return n?`<span class="bd">${n}</span>`:''})(),alerts:(()=>{const n=typeof alertCount==='function'?alertCount(all):0;return n?`<span class="bd">${n}</span>`:''})(),ended:pendN?`<span class="bd">${pendN}</span>`:'',due:late?`<span class="bd">${late}</span>`:'',renew:ren?`<span class="bd">${ren}</span>`:''};
   $('#nav').innerHTML=VIEWS.map(([k,l])=>`<button data-a="go" data-v="${k}" class="${S.view===k?'on':''}">${ico(NAVIC[k])}<span>${l}</span>${bd[k]||''}</button>`).join('');
-  $('#sidefoot').innerHTML='التاريخ المعتمد: <bdi>'+iso(TODAY)+'</bdi><br>الإصدار <bdi>'+esc(S.ver||'')+'</bdi> · <button class="link" data-a="chkUpd">التحقق من التحديث</button>';
 }
 function render(){
   const allX=rows(),all=allX.filter(x=>!x.ext);renderNav(all);
@@ -604,12 +606,14 @@ function vSettings(){
 <div class="row"><button class="btn p" data-a="imp">استيراد من Excel</button><button class="btn" data-a="expX">تصدير كل العقود (Excel)</button><button class="btn" data-a="tpl">تنزيل قالب الاستيراد الفارغ</button></div></div>
 <div class="card"><h3>طريقة احتساب العقود التي تزيد مدتها عن سنة</h3><div class="row"><label>قيمة الإيجار تمثل <select id="mode"><option value="total"${MODE()==='total'?' selected':''}>إجمالي قيمة العقد</option><option value="annual"${MODE()==='annual'?' selected':''}>إيجار سنة واحدة</option></select></label></div></div>
 <div class="card"><h3>الإعدادات المالية</h3><div class="row"><label>ضريبة القيمة المضافة % <input type="number" id="set_vat" step="0.01" value="${esc(S.db.settings.vat)}" style="width:90px"></label><label>اسم المشغّل <input id="set_op" value="${esc(S.db.settings.operator)}" style="min-width:260px"></label></div></div>
-<div class="card"><h3>النسخ الاحتياطي</h3><p>تؤخذ نسخة تلقائية كل 6 ساعات عند الحفظ، ونسخة قبل كل استيراد أو استعادة.</p>
+<div class="card"><h3>النسخ الاحتياطي</h3><p>تؤخذ نسخة تلقائية كل 24 ساعة عند الحفظ، ونسخة قبل كل استيراد أو استعادة.</p>
 <div class="row"><button class="btn p" data-a="bkNow">نسخة احتياطية الآن</button><button class="btn" data-a="bkList">استعادة من نسخة سابقة</button></div><div id="bklist"></div></div>
 <div class="card"><h3>أيقونة التطبيق (سطح المكتب وشريط المهام)</h3><p>الأيقونة الافتراضية هي شعار كثيب. يمكنك رفع صورة أخرى (PNG أو JPG، يفضَّل مربعة وبحجم 256 بكسل فأكثر). قد يحتاج ويندوز لبضع ثوانٍ أو لإعادة تحميل سطح المكتب (F5) ليُظهر الأيقونة الجديدة.</p>
 <div class="row"><img id="iconprev" alt="" style="width:56px;height:56px;border:1px solid var(--line);border-radius:10px;object-fit:contain;background:#fff" src="assets/logo.svg"><button class="btn p" data-a="icoSet">رفع صورة الأيقونة…</button><button class="btn" data-a="icoReset">استعادة شعار كثيب</button></div></div>
 ${auditCard()}
-<div class="card"><h3>إصدار التطبيق</h3><p>الإصدار الحالي: <b class="num">${esc(S.ver||'')}</b> — يتحقق التطبيق من التحديثات تلقائيًا عند التشغيل.</p><div class="row"><button class="btn" data-a="chkUpd">التحقق من التحديثات الآن</button></div></div>
+<div class="card"><h3 data-noi18n>اللغة / Language</h3><div class="row"><select id="set_lang" data-noi18n><option value="ar"${window.LANG==='ar'?' selected':''}>العربية</option><option value="en"${window.LANG==='en'?' selected':''}>English</option></select></div></div>
+<div class="card"><h3>تكرار الحفظ على القرص</h3><p>لتقليل مزامنة الملف (مثل OneDrive) يُكتب الملف على القرص مرة كل المدة المختارة بحد أقصى، ويُحفظ فورًا عند إغلاق التطبيق أو تصغيره أو الاستيراد والتحديث.</p><div class="row"><label>الحفظ كل <select id="set_save">${[[0,'فورًا بعد كل تعديل'],[1,'دقيقة'],[5,'5 دقائق (الافتراضي)'],[15,'15 دقيقة']].map(([v,l])=>`<option value="${v}"${(S.db.settings.saveEvery??5)==v?' selected':''}>${l}</option>`).join('')}</select></label></div></div>
+<div class="card"><h3>إصدار التطبيق</h3><p>التاريخ المعتمد: <b class="num">${iso(TODAY)}</b></p><p>الإصدار الحالي: <b class="num">${esc(S.ver||'')}</b> — يتحقق التطبيق من التحديثات تلقائيًا عند التشغيل.</p><div class="row"><button class="btn" data-a="chkUpd">التحقق من التحديثات الآن</button></div></div>
 <div class="card"><h3>موقع التخزين</h3><p class="num" id="dirp" style="direction:ltr;text-align:end">${esc(S.dir)}</p><div class="row"><button class="btn" data-a="openDir">فتح المجلد</button><button class="btn" data-a="chDir">تغيير المجلد (مثلًا OneDrive أو مجلد مشترك)</button></div></div>
 </div>`;
 }
@@ -670,7 +674,7 @@ function printDoc(k,pdf){
 
 /* ---------- الأحداث ---------- */
 const act={
-  go:b=>go(b.dataset.v),jump:b=>J[b.dataset.j](),
+  lang:()=>setLang(window.LANG==='en'?'ar':'en'),go:b=>go(b.dataset.v),jump:b=>J[b.dataset.j](),
   open:b=>openDet(b.dataset.p,b.dataset.c),close:()=>$('#det').close(),fclose:()=>$('#frm').close(),sclose:()=>$('#stm').close(),
   new:()=>contractForm(false),edit:()=>contractForm(true),
   renewC:()=>{const x=cur();if(x)renewForm(x.pid,x.c)},renewQ:b=>{const c=P()[b.dataset.p].contracts.find(c=>c.id===b.dataset.c);renewForm(b.dataset.p,c)},
@@ -745,7 +749,7 @@ document.addEventListener('change',e=>{
   else if(id==='fl_from'){S.flow.from=v;S.flow.m='';render()}else if(id==='fl_to'){S.flow.to=v;S.flow.m='';render()}
   else if(id==='fl_m'){S.flow.m=v;S.flow.from=v?v+'-01':'';S.flow.to=v?mEnd(v):'';render()}
   else if(id==='av_p'){S.av.p=v;render()}else if(id==='av_t'){S.av.t=v;render()}else if(id==='pu_p'){S.pr.up=v;render()}else if(id==='pu_s'){S.pr.us=v;render()}else if(id==='pu_o'){S.pr.uo=v;render()}else if(id==='pu_t'){S.pr.ut=v;render()}else if(id==='en_p'){S.en.p=v;render()}
-  else if(id==='set_vat'){const n=Number(v);if(isFinite(n)&&n>=0&&n<=100){S.db.settings.vat=n;persist();toast('تم حفظ الإعداد')}}else if(id==='set_op'){S.db.settings.operator=v.trim();persist();toast('تم حفظ الإعداد')}
+  else if(id==='set_lang'){setLang(v)}else if(id==='set_save'){S.db.settings.saveEvery=Number(v);persist();toast('تم حفظ الإعداد')}else if(id==='set_vat'){const n=Number(v);if(isFinite(n)&&n>=0&&n<=100){S.db.settings.vat=n;persist();toast('تم حفظ الإعداد')}}else if(id==='set_op'){S.db.settings.operator=v.trim();persist();toast('تم حفظ الإعداد')}
   else if(id==='rp'){S.ren.p=v;render()}else if(id==='rw'){S.ren.win=v;render()}
   else if(id==='mode'){S.db.settings.mode=v;persist();render();toast('تم حفظ الإعداد')}
 });

@@ -4,8 +4,8 @@ Object.assign(S,{rp:{tab:'ov',p:'',owner:'',tenant:'',from:'',to:'',rep:'pay',fo
 const plain=h=>{const d=document.createElement('div');d.innerHTML=String(h??'');return d.textContent.replace(/\s+/g,' ').trim()};
 async function exportXlsx(name,m){
   if(!m){toast('لا يوجد تقرير لتصديره');return}
-  const cols=m.cols.filter(c=>c.k!=='ac'),aoa=[[m.title],[plain(m.sub||'')],[],cols.map(c=>plain(c.h))];
-  const cv=(c,h)=>{const t=plain(h);if(c&&c.k==='n'){const n=Number(t.replace(/[,٬\s]/g,''));if(t!==''&&isFinite(n))return n}return t};
+  const cols=m.cols.filter(c=>c.k!=='ac'),aoa=[[tr(m.title)],[tr(plain(m.sub||''))],[],cols.map(c=>tr(plain(c.h)))];
+  const cv=(c,h)=>{const t=tr(plain(h));if(c&&c.k==='n'){const n=Number(t.replace(/[,٬\s]/g,''));if(t!==''&&isFinite(n))return n}return t};
   for(const r of m.rows){const sp=r.span||0;let cells=r.cells;
     if(sp>1)cells=[cells[0],...Array(sp-1).fill(''),...cells.slice(1)];
     aoa.push(cols.map((c,i)=>cv(c,cells[i]??'')))}

@@ -1,0 +1,14 @@
+const{app,BrowserWindow}=require('electron');const fs=require('fs'),path=require('path'),os=require('os');
+app.setPath('userData',fs.mkdtempSync(path.join(os.tmpdir(),'rent-')));app.commandLine.appendSwitch('no-sandbox');require('../main.js');
+const D=JSON.parse(fs.readFileSync('/tmp/db2.json','utf8'));
+app.whenReady().then(async()=>{await new Promise(r=>setTimeout(r,2500));const w=BrowserWindow.getAllWindows()[0];w.setSize(1500,1000);
+ w.webContents.on('console-message',(e,l,m)=>{if(l>=2)console.log('CONSOLE',m)});
+ const sl=ms=>new Promise(r=>setTimeout(r,ms));
+ await w.webContents.executeJavaScript(`(()=>{const d=${JSON.stringify(D)};normalize(d);S.db=d;go('dash');setLang('en')})()`);await sl(800);
+ const shot=async n=>fs.writeFileSync('/tmp/m_'+n+'.png',(await w.webContents.capturePage()).toPNG());
+ await w.webContents.executeJavaScript(`go('alerts')`);await sl(500);await shot('alerts');
+ await w.webContents.executeJavaScript(`contractForm(false,{kind:'ext',_new:1})`);await sl(500);
+ await w.webContents.executeJavaScript(`document.querySelector('#frm .fg').scrollIntoView();document.getElementById('frm').scrollTop=900`);await sl(300);await shot('form');
+ await w.webContents.executeJavaScript(`document.getElementById('frm').close();openDet(Object.keys(P())[0],P()[Object.keys(P())[0]].contracts[0].id)`);await sl(500);await shot('det');
+ await w.webContents.executeJavaScript(`document.getElementById('det').close();go('settings')`);await sl(500);await shot('settings');
+ app.exit(0)});

@@ -2,12 +2,15 @@
 'use strict';
 Object.assign(S,{al:{s:'all',p:'',q:''}});
 const RM=()=>S.db.reminders=S.db.reminders||[];
-const REM_DEF=()=>`السلام عليكم ورحمة الله وبركاته،
+const REM_DEF=()=>window.LANG==='en'?`Dear {tenant}, we hope you are well 🌷
+This is a friendly reminder that the rent installment for unit {unit} ({project}) of SAR {amount} is {when}.
+Thank you for your cooperation — if payment has already been made, please disregard this message.
+${S.db.settings.operator||'Kathib Property Management'}`:`السلام عليكم ورحمة الله وبركاته،
 عزيزنا {المستأجر}، نرجو أن تكونوا بخير 🌷
 نذكّركم بلطف بسداد دفعة إيجار الوحدة {الوحدة} ({المشروع}) بمبلغ {المبلغ} ريال، {الاستحقاق}.
 نشكر لكم تعاونكم، وإن كان السداد قد تمّ فنعتذر عن التذكير.
 ${S.db.settings.operator||'شركة كثيب لإدارة الأملاك'}`;
-const remTpl=()=>S.db.settings.remTpl||REM_DEF();
+const remTpl=()=>(window.LANG==='en'&&S.db.settings.remTplEn)||(window.LANG==='en'?REM_DEF():S.db.settings.remTpl||REM_DEF());
 const money=v=>Number(v||0).toLocaleString('en-US',{maximumFractionDigits:2});
 const DAY7=7;
 /* رقم الجوال بصيغة دولية لواتساب (السعودية افتراضيًا) */
@@ -29,15 +32,16 @@ function alertItems(all){
 function alertCount(all){try{const a=alertItems(all);return a.late.length+a.soon.length+renewalsOpen(all,60).length+(typeof feeAlerts==='function'?feeAlerts().length:0)}catch{return 0}}
 
 /* ===== نافذة تأكيد التذكير ===== */
-function fillTpl(t,o){return t.replace(/\{المستأجر\}/g,o.tenant).replace(/\{الوحدة\}/g,o.unit).replace(/\{المشروع\}/g,o.project).replace(/\{المبلغ\}/g,money(o.amount)).replace(/\{الاستحقاق\}/g,o.when)}
+function fillTpl(t,o){t=t.replace(/\{tenant\}/g,o.tenant).replace(/\{unit\}/g,o.unit).replace(/\{project\}/g,o.project).replace(/\{amount\}/g,money(o.amount)).replace(/\{when\}/g,o.when);return t.replace(/\{المستأجر\}/g,o.tenant).replace(/\{الوحدة\}/g,o.unit).replace(/\{المشروع\}/g,o.project).replace(/\{المبلغ\}/g,money(o.amount)).replace(/\{الاستحقاق\}/g,o.when)}
 function remindDlg(pid,cid){
   const all=rows(),x=all.find(z=>z.pid===pid&&z.c.id===cid);if(!x)return toast('العقد غير موجود');
   const it=[...alertItems([x]).late,...alertItems([x]).soon][0];
   const inst=it?it.inst:x.r.inst.filter(i=>i.due>0.005&&i.status!=='paid').slice(0,1);
   if(!inst.length)return toast('لا أقساط مستحقة على هذا العقد');
   const amount=sum(inst,i=>i.due),first=Math.min(...inst.map(i=>i.date??1e12)),late=inst.some(i=>i.late);
-  const when=first>=1e12?'':late?(inst.length>1?'وأقدمها بتاريخ ':'والمستحقة بتاريخ ')+iso(first)+' (متأخرة)':'وتستحق بتاريخ '+iso(first);
-  const o={tenant:nm(x.c.tenant)||'المستأجر الكريم',unit:x.c.unit||'',project:x.pn,amount,when:when||'والمستحقة حاليًا'};
+  const EN=window.LANG==='en';
+  const when=first>=1e12?'':late?(EN?(inst.length>1?'the oldest being due on ':'due on ')+iso(first)+' (overdue)':(inst.length>1?'وأقدمها بتاريخ ':'والمستحقة بتاريخ ')+iso(first)+' (متأخرة)'):(EN?'due on ':'وتستحق بتاريخ ')+iso(first);
+  const o={tenant:nm(x.c.tenant)||(EN?'tenant':'المستأجر الكريم'),unit:x.c.unit||'',project:x.pn,amount,when:when||(EN?'currently due':'والمستحقة حاليًا')};
   const lr=lastRem(cid),phone=tenPhone(x.c.tenant);
   formDlg({title:'تأكيد إرسال تذكير سداد',save:'نعم، افتح واتساب وأرسل التذكير الآن',vals:{phone,text:fillTpl(remTpl(),o),saveTpl:'no',savePh:phone?'no':'yes'},
     fields:[{t:'info',html:`<div class="sum"><div><span>المستأجر</span><b>${esc(x.c.tenant)||'—'}</b></div><div><span>الوحدة</span><b>${esc(x.c.unit)} — ${esc(x.pn)}</b></div><div><span>المبلغ المطلوب تذكيره</span><b>${fm(amount)}</b></div></div>${lr?`<p class="warnbox" style="display:block;margin:8px 0 0">سبق تذكير هذا المستأجر ${agoTxt(lr.at)}.</p>`:''}<p style="margin:10px 0 0;color:var(--mut);font-size:13px">هل تريد إرسال التذكير الآن؟ عدّل الرسالة كما تشاء، ولن يُرسَل شيء ولن يُسجَّل في سجل التذكيرات إلا بعد ضغط زر التأكيد.</p>`},
@@ -49,7 +53,7 @@ function remindDlg(pid,cid){
       native.openExt('https://wa.me/'+ph+'?text='+encodeURIComponent(v.text)).then(ok=>{
         if(!ok){toast('تعذّر فتح واتساب');return}
         RM().unshift({id:'m'+uid(),pid,cid,tenant:nm(x.c.tenant),unit:x.c.unit,project:x.pn,phone:ph,amount,inst:inst.map(i=>i.n),at:Date.now(),text:v.text.trim(),ch:'whatsapp'});
-        if(v.saveTpl==='yes'){const t=v.text.trim();S.db.settings.remTpl=t}
+        if(v.saveTpl==='yes'){const t=v.text.trim();S.db.settings[window.LANG==='en'?'remTplEn':'remTpl']=t}
         if(v.savePh==='yes'&&nm(x.c.tenant)){const L=PR('tenants');let r=L.find(z=>nm(z.name)===nm(x.c.tenant));if(!r){r={id:'r'+uid(),name:nm(x.c.tenant)};L.push(r)}r.phone=v.phone.trim()}
         persist();toast('فُتح واتساب وسُجِّل التذكير');render()});
     }});
@@ -86,8 +90,8 @@ function vAlerts(all){
 ${sec('fee','🟣 رسوم إدارة أملاك (عقود خارجية)',feeT,cnt.fee)}${sec('late','🔴 '+ALS.late,lateT,cnt.late)}${sec('soon','🟡 '+ALS.soon,soonT,cnt.soon)}${sec('exp','🟠 '+ALS.exp,expT,cnt.exp)}${sec('pend','⚪ '+ALS.pend,pendT,cnt.pend)}${sec('log','🕘 '+ALS.log,logT,cnt.log)}`;
 }
 function remTplDlg(){
-  formDlg({title:'نص التذكير الافتراضي',vals:{t:remTpl()},fields:[{t:'info',html:'<p style="margin:0;color:var(--mut);font-size:13px">يمكنك استخدام: <bdi>{المستأجر}</bdi> <bdi>{الوحدة}</bdi> <bdi>{المشروع}</bdi> <bdi>{المبلغ}</bdi> <bdi>{الاستحقاق}</bdi> — تُستبدل تلقائيًا عند كل تذكير، وتبقى قابلة للتعديل قبل الإرسال.</p>'},{k:'t',l:'نص الرسالة',t:'area',full:1}],
-    onSave:v=>{if(!v.t.trim())return 'النص فارغ';S.db.settings.remTpl=v.t.trim();persist();toast('تم حفظ النص');render()}});
+  formDlg({title:'نص التذكير الافتراضي',vals:{t:remTpl()},fields:[{t:'info',html:'<p style="margin:0;color:var(--mut);font-size:13px">يمكنك استخدام: '+(window.LANG==='en'?'<bdi>{tenant}</bdi> <bdi>{unit}</bdi> <bdi>{project}</bdi> <bdi>{amount}</bdi> <bdi>{when}</bdi>':'<bdi>{المستأجر}</bdi> <bdi>{الوحدة}</bdi> <bdi>{المشروع}</bdi> <bdi>{المبلغ}</bdi> <bdi>{الاستحقاق}</bdi>')+' — تُستبدل تلقائيًا عند كل تذكير، وتبقى قابلة للتعديل قبل الإرسال.</p>'},{k:'t',l:'نص الرسالة',t:'area',full:1}],
+    onSave:v=>{if(!v.t.trim())return 'النص فارغ';S.db.settings[window.LANG==='en'?'remTplEn':'remTpl']=v.t.trim();persist();toast('تم حفظ النص');render()}});
   const ta=document.getElementById('ff_t');if(ta)ta.rows=9;
 }
 VF.alerts=vAlerts;

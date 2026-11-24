@@ -95,16 +95,23 @@ function ownerStatements(rows){
 }
 /* رسوم إدارة الأملاك (للعقود الخارجية): مربوطة بدفعات الإيجار (افتراضي) أو دفعة واحدة */
 function feeCalc(c,r,today){
-  const total=c.feeType==='pct'&&r.total>0?Math.max(0,r2(r.total*(Number(c.feePct)||0)/100)):Math.max(0,Number(c.fee)||0),inst=[];
-  if(total>0){
-    if(c.feeMode==='once'||!r.inst.length||!(r.total>0)){inst.push({n:1,date:pd(c.feeDate)??pd(c.start),amount:total})}
-    else{let acc=0;r.inst.forEach((i,k)=>{const a=k===r.inst.length-1?r2(total-acc):r2(total*i.amount/r.total);acc=r2(acc+a);inst.push({n:i.n,date:i.date,amount:a})})}
+  const vat=c.feeVat!=null&&c.feeVat!==''?Number(c.feeVat)||0:15;
+  const mgT=c.feeType==='pct'&&r.total>0?Math.max(0,r2(r.total*(Number(c.feePct)||0)/100*(1+vat/100))):Math.max(0,Number(c.fee)||0),mg=[],ls=[];
+  if(mgT>0){
+    if(c.feeMode==='once'||!r.inst.length||!(r.total>0)){mg.push({n:1,date:pd(c.feeDate)??pd(c.start),amount:mgT})}
+    else{let acc=0;r.inst.forEach((i,k)=>{const a=k===r.inst.length-1?r2(mgT-acc):r2(mgT*i.amount/r.total);acc=r2(acc+a);mg.push({n:i.n,date:i.date,amount:a})})}
   }
-  const paid=r2((c.feePays||[]).reduce((a,p)=>a+(+p.amount||0),0));let left=paid,late=0,lateN=0,next=null;
-  for(const it of inst){const p=Math.min(it.amount,Math.max(left,0));left-=p;it.paid=r2(p);it.status=p>=it.amount-0.005?'paid':p>0?'partial':'unpaid';
-    it.due=it.status==='paid'?0:r2(it.amount-it.paid);const open=it.status!=='paid'&&it.date!=null;it.late=open&&it.date<today;it.soon=open&&it.date>=today&&it.date<=today+30*DAY;
-    if(it.late){late+=it.due;lateN++}if(it.status!=='paid'&&!next)next=it}
-  return{total,inst,paid,rem:Math.max(0,r2(total-paid)),late:r2(late),late_n:lateN,next,over:paid>total+0.005?r2(paid-total):0};
+  const lsT=Math.max(0,Number(c.cfee)||0);
+  if(lsT>0&&c.cfeeEx==='no')ls.push({n:1,date:pd(c.cfeeDate)??pd(c.start),amount:lsT,lease:true});
+  const alloc=(items,pays)=>{let left=r2((pays||[]).reduce((a,p)=>a+(+p.amount||0),0));const paid=left;
+    for(const it of items){const p=Math.min(it.amount,Math.max(left,0));left-=p;it.paid=r2(p);it.status=p>=it.amount-0.005?'paid':p>0?'partial':'unpaid';
+      it.due=it.status==='paid'?0:r2(it.amount-it.paid);const open=it.status!=='paid'&&it.date!=null;it.late=open&&it.date<today;it.soon=open&&it.date>=today&&it.date<=today+30*DAY}
+    return paid};
+  const pm=alloc(mg,c.feePays),pl=alloc(ls,c.cfeePays);
+  const inst=[...mg,...ls].sort((a,b)=>(a.date??9e15)-(b.date??9e15));
+  let late=0,lateN=0,next=null;for(const it of inst){if(it.late){late+=it.due;lateN++}if(it.status!=='paid'&&!next)next=it}
+  const total=r2(mgT+(ls.length?lsT:0)),paid=r2(pm+pl);
+  return{total,inst,paid,rem:Math.max(0,r2(total-paid)),late:r2(late),late_n:lateN,next,over:paid>total+0.005?r2(paid-total):0,mg:{total:mgT,paid:pm},ls:{total:ls.length?lsT:0,paid:pl,ex:lsT>0&&c.cfeeEx!=='no',amount:lsT},vat};
 }
 const api={DAY,pd,iso,edate,r2,normU,months,count,calc,feeCalc,renewals,ownerStatements};
 if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Core=api;

@@ -3,7 +3,7 @@
 (function(){
   const f=(loc,o)=>{try{return new Intl.DateTimeFormat(loc,o).format(new Date())}catch{return''}};
   const dt=document.getElementById('dt');
-  if(dt)dt.innerHTML='<b>'+f('ar-SA-u-ca-gregory-nu-latn',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'</b><span>'+f('ar-SA-u-ca-islamic-umalqura-nu-latn',{day:'numeric',month:'long',year:'numeric'})+'</span>';
+  const paint=()=>{const en=window.LANG==='en';if(dt)dt.innerHTML='<b>'+f(en?'en-US':'ar-SA-u-ca-gregory-nu-latn',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'</b><span>'+f(en?'en-US-u-ca-islamic-umalqura-nu-latn':'ar-SA-u-ca-islamic-umalqura-nu-latn',{day:'numeric',month:'long',year:'numeric'})+'</span>'};paint();document.addEventListener('langchange',paint);
   const gs=document.getElementById('gs');
   if(gs)gs.addEventListener('keydown',e=>{if(e.key!=='Enter')return;S.f={p:'',q:gs.value.trim(),s:''};go('contracts');gs.value='';gs.blur()});
   const Q=[['عقد إيجار جديد','file',()=>contractForm(false)],['مشروع جديد','building',()=>projForm(null)],['مالك جديد','users',()=>partyForm('owners','')],['مستأجر جديد','users',()=>partyForm('tenants','')],['اتفاقية تأجير','sign',()=>agrForm(null)],['تحليل مالي','calc',()=>anForm(null)]];
