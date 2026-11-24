@@ -139,3 +139,16 @@ Object.assign(act,{mtNew:()=>mtForm(),mtOpen:b=>mtDlg(b.dataset.i),mtEdit:b=>mtF
   mtDel:b=>arm(b,()=>{S.db.mreq=MT().filter(x=>x.id!==b.dataset.i);$('#stm').close();persist();render();toast('تم حذف الطلب')})});
 document.addEventListener('input',e=>{if(e.target.id==='mt_q'){S.mt.q=e.target.value.trim();render()}});
 document.addEventListener('change',e=>{const m={mt_p:'p',mt_k:'k',mt_s:'s',mt_y:'y',mt_r:'r',mt_c:'c',mt_v:'v',mt_d:'d',mt_o:'o'}[e.target.id];if(m){S.mt[m]=e.target.value;render()}});
+
+/* تنظيف وحدات المشروع: وحدات بلا عقود في هذا المشروع (مثل وحدة أُضيفت بالخطأ ثم نُقل عقدها) */
+function unitCleanDlg(pid){
+  const p=P()[pid];if(!p)return;
+  const others=Object.entries(P()).filter(([k])=>k!==pid);
+  const L=(p.units||[]).filter(u=>!(p.contracts||[]).some(c=>normU(c.unit)===normU(u.no))).map(u=>({u,els:others.filter(([,q])=>(q.contracts||[]).some(c=>normU(c.unit)===normU(u.no))).map(([,q])=>q.name)}));
+  if(!L.length){toast('لا توجد وحدات بلا عقود في هذا المشروع');return}
+  const html='<p class="sub">وحدات هذا المشروع التي ليس لها أي عقد فيه. الموجودة بعقود في مشروع آخر محددة مسبقًا لأنها غالبًا أُضيفت بالخطأ. حدّد ما تريد حذفه من هذا المشروع (لا يُحذف أي عقد).</p>'+L.map(o=>`<label class="chk" style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" class="uc" value="${esc(o.u.id)}"${o.els.length?' checked':''}><b>${esc(o.u.no)}</b>${o.els.length?'<small>— لها عقود في: '+esc(o.els.join('، '))+'</small>':'<small>— وحدة متاحة بلا عقود</small>'}</label>`).join('');
+  formDlg({title:'تنظيف وحدات '+p.name,save:'حذف المحدد',vals:{},fields:[{t:'info',k:'i',html}],onSave:()=>{
+    const ids=[...document.querySelectorAll('#frm .uc:checked')].map(i=>i.value);if(!ids.length)return 'لم تحدد أي وحدة';
+    mutate(pid,q=>{q.units=(q.units||[]).filter(u=>!ids.includes(u.id))});toast('تم حذف '+ids.length+' وحدة');setTimeout(()=>projDlg(pid),80)}});
+}
+act.unitClean=()=>unitCleanDlg(S.pj);

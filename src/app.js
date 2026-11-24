@@ -554,7 +554,7 @@ function projUnits(pid,print){
 function projDlg(pid){
   S.pj=pid;const p=P()[pid];if(!p){$('#stm').close();return}
   $('#stm').innerHTML=`<div class="dh"><div><h2>${esc(p.name)}</h2><p>${esc(p.address||'')} ${p.notes?'· '+esc(p.notes):''}</p></div><button class="x" data-a="sclose" aria-label="إغلاق">✕</button></div>
-<div class="db"><div class="acts"><button class="btn p" data-a="newUnit">+ وحدة</button><button class="btn" data-a="editProj">تعديل المشروع</button>${pbtn('proj')}<button class="btn dng" data-a="delProj">حذف المشروع وكل عقوده</button></div>${projUnits(pid)}</div>`;
+<div class="db"><div class="acts"><button class="btn p" data-a="newUnit">+ وحدة</button><button class="btn" data-a="editProj">تعديل المشروع</button><button class="btn" data-a="unitClean">تنظيف الوحدات</button>${pbtn('proj')}<button class="btn dng" data-a="delProj">حذف المشروع وكل عقوده</button></div>${projUnits(pid)}</div>`;
   if(!$('#stm').open)$('#stm').showModal();
 }
 function projForm(pid){

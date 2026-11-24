@@ -1,0 +1,10 @@
+const{app,BrowserWindow}=require('electron');const fs=require('fs'),path=require('path'),os=require('os');
+app.setPath('userData',fs.mkdtempSync(path.join(os.tmpdir(),'rent-')));app.commandLine.appendSwitch('no-sandbox');require('../main.js');
+const D=JSON.parse(fs.readFileSync('/tmp/db2.json','utf8'));
+app.whenReady().then(async()=>{await new Promise(r=>setTimeout(r,2500));const w=BrowserWindow.getAllWindows()[0];
+ w.webContents.on('console-message',(e,l,m)=>{if(l>=2)console.log('CONSOLE',m)});
+ console.log(await w.webContents.executeJavaScript(`(async()=>{const R={};try{const d=${JSON.stringify(D)};normalize(d);S.db=d;const sl=ms=>new Promise(r=>setTimeout(r,ms));
+  const ks=Object.keys(P());const a=ks[0],b=ks[1];const c=P()[b].contracts[0];P()[a].units.push({id:'zz1',no:c.unit});
+  R.before=P()[a].units.length;projDlg(a);await sl(100);document.querySelector('[data-a=unitClean]').click();await sl(150);
+  R.checked=document.querySelectorAll('#frm .uc:checked').length;document.getElementById('fsave').click();await sl(300);
+  R.after=P()[a].units.length;R.err=''}catch(e){R.e=e.stack}return JSON.stringify(R)})()`));app.exit(0)});

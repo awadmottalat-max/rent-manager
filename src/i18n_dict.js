@@ -1299,5 +1299,13 @@ window.I18N_EN={
 "لا توجد عقود لهذه الوحدة (وحدة شاغرة).": "No contracts for this unit (vacant).",
 "التكلفة شاملة ضريبة القيمة المضافة (ريال)": "Cost incl. VAT (SAR)",
 "التكلفة (شاملة الضريبة)": "Cost (incl. VAT)",
-"اسم الموظف أو الشركة أو المقاول": "Employee, company or contractor name"
+"اسم الموظف أو الشركة أو المقاول": "Employee, company or contractor name",
+"تنظيف الوحدات": "Clean up units",
+"لا توجد وحدات بلا عقود في هذا المشروع": "No units without contracts in this project",
+"وحدات هذا المشروع التي ليس لها أي عقد فيه. الموجودة بعقود في مشروع آخر محددة مسبقًا لأنها غالبًا أُضيفت بالخطأ. حدّد ما تريد حذفه من هذا المشروع (لا يُحذف أي عقد).": "Units of this project that have no contract in it. Those with contracts in another project are pre-selected because they were likely added by mistake. Select what to remove from this project (no contract is deleted).",
+"— لها عقود في:": "— has contracts in:",
+"— وحدة متاحة بلا عقود": "— vacant unit with no contracts",
+"حذف المحدد": "Delete selected",
+"لم تحدد أي وحدة": "No unit selected",
+"تنظيف وحدات": "Clean up units of"
 };
