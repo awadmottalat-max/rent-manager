@@ -2,7 +2,7 @@
 const MT=()=>S.db.mreq||(S.db.mreq=[]);
 const MT_ST=[['new','جديد'],['prog','قيد التنفيذ'],['wait','بانتظار الموافقة'],['done','مكتمل'],['cancel','ملغي']];
 const MT_STL=Object.fromEntries(MT_ST);
-const MT_PAYER=[['owner','المالك'],['tenant','المستأجر'],['warranty','ضمان — على الشركة المالكة للمشروع']];
+const MT_PAYER=[['owner','المالك'],['tenant','المستأجر'],['warranty','ضمان']];
 const MT_PL={owner:'المالك',tenant:'المستأجر',warranty:'ضمان'};
 const MT_KIND=[['maint','صيانة'],['clean','نظافة']];
 const MT_CATS=['سباكة','كهرباء','تكييف','دهان','نجارة وأبواب','أجهزة وتجهيزات','نظافة عامة','نظافة بعد الإخلاء','نظافة قبل التسليم','تنظيف مكيفات','تنظيف خزانات','أخرى'];
@@ -29,16 +29,16 @@ const mtLog=(x,t)=>{(x.notes=x.notes||[]).push({at:mtTime(),text:t})};
 const mtById=id=>MT().find(x=>x.id===id);
 const mtKindL=x=>x.kind==='clean'?'نظافة':'صيانة';
 function mtForm(id){
-  const x=id?mtById(id):null,v=x||{pid:S.mt.p||Object.keys(P())[0],kind:'maint',prio:'normal',status:'new',date:iso(TODAY),payer:'owner',vendor:'شركة كثيب للتشغيل والصيانة'};
+  const x=id?mtById(id):null,v=x||{pid:S.mt.p||Object.keys(P())[0],kind:'maint',prio:'normal',status:'new',date:iso(TODAY),payer:'owner',vendor:''};
   formDlg({title:x?'تعديل طلب رقم '+x.no:'طلب صيانة / نظافة جديد',save:'حفظ الطلب',vals:v,fields:[
     {k:'pid',l:'المشروع',t:'select',opts:Object.entries(P()).map(([k,p])=>[k,p.name])},{k:'unit',l:'رقم الوحدة (من وحدات المشروع المختار)',dl:mtUnits(v.pid)},
     {k:'kind',l:'النوع',t:'select',opts:MT_KIND},{k:'cat',l:'التصنيف (سباكة، كهرباء، نظافة…)',dl:MT_CATS},
     {k:'prio',l:'الأولوية',t:'select',opts:MT_PRIO},{k:'date',l:'تاريخ الطلب',t:'date'},
     {k:'desc',l:'وصف الطلب',t:'area',full:1},
-    {k:'payer',l:'من يتحمل التكلفة',t:'select',opts:MT_PAYER},{k:'cost',l:'التكلفة (ريال)',t:'number'},
+    {k:'payer',l:'من يتحمل التكلفة',t:'select',opts:MT_PAYER},{k:'cost',l:'التكلفة شاملة ضريبة القيمة المضافة (ريال)',t:'number'},
     {k:'due',l:'تاريخ استحقاق المبلغ على المستأجر (إن كان هو المتحمل)',t:'date'},{k:'status',l:'الحالة',t:'select',opts:MT_ST},
-    {k:'vendor',l:'الجهة / الفني المنفذ'},{k:'vphone',l:'جوال الفني (واتساب)'},
-    {k:'owner',l:'المالك (يُعبأ تلقائيًا من العقد)'},{k:'tenant',l:'المستأجر (صاحب العقد الساري — يُعبأ تلقائيًا)',dl:[]},
+    {k:'vendor',l:'الجهة / الفني المنفذ',ph:'اسم الموظف أو الشركة أو المقاول',dl:[...new Set(MT().map(r=>r.vendor).filter(Boolean))]},{k:'vphone',l:'جوال الفني (واتساب)'},
+    {k:'owner',l:'المالك'},{k:'tenant',l:'المستأجر',dl:[]},
     {k:'files',l:'المرفقات (صور قبل / بعد، عرض سعر، فاتورة…)',t:'files'}],
     onSave:o=>{
       if(!o.pid||!P()[o.pid])return 'اختر المشروع';if(!o.unit)return 'أدخل رقم الوحدة';if(!mtUnits(o.pid).some(u=>normU(u)===normU(o.unit)))return 'رقم الوحدة غير موجود في المشروع المختار';if(!o.desc)return 'اكتب وصف الطلب';
@@ -62,6 +62,8 @@ function mtFormWire(isNew){
   pidEl.addEventListener('change',()=>{dl('unit',mtUnits(pidEl.value));uEl.value='';oEl.value='';tEl.value='';fill(false)});
   const onU=()=>{const k=uEl.value.trim();if(mtUnits(pidEl.value).some(u=>normU(u)===normU(k)))fill(true)};
   uEl.addEventListener('change',onU);uEl.addEventListener('input',onU);
+  const show=()=>{const y=g('payer').value;oEl.closest('label').style.display=y==='owner'?'':'none';tEl.closest('label').style.display=y==='tenant'?'':'none';hint.style.display=y==='tenant'?'':'none'};
+  g('payer').addEventListener('change',show);show();
   fill(false);
 }
 function mtDlg(id){
@@ -76,7 +78,7 @@ function mtDlg(id){
 <h3>الحالة</h3><div class="acts">${MT_ST.map(([s,l])=>`<button class="btn sm${x.status===s?' p':''}" data-a="mtSt" data-i="${x.id}" data-s="${s}">${l}</button>`).join('')}</div>
 <h3>بيانات الطلب</h3><div class="mtk">${k('المشروع',esc(p.name))}${k('الوحدة',esc(x.unit))}${k('المالك',esc(x.owner))}${k('المستأجر',esc(x.tenant))}${k('النوع / التصنيف',esc(mtKindL(x)+(x.cat?' — '+x.cat:'')))}${k('الأولوية',x.prio==='urgent'?'عاجل':'عادي')}${k('تاريخ الطلب',fs_(x.date))}${k('تاريخ الإنجاز',x.done?fs_(x.done):'')}${k('الجهة المنفذة',esc(x.vendor))}${k('جوال الفني',esc(x.vphone))}</div>
 <p style="margin:10px 0;white-space:pre-wrap">${esc(x.desc)}</p>
-<h3>التكلفة ومن يتحملها</h3><div class="sum"><div><span>التكلفة</span><b>${fm(mtCost(x))}</b></div><div><span>يتحملها</span><b>${esc(MT_PL[x.payer])}</b></div>${x.payer==='tenant'?`<div><span>المسدد</span><b>${fm(mtPaid(x))}</b></div><div><span>المتبقي على المستأجر</span><b>${fm(mtRem(x))}</b></div><div><span>الاستحقاق</span><b>${fs_(x.due)}</b></div>`:''}</div>
+<h3>التكلفة ومن يتحملها</h3><div class="sum"><div><span>التكلفة (شاملة الضريبة)</span><b>${fm(mtCost(x))}</b></div><div><span>يتحملها</span><b>${esc(MT_PL[x.payer])}</b></div>${x.payer==='tenant'?`<div><span>المسدد</span><b>${fm(mtPaid(x))}</b></div><div><span>المتبقي على المستأجر</span><b>${fm(mtRem(x))}</b></div><div><span>الاستحقاق</span><b>${fs_(x.due)}</b></div>`:''}</div>
 ${note?`<p class="sub">${note}</p>`:''}
 ${x.payer==='tenant'?`<div class="acts"><button class="btn p" data-a="mtPay" data-i="${x.id}">+ تسجيل سداد من المستأجر</button></div>${pays.length?T([{h:'التاريخ',k:'d'},{h:'المبلغ',k:'n'},{h:'ملاحظة',k:'t'},{h:'',k:'ac'}],pays.map(q=>({cells:[fs_(q.date),fm(q.amount),esc(q.note)||'—',`<button class="btn sm dng" data-a="mtPayDel" data-i="${x.id}" data-q="${esc(q.id)}">حذف</button>`]}))):'<div class="tw"><p class="empty">لا توجد دفعات مسجلة.</p></div>'}`:''}
 <h3>سجل المتابعة</h3><div class="row"><input id="mt_note" placeholder="أضف ملاحظة متابعة…" style="flex:1;min-width:200px"><button class="btn p" data-a="mtNote" data-i="${x.id}">إضافة</button></div>

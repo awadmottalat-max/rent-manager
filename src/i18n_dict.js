@@ -1296,5 +1296,8 @@ window.I18N_EN={
 "المستأجر (صاحب العقد الساري — يُعبأ تلقائيًا)": "Tenant (active-contract holder — auto-filled)",
 "رقم الوحدة غير موجود في المشروع المختار": "Unit not found in the selected project",
 "لا يوجد عقد ساري لهذه الوحدة — اختر المستأجر يدويًا من القائمة إن لزم.": "No active contract for this unit — pick the tenant manually from the list if needed.",
-"لا توجد عقود لهذه الوحدة (وحدة شاغرة).": "No contracts for this unit (vacant)."
+"لا توجد عقود لهذه الوحدة (وحدة شاغرة).": "No contracts for this unit (vacant).",
+"التكلفة شاملة ضريبة القيمة المضافة (ريال)": "Cost incl. VAT (SAR)",
+"التكلفة (شاملة الضريبة)": "Cost (incl. VAT)",
+"اسم الموظف أو الشركة أو المقاول": "Employee, company or contractor name"
 };
