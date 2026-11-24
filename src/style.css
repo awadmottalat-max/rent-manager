@@ -264,3 +264,67 @@ dialog select[data-ts]+input{width:100%}
 /* ===== التنبيهات والتذكير ===== */
 .alh{margin:20px 0 8px;font-size:16px;display:flex;align-items:center;gap:8px}.bd2{background:#e4f1fd;color:#1f78b4;border-radius:20px;padding:1px 10px;font-size:13px}
 .remi .sum{margin-bottom:0}#frm textarea{line-height:1.7}
+
+/* ===== 1.15.0 — لمسات الفخامة ===== */
+@media screen{
+:root{--gld:#b8935a;--gld-l:#e9d9bb;--shadow-s:0 1px 2px #14234b0f,0 6px 20px #14234b0d;--shadow-m:0 2px 4px #14234b12,0 14px 34px #14234b1a}
+body{background:radial-gradient(1200px 500px at 85% -10%,#e4eefb 0,transparent 60%),var(--bg)}
+/* الشريط الجانبي */
+.side{background:linear-gradient(185deg,#16275a 0,#0f1b3d 55%,#0b1530 100%);box-shadow:inset -1px 0 0 #ffffff10}
+.brand{border-bottom:0;box-shadow:0 6px 18px #0006,inset 0 -3px 0 var(--gld);position:relative}
+#nav button{transition:background .15s,color .15s,padding .15s;border-radius:10px}
+#nav button:hover{background:#ffffff12;padding-inline-start:15px}
+#nav button.on{background:linear-gradient(90deg,#ffffff1c,#ffffff08);border-inline-start-color:var(--gld);box-shadow:inset 0 0 0 1px #ffffff10}
+#nav button.on svg{color:var(--gld-l)}
+.bd{background:linear-gradient(135deg,#c9a56a,#a9814a)!important;color:#fff!important;box-shadow:0 1px 4px #0004}
+/* العناوين */
+h1{position:relative;padding-bottom:8px;margin-bottom:6px}
+main>#view>h1::after{content:"";position:absolute;inset-inline-start:0;bottom:0;width:44px;height:3px;border-radius:3px;background:linear-gradient(90deg,var(--gld),var(--gld-l))}
+.sub{color:var(--mut);margin-top:6px}
+/* انتقال ناعم عند فتح الشاشات */
+#view{animation:vin .28s ease both}
+@keyframes vin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#view{animation:none}}
+/* البطل */
+.hero{box-shadow:0 14px 40px #14234b40;border:1px solid #ffffff14}
+.hero::before{content:"";position:absolute;inset-inline:0;top:0;height:3px;background:linear-gradient(90deg,transparent,var(--gld),var(--gld-l),var(--gld),transparent)}
+.hero .hk b{letter-spacing:.2px;text-shadow:0 1px 8px #0004}
+.hero .hk div{background:linear-gradient(160deg,#ffffff1c,#ffffff0a)}
+/* بطاقات المؤشرات */
+.kpis.dk{grid-template-columns:repeat(4,1fr)}
+@media (max-width:1180px){.kpis.dk{grid-template-columns:repeat(2,1fr)}}
+.kp,.card{box-shadow:var(--shadow-s);border-radius:14px}
+.kp{background:linear-gradient(180deg,#fff,#fafcff);border-top-color:var(--gld)}
+.kp:not(.static):hover{box-shadow:var(--shadow-m)}
+.kp b{letter-spacing:.2px}
+.card{background:linear-gradient(180deg,#fff,#fbfdff);transition:box-shadow .18s}.card:hover{box-shadow:var(--shadow-m)}
+/* الجداول */
+.tw{border-radius:14px;box-shadow:var(--shadow-s);border-color:#d3dff0}
+th{background:linear-gradient(180deg,#eaf1fb,#dfe9f7);border-bottom:2px solid var(--gld);letter-spacing:.1px}
+tbody tr:nth-child(even) td{background:#f6f9fe}
+.tw tbody tr[data-a]:hover td{background:#eaf2fc}
+td{border-color:#e6edf7}
+tfoot td,tr.foot td{background:linear-gradient(180deg,#f0f5fc,#e8f0fa);font-weight:700}
+/* الأزرار والحقول */
+.btn{border-radius:10px;box-shadow:0 1px 2px #14234b0a}
+.btn:hover{box-shadow:0 3px 10px #14234b14;border-color:var(--gld)}
+.btn.p{box-shadow:0 3px 12px #14234b40;border-color:#0f1b3d}.btn.p:hover{box-shadow:0 5px 16px #14234b55;transform:translateY(-1px)}
+input,select,textarea{border-radius:10px;border-color:#cfdbec;transition:border-color .15s,box-shadow .15s}
+input:hover,select:hover,textarea:hover{border-color:#a9bedc}
+input:focus,select:focus,textarea:focus{border-color:var(--gld);box-shadow:0 0 0 3px #b8935a30}
+.bar input[type=search]{background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2356637e' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='7' cy='7' r='5'/%3E%3Cpath d='M11 11l4 4'/%3E%3C/svg%3E") no-repeat 12px center;padding-inline-start:34px}
+/* الشارات */
+.ch{border-radius:999px;padding:2px 11px;font-weight:600}
+/* النوافذ */
+dialog{box-shadow:0 40px 100px #0b153077,0 0 0 1px #ffffff22;animation:din .22s ease both}
+@keyframes din{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+dialog .dh{border-bottom:1px solid #e3ebf6;position:relative}
+dialog .dh::after{content:"";position:absolute;inset-inline-start:0;bottom:-1px;width:70px;height:3px;background:linear-gradient(90deg,var(--gld),var(--gld-l));border-radius:3px}
+dialog .sum>div{background:linear-gradient(180deg,#fff,#f7faff);box-shadow:var(--shadow-s)}
+.fs b{background:linear-gradient(135deg,#1d3270,#14234b);box-shadow:0 2px 6px #14234b44}
+#toast{background:linear-gradient(135deg,#1d3270,#0f1b3d);border:1px solid #ffffff22;box-shadow:0 10px 30px #0b153066;border-radius:12px}
+/* شريط التمرير */
+main::-webkit-scrollbar,.tw::-webkit-scrollbar{width:10px;height:10px}main::-webkit-scrollbar-thumb,.tw::-webkit-scrollbar-thumb{background:#b9c8de;border-radius:10px;border:2px solid transparent;background-clip:padding-box}
+main::-webkit-scrollbar-thumb:hover,.tw::-webkit-scrollbar-thumb:hover{background:#8ea5c6;background-clip:padding-box;border:2px solid transparent}
+::selection{background:#b8935a40}
+}

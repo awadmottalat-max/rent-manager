@@ -93,6 +93,19 @@ function ownerStatements(rows){
   }
   return Object.values(O).map(o=>({...o,units:o.units.size,projects:[...o.projects],net:r2(o.paid-o.fees)})).sort((a,b)=>a.name.localeCompare(b.name,'ar'));
 }
-const api={DAY,pd,iso,edate,r2,normU,months,count,calc,renewals,ownerStatements};
+/* رسوم إدارة الأملاك (للعقود الخارجية): مربوطة بدفعات الإيجار (افتراضي) أو دفعة واحدة */
+function feeCalc(c,r,today){
+  const total=Math.max(0,Number(c.fee)||0),inst=[];
+  if(total>0){
+    if(c.feeMode==='once'||!r.inst.length||!(r.total>0)){inst.push({n:1,date:pd(c.feeDate)??pd(c.start),amount:total})}
+    else{let acc=0;r.inst.forEach((i,k)=>{const a=k===r.inst.length-1?r2(total-acc):r2(total*i.amount/r.total);acc=r2(acc+a);inst.push({n:i.n,date:i.date,amount:a})})}
+  }
+  const paid=r2((c.feePays||[]).reduce((a,p)=>a+(+p.amount||0),0));let left=paid,late=0,lateN=0,next=null;
+  for(const it of inst){const p=Math.min(it.amount,Math.max(left,0));left-=p;it.paid=r2(p);it.status=p>=it.amount-0.005?'paid':p>0?'partial':'unpaid';
+    it.due=it.status==='paid'?0:r2(it.amount-it.paid);const open=it.status!=='paid'&&it.date!=null;it.late=open&&it.date<today;it.soon=open&&it.date>=today&&it.date<=today+30*DAY;
+    if(it.late){late+=it.due;lateN++}if(it.status!=='paid'&&!next)next=it}
+  return{total,inst,paid,rem:Math.max(0,r2(total-paid)),late:r2(late),late_n:lateN,next,over:paid>total+0.005?r2(paid-total):0};
+}
+const api={DAY,pd,iso,edate,r2,normU,months,count,calc,feeCalc,renewals,ownerStatements};
 if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Core=api;
 })(typeof window!=='undefined'?window:globalThis);

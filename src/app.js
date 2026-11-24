@@ -24,7 +24,7 @@ function mutate(pid,fn){const p=structuredClone(P()[pid]);fn(p);P()[pid]=p;persi
 
 /* ---------- بيانات مشتقة ---------- */
 const MODE=()=>S.db.settings.mode||'total';
-function rows(){const o=[];for(const[pid,p]of Object.entries(P()))for(const c of p.contracts||[])o.push({pid,pn:p.name,c,ext:c.kind==='ext',r:calc(c,MODE(),TODAY)});return o}
+function rows(){const o=[];for(const[pid,p]of Object.entries(P()))for(const c of p.contracts||[])o.push({pid,pn:p.name,c,ext:c.kind==='ext',r:calc(c,MODE(),TODAY)});for(const x of o)if(x.ext)x.f=Core.feeCalc(x.c,x.r,TODAY);return o}
 const rowsI=()=>rows().filter(x=>!x.ext);
 const key=x=>x.r.late_n?0:x.r.soon?1:2;
 const sorted=a=>a.sort((a,b)=>key(a)-key(b)||((a.r.next?.date??9e15)-(b.r.next?.date??9e15))||a.pn.localeCompare(b.pn,'ar')||String(a.c.unit).localeCompare(String(b.c.unit),'ar',{numeric:true}));
@@ -104,7 +104,7 @@ function go(v){S.view=v;render();$('main').scrollTop=0}
 function renderNav(all){
   const late=all.filter(x=>x.r.late_n).length,ren=renewalsOpen(all,90).length;
   const pendN=all.filter(x=>x.r.st==='منتهي'&&endState(x.pid,x.c)==='pend').length;
-  const bd={alerts:(()=>{const n=typeof alertCount==='function'?alertCount(all):0;return n?`<span class="bd">${n}</span>`:''})(),ended:pendN?`<span class="bd">${pendN}</span>`:'',due:late?`<span class="bd">${late}</span>`:'',renew:ren?`<span class="bd">${ren}</span>`:''};
+  const bd={ext:(()=>{const n=rows().filter(x=>x.ext&&x.f.late_n).length;return n?`<span class="bd">${n}</span>`:''})(),alerts:(()=>{const n=typeof alertCount==='function'?alertCount(all):0;return n?`<span class="bd">${n}</span>`:''})(),ended:pendN?`<span class="bd">${pendN}</span>`:'',due:late?`<span class="bd">${late}</span>`:'',renew:ren?`<span class="bd">${ren}</span>`:''};
   $('#nav').innerHTML=VIEWS.map(([k,l])=>`<button data-a="go" data-v="${k}" class="${S.view===k?'on':''}">${ico(NAVIC[k])}<span>${l}</span>${bd[k]||''}</button>`).join('');
   $('#sidefoot').innerHTML='التاريخ المعتمد: <bdi>'+iso(TODAY)+'</bdi><br>الإصدار <bdi>'+esc(S.ver||'')+'</bdi> · <button class="link" data-a="chkUpd">التحقق من التحديث</button>';
 }
@@ -196,6 +196,7 @@ const endBtns=x=>{if(x.r.st==='ساري'||x.r.st==='لم يبدأ')return x.c.ex
   if(e==='renewed')return' <span class="ch ok">مجدد</span>';if(e==='term')return' <span class="ch">انتهى الإيجار</span>';
   return `<span class="eb"><button class="btn sm p" data-a="endRenew" data-p="${esc(x.pid)}" data-c="${esc(x.c.id)}">تجديد</button><button class="btn sm dng" data-a="endExit" data-p="${esc(x.pid)}" data-c="${esc(x.c.id)}">إنهاء</button></span>`};
 const cur=()=>{const p=P()[S.cur?.pid];const c=p?.contracts.find(c=>c.id===S.cur.cid);return c?{pid:S.cur.pid,pn:p.name,c,ext:c.kind==='ext',r:calc(c,MODE(),TODAY)}:null};
+const curX=()=>{const x=cur();if(x&&x.ext)x.f=Core.feeCalc(x.c,x.r,TODAY);return x};
 function infoGrid(x){
   const{c,r}=x,i=(l,v)=>`<div><span>${l}</span><b>${v||'—'}</b></div>`;
   return `<div class="info">${i('المشروع',esc(x.pn))}${i('رقم الوحدة',esc(c.unit))}${i('المالك',esc(c.owner))}${i('المستأجر',esc(c.tenant))}${i('بداية الإيجار',fs_(c.start))}${i('نهاية الإيجار',fs_(c.end))}
@@ -216,16 +217,16 @@ function attSummary(c){
   return `<div class="attbar"><button class="btn sm p" data-a="conAtt">+ إدارة مرفقات العقد</button><small>${n?n+' مرفق':'لا توجد مرفقات'}</small></div>`+(n?g.filter(x=>x[1].length).map(([l,L])=>`<div class="attbar"><b style="min-width:70px">${l}</b><div class="achs">${L.map(f=>`<span class="ach"><button type="button" class="al" data-a="attOpen" data-f="${esc(f.f)}">📎 ${esc(f.name)} <small>${fsz(f.size||0)}</small></button></span>`).join('')}</div></div>`).join(''):'');
 }
 function fillDet(){
-  const x=cur();if(!x){$('#det').close();return}
+  const x=curX();if(!x){$('#det').close();return}
   const{c,r,pn}=x;
   $('#det').innerHTML=`<div class="dh"><div><h2>الوحدة ${esc(c.unit)||'—'} <small style="display:inline">— ${esc(pn)}</small></h2><p>المستأجر: ${esc(c.tenant)||'—'} · المالك: ${esc(c.owner)||'—'}</p></div><button class="x" data-a="close" aria-label="إغلاق">✕</button></div>
-<div class="db">${x.ext?`<p class="warnbox" style="background:var(--soft,#eef3fb);border-color:#b9cbe8">عقد خارجي — يُسدَّد الإيجار من المستأجر إلى المالك مباشرة، ولا يدخل في المحصَّل أو المتبقي أو المتأخر. هنا للمتابعة فقط.</p><div class="sum"><div><span>قيمة الإيجار</span><b>${fm(r.total)}</b></div><div><span>رسوم إدارة الأملاك</span><b>${fm(c.fee)}</b></div><div><span>الأقساط</span><b>${r.k?r.k+(r.plan?' دفعات':' × '+fm(r.M)):'—'}</b></div></div>`:`<div class="sum"><div><span>إجمالي العقد</span><b>${fm(r.total)}</b></div><div><span>المسدد</span><b>${fm(r.paid)}</b></div>
+<div class="db">${x.ext?`<p class="warnbox" style="background:var(--soft,#eef3fb);border-color:#b9cbe8">عقد خارجي — يُسدَّد الإيجار من المستأجر إلى المالك مباشرة ولا يدخل في إجماليات الإيجارات؛ المتابعة هنا لرسوم إدارة الأملاك.</p><div class="sum"><div><span>قيمة الإيجار</span><b>${fm(r.total)}</b></div><div><span>رسوم الإدارة</span><b>${fm(x.f.total)}</b></div><div><span>المسدد منها</span><b>${fm(x.f.paid)}</b></div><div><span>المتبقي</span><b>${fm(x.f.rem)}</b></div><div><span>المتأخر</span><b>${fm(x.f.late)}</b></div></div>`:`<div class="sum"><div><span>إجمالي العقد</span><b>${fm(r.total)}</b></div><div><span>المسدد</span><b>${fm(r.paid)}</b></div>
 <div><span>المتبقي</span><b>${fm(r.rem)}</b></div><div><span>المتأخر</span><b>${fm(r.late)}</b></div><div><span>الأقساط</span><b>${r.k?r.k+' × '+fm(r.M):'—'}</b></div></div>`}
 ${c.exit?`<p class="warnbox"><button class="btn sm" style="float:left" data-a="endUndo" data-p="${esc(x.pid)}" data-c="${esc(c.id)}">تراجع عن الإنهاء</button>${r.waived?'أُنهي العقد بتسوية — أُسقط المتبقي '+fm(r.waived)+' · ':'أُنهي العقد · '}${c.exit.date>iso(TODAY)?'ينتهي بتاريخ ':'بتاريخ '}${fs_(c.exit.date)}${c.exit.reason?' — '+esc(c.exit.reason):''}</p>`:''}${r.iss.length?'<p class="warnbox">يلزم استكمال: '+r.iss.map(esc).join('، ')+'</p>':''}
 <div class="acts"><button class="btn" data-a="edit">تعديل بيانات العقد</button><button class="btn" data-a="renewC">تجديد العقد</button>${r.st==='منتهي'&&endState(x.pid,c)==='pend'?`<button class="btn dng" data-a="endExit" data-p="${esc(x.pid)}" data-c="${esc(c.id)}">انتهاء الإيجار (خروج المستأجر)</button>`:''}${!c.exit&&(r.st==='ساري'||r.st==='لم يبدأ')?`<button class="btn dng" data-a="endExit" data-p="${esc(x.pid)}" data-c="${esc(c.id)}">إنهاء العقد</button>`:''}${c.exit?`<button class="btn" data-a="endUndo" data-p="${esc(x.pid)}" data-c="${esc(c.id)}">إلغاء الإنهاء</button>`:''}<button class="btn p" data-a="print" data-k="contract">طباعة ملف العقد</button><button class="btn" data-a="pdf" data-k="contract">حفظ PDF</button><button class="btn dng" data-a="delC">حذف العقد</button></div>
 <h3>بيانات العقد</h3>${infoGrid(x)}${c.notes?`<p style="margin:6px 0;font-size:13.5px"><b>ملاحظات:</b> ${esc(c.notes)}</p>`:''}
 ${(c.oldDates||[]).length?`<small>تواريخ مسجلة سابقًا: ${c.oldDates.map(d=>'<bdi>'+esc(d)+'</bdi>').join('، ')}</small>`:''}
-<h3>جدول الأقساط</h3>${r.inst.length?(x.ext?extInstTable(x):instTable(x)):'<p class="empty">يظهر الجدول بعد استكمال القيمة والتواريخ وعدد الأقساط.</p>'}
+${x.ext?extFeeDetail(x):''}<h3>${x.ext?'جدول أقساط الإيجار (للمتابعة فقط)':'جدول الأقساط'}</h3>${r.inst.length?(x.ext?extInstTable(x):instTable(x)):'<p class="empty">يظهر الجدول بعد استكمال القيمة والتواريخ وعدد الأقساط.</p>'}
 <h3>المرفقات</h3>${attSummary(c)}
 ${x.ext?'':`<h3>الدفعات المسجلة</h3>
 <div class="acts"><button class="btn p" data-a="addPay" data-v="${r.next?r.next.due:''}">+ تسجيل دفعة</button></div>

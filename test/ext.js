@@ -17,10 +17,14 @@ app.whenReady().then(async()=>{await new Promise(r=>setTimeout(r,2500));const w=
   const pe=document.getElementById('cf_period');pe.value='سنة';pe.dispatchEvent(new Event('change',{bubbles:true}));setDate('cf_start','2026-10-01');document.getElementById('cf_start').dispatchEvent(new Event('change',{bubbles:true}));await sl(200);
   document.getElementById('cf_save').click();await sl(500);R.err=document.getElementById('cf_err')?.textContent;
   const c=P()[pid].contracts.find(z=>z.unit==='EXT1');R.saved=c&&{kind:c.kind,fee:c.fee,rent:c.rent};
-  R.after=tot();render();
+  R.after=tot();render();R.fee0=JSON.stringify(Core.feeCalc(c,calc(c,'total',TODAY),TODAY).inst.map(i=>[i.date&&iso(i.date),i.amount,i.late]));
   go('ext');await sl(300);R.kpis=[...document.querySelectorAll('#view .kp')].map(k=>k.textContent);R.rows=document.querySelectorAll('#view tbody tr').length;
   S.cur={pid,cid:c.id};fillDet();R.det=document.querySelector('#det .sum').textContent.replace(/\\s+/g,' ');R.pay=/تسجيل دفعة/.test(document.querySelector('#det').innerHTML);R.inst=document.querySelectorAll('#det table tbody tr').length;
   go('contracts');await sl(200);R.inList=document.querySelector('#view').innerText.includes('EXT1');R.cnt=rowsI().length;
-  go('ext');await sl(300);R.err2='ok'
+  S.cur={pid,cid:c.id};fillDet();document.querySelector('[data-a=feePay]').click();await sl(300);document.getElementById('ff_amount').value=1000;document.getElementById('ff_save')?.click();await sl(100);
+  const sv=[...document.querySelectorAll('#frm button')].find(b=>/تسجيل$/.test(b.textContent.trim()));if(sv)sv.click();await sl(400);
+  const x2=curX();R.fee1=[x2.f.total,x2.f.paid,x2.f.rem,x2.f.late,x2.f.late_n];
+  mutate(pid,p=>{const z=p.contracts.find(z=>z.id===c.id);z.feeMode='once';z.feeDate='2026-11-01'});R.fee2=curX().f.inst.map(i=>[i.amount,i.status,i.late]);
+  go('ext');await sl(300);R.nav=!!document.querySelector('#nav .bd');R.kp=[...document.querySelectorAll('#view .kp')].map(k=>k.textContent).join('|');R.err2='ok'
   }catch(e){R.e=e.stack}return JSON.stringify(R)})()`));
 await new Promise(r=>setTimeout(r,300));fs.writeFileSync('/tmp/ext.png',(await w.webContents.capturePage()).toPNG());app.exit(0)});
