@@ -82,12 +82,29 @@ async function clPull(first){
   if(!r.ok){toast('تعذّر الاتصال بالسحابة: '+r.m);clBadge('err');return false}
   const rl=await native.cloud('role');if(rl.ok)S.cl.role=rl.v||'';S.cl.ro=S.cl.role==='viewer';
   if(!r.v){ // السحابة فارغة
-    if(S.cl.role==='admin'){clBadge('err','لا بيانات على السحابة');toast('السحابة فارغة: افتح «إعداد السحابة» وارفع بياناتك المحلية');return true}
+    if(S.cl.role==='admin'){ // السحابة فارغة: رفع تلقائي لمرة واحدة (لا يستبدل شيئًا)
+      clBadge('sync','رفع البيانات…');const m=await clUpload();toast(m.slice(0,160));
+      if(/^✔/.test(m)){S.cl.lastUp=m;return true}clBadge('err','فشل الرفع الأولي');return true}
     toast('لا توجد بيانات على السحابة بعد');return true}
   if(first||!S.cl.base){try{await native.backupPre('cloud')}catch{}}
   S.db=normalize(r.v.data);S.cl.rev=r.v.rev;S.cl.base=structuredClone(r.v.data);dirty=false;
   try{await native.save(S.db)}catch{}
   clBadge(S.cl.ro?'ro':'ok');return true;
+}
+
+
+/* رفع النسخة المحلية إلى السحابة مع التحقق بالمقارنة الكاملة */
+async function clUpload(){
+  await flush();const g=await native.cloud('get');if(!g.ok)return 'تعذّرت القراءة: '+g.m;
+  const base=g.v?g.v.rev:0;
+  try{await native.backupPre(g.v?'cloud-overwrite':'cloud-first')}catch{}
+  const sent=structuredClone(S.db),want=clCanon(JSON.parse(JSON.stringify(sent))),r=await native.cloud('save',sent,base);
+  if(!r.ok)return r.e==='REV_CONFLICT'?'تغيّرت السحابة أثناء الرفع، أعد المحاولة':'فشل الرفع: '+r.m;
+  const v=await native.cloud('get');
+  const same=v.ok&&v.v&&clCanon(v.v.data)===want;
+  S.cl.rev=r.v;S.cl.base=sent;clBadge('ok');
+  const a=clStats(sent),c=v.ok&&v.v?clStats(v.v.data):{};
+  return (same?'✔ رُفعت البيانات والمطابقة 100%. ':'⚠ رُفعت لكن المقارنة لم تتطابق تمامًا! ')+'المحلي: '+Object.entries(a).map(([k,x])=>k+' '+x).join('، ')+' | السحابة: '+Object.entries(c).map(([k,x])=>k+' '+x).join('، ');
 }
 
 /* ---- رفع التعديلات مع الدمج ---- */
@@ -96,8 +113,8 @@ async function clPush(){
   S.cl.busy=true;clBadge('sync');
   try{
     for(let i=0;i<4;i++){
-      const mine=S.db,r=await native.cloud('save',mine,S.cl.rev);
-      if(r.ok){S.cl.rev=r.v;S.cl.base=structuredClone(mine);clBadge('ok');return}
+      const sent=structuredClone(S.db),r=await native.cloud('save',sent,S.cl.rev); // اللقطة المُرسلة هي الأساس، لا ما تغيّر أثناء الإرسال
+      if(r.ok){S.cl.rev=r.v;S.cl.base=sent;clBadge('ok');return}
       if(r.e==='REV_CONFLICT'){if(!await clResolve())return;continue}
       if(r.e==='AUTH'){S.cl.busy=false;if(await clGate('انتهت الجلسة، سجّل الدخول لحفظ تعديلاتك')){dirty=true;persist()}return}
       if(r.e==='FORBIDDEN'){S.cl.ro=true;clBadge('ro');toast('ليس لديك صلاحية التعديل. تعديلاتك محفوظة محليًا فقط');return}
@@ -153,7 +170,7 @@ async function clDlg(){
   $('#stm').innerHTML=`<div class="dh"><div><h2>الاتصال بقاعدة البيانات (Supabase)</h2><p>${S.cl.on?'مفعّل — '+esc(S.cl.email)+' ('+esc({admin:'مدير',editor:'محرر',viewer:'اطلاع فقط'}[S.cl.role]||'')+') — v'+S.cl.rev:'غير مفعّل'}</p></div><button class="x" data-a="sclose" aria-label="إغلاق">✕</button></div>
 <div class="db"><div class="g2"><label>رابط المشروع (Project URL)<input id="cl_u" dir="ltr" placeholder="https://xxxx.supabase.co" value="${esc(s.url||'')}"></label>
 <label>مفتاح anon / publishable فقط<input id="cl_k" dir="ltr" type="password" placeholder="${s.configured?'محفوظ — اتركه فارغًا للإبقاء':'eyJ… أو sb_publishable_…'}"></label></div>
-<p class="sub">لا تضع مفتاح service_role هنا أبدًا. التنفيذ الأول: شغّل supabase/schema.sql في SQL Editor ثم أضف المستخدمين كما في آخر الملف.</p>
+${S.cl.lastUp?'<p class="sub">'+esc(S.cl.lastUp)+'</p>':''}<p class="sub">لا تضع مفتاح service_role هنا أبدًا. التنفيذ الأول: شغّل supabase/schema.sql في SQL Editor ثم أضف المستخدمين كما في آخر الملف.</p>
 <div class="acts"><button class="btn p" data-a="clSave">حفظ الاتصال</button>${s.configured&&!S.cl.on?'<button class="btn p" data-a="clEnable">تفعيل المزامنة وتسجيل الدخول</button>':''}${S.cl.on?'<button class="btn" data-a="clPullNow">تحديث من السحابة الآن</button>':''}${S.cl.on&&S.cl.role==='admin'?'<button class="btn dng" data-a="clUp">رفع بياناتي المحلية إلى السحابة</button>':''}${S.cl.on?'<button class="btn" data-a="clLogout">تسجيل الخروج</button><button class="btn" data-a="clOut">إيقاف المزامنة والعمل محليًا</button>':''}</div>
 <div id="cl_msg" class="sub"></div>
 ${hist.length?`<h3>نسخ السحابة (آخر ${hist.length})</h3>${T([{h:'التاريخ',k:'t'},{h:'الرقم',k:'d'},{h:'',k:'ac'}],hist.map(x=>({cells:[esc(new Date(x.saved_at).toLocaleString('ar-SA')),x.rev,`<button class="btn sm dng" data-a="clRest" data-i="${x.id}">استعادة</button>`]})))}`:''}</div>`;
@@ -172,17 +189,7 @@ Object.assign(act,{
   clLogout:b=>arm(b,async()=>{if(dirty)await flush();await native.cloud('logout');S.cl.email='';S.cl.role='';S.cl.base=null;S.cl.ro=false;try{$('#stm').close()}catch{}
     if(await clGate()){if(await clPull(true))render()}}),
   clOut:async()=>{await flush();await native.cloud('logout');await native.cloud('on',false);S.cl.on=false;clBadge('off');$('#stm').close();toast('أُوقفت المزامنة. البيانات المحلية كما هي')},
-  clUp:b=>arm(b,async()=>{
-    await flush();const g=await native.cloud('get');if(!g.ok){clMsg('تعذّر القراءة: '+g.m);return}
-    const base=g.v?g.v.rev:0;
-    if(g.v){try{await native.backupPre('cloud-overwrite')}catch{}}
-    const mine=S.db,r=await native.cloud('save',mine,base);
-    if(!r.ok){clMsg(r.e==='REV_CONFLICT'?'تغيّرت السحابة أثناء الرفع، أعد المحاولة':'فشل الرفع: '+r.m);return}
-    const v=await native.cloud('get');
-    const same=v.ok&&v.v&&clCanon(v.v.data)===clCanon(JSON.parse(JSON.stringify(mine)));
-    S.cl.rev=r.v;S.cl.base=structuredClone(mine);clBadge('ok');
-    const a=clStats(mine),c=v.ok&&v.v?clStats(v.v.data):{};
-    clMsg((same?'✔ رُفعت البيانات والمطابقة 100%. ':'⚠ رُفعت لكن المقارنة لم تتطابق تمامًا! ')+'المحلي: '+Object.entries(a).map(([k,x])=>k+' '+x).join('، ')+' | السحابة: '+Object.entries(c).map(([k,x])=>k+' '+x).join('، '))}),
+  clUp:b=>arm(b,async()=>{clMsg(await clUpload())}),
   clRest:b=>arm(b,async()=>{
     const d=await native.cloud('histGet',b.dataset.i);if(!d.ok||!d.v){toast('تعذّرت قراءة النسخة');return}
     await flush();try{await native.backupPre('cloud-restore')}catch{}

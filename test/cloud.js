@@ -3,7 +3,7 @@ process.env.RENT_CLOUD_TEST='1';
 app.setPath('userData',fs.mkdtempSync(path.join(os.tmpdir(),'rent-')));app.commandLine.appendSwitch('no-sandbox');require('../main.js');
 const D=JSON.parse(fs.readFileSync('/tmp/db3.json','utf8'));
 const SV={doc:{data:D,rev:5},role:'admin',hist:[],saves:0};
-const srv=http.createServer((q,r)=>{let b='';q.on('data',c=>b+=c);q.on('end',()=>{
+const srv=http.createServer((q,r)=>{let b='';q.setEncoding('utf8');q.on('data',c=>b+=c);q.on('end',()=>{
   const u=new URL(q.url,'http://x'),send=(c,o)=>{r.writeHead(c,{'Content-Type':'application/json'});r.end(JSON.stringify(o))};
   if(u.pathname==='/auth/v1/token'){const j=JSON.parse(b||'{}');if(j.password==='bad')return send(400,{error_description:'Invalid login credentials'});return send(200,{access_token:'t',refresh_token:'r',expires_in:3600,user:{id:'u1',email:'a@b.c'}})}
   if(q.headers.authorization!=='Bearer t')return send(401,{message:'JWT'});
