@@ -190,7 +190,7 @@ async function clDlg(){
 <div class="db"><div class="g2"><label>رابط المشروع (Project URL)<input id="cl_u" dir="ltr" placeholder="https://xxxx.supabase.co" value="${esc(s.url||'')}"></label>
 <label>مفتاح anon / publishable فقط<input id="cl_k" dir="ltr" type="password" placeholder="${s.configured?'محفوظ — اتركه فارغًا للإبقاء':'eyJ… أو sb_publishable_…'}"></label></div>
 ${S.cl.lastUp?'<p class="sub">'+esc(S.cl.lastUp)+'</p>':''}<p class="sub">لا تضع مفتاح service_role هنا أبدًا. التنفيذ الأول: شغّل supabase/schema.sql في SQL Editor ثم أضف المستخدمين كما في آخر الملف.</p>
-<div class="acts"><button class="btn p" data-a="clSave">حفظ الاتصال</button>${s.configured&&!S.cl.on?'<button class="btn p" data-a="clEnable">تفعيل المزامنة وتسجيل الدخول</button>':''}${S.cl.on?'<button class="btn" data-a="clCmp">مطابقة هذا الجهاز مع السحابة</button>':''}${S.cl.on?'<button class="btn" data-a="clPullNow">تحديث من السحابة الآن</button>':''}${S.cl.on&&S.cl.role==='admin'?'<button class="btn dng" data-a="clUp">رفع بياناتي المحلية إلى السحابة</button>':''}${S.cl.on?'<button class="btn" data-a="clLogout">تسجيل الخروج</button><button class="btn" data-a="clOut">إيقاف المزامنة والعمل محليًا</button>':''}</div>
+<div class="acts"><button class="btn p" data-a="clSave">حفظ الاتصال</button>${s.configured&&!S.cl.on?'<button class="btn p" data-a="clEnable">تفعيل المزامنة وتسجيل الدخول</button>':''}${S.cl.on?'<button class="btn" data-a="clCmp">مطابقة هذا الجهاز مع السحابة</button>':''}${S.cl.on?'<button class="btn" data-a="clPullNow">تحديث من السحابة الآن</button>':''}${S.cl.on&&S.cl.role==='admin'?'<button class="btn p" data-a="clUsers">إدارة المستخدمين</button>':''}${S.cl.on&&S.cl.role==='admin'?'<button class="btn dng" data-a="clUp">رفع بياناتي المحلية إلى السحابة</button>':''}${S.cl.on?'<button class="btn" data-a="clLogout">تسجيل الخروج</button><button class="btn" data-a="clOut">إيقاف المزامنة والعمل محليًا</button>':''}</div>
 <div id="cl_msg" class="sub" style="white-space:pre-wrap"></div>
 ${hist.length?`<h3>نسخ السحابة (آخر ${hist.length})</h3>${T([{h:'التاريخ',k:'t'},{h:'الرقم',k:'d'},{h:'',k:'ac'}],hist.map(x=>({cells:[esc(new Date(x.saved_at).toLocaleString('ar-SA')),x.rev,`<button class="btn sm dng" data-a="clRest" data-i="${x.id}">استعادة</button>`]})))}`:''}</div>`;
   if(!$('#stm').open)$('#stm').showModal();
@@ -215,6 +215,53 @@ Object.assign(act,{
     await flush();try{await native.backupPre('cloud-restore')}catch{}
     const r=await native.cloud('histRestore',b.dataset.i);if(!r.ok){toast('فشلت الاستعادة: '+r.m);return}
     if(await clPull(true)){$('#stm').close();render();toast('استُعيدت النسخة السحابية')}})
+});
+
+/* ---- إدارة المستخدمين (للمدير) ---- */
+const CL_ROLES=[['admin','مدير'],['editor','محرر'],['viewer','اطلاع فقط']];
+const clRoleL=r=>(CL_ROLES.find(x=>x[0]===r)||[0,'بلا دور'])[1];
+const clGenPw=()=>{const a='abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789',b=crypto.getRandomValues(new Uint32Array(12));return[...b].map(x=>a[x%a.length]).join('')};
+async function clUsersDlg(msg){
+  const r=await native.cloud('users',{action:'list'});
+  if(!r.ok){toast('تعذّر جلب المستخدمين: '+(r.e==='FORBIDDEN'?'للمدير فقط':r.m));return}
+  const L=r.v.users||[];
+  const rows=L.map(u=>({cells:[
+    '<b>'+esc(u.email)+'</b>'+(u.me?' <small>(أنت)</small>':''),
+    `<input class="clun" data-i="${esc(u.id)}" value="${esc(u.full_name||'')}" placeholder="الاسم" style="min-width:110px">`,
+    `<select class="clur" data-i="${esc(u.id)}">${u.role?'':'<option value="" selected>— بلا دور —</option>'}${CL_ROLES.map(([k,l])=>`<option value="${k}"${u.role===k?' selected':''}>${l}</option>`).join('')}</select>`,
+    u.last_sign_in_at?esc(new Date(u.last_sign_in_at).toLocaleString('ar-SA')):'<span class="mut">لم يدخل بعد</span>',
+    `<button class="btn sm" data-a="clUPw" data-i="${esc(u.id)}" data-e="${esc(u.email)}">كلمة مرور جديدة</button> ${u.me?'':`<button class="btn sm dng" data-a="clUDel" data-i="${esc(u.id)}">حذف</button>`}`]}));
+  $('#stm').innerHTML=`<div class="dh"><div><h2>إدارة المستخدمين</h2><p>${L.length} مستخدم</p></div><button class="x" data-a="sclose" aria-label="إغلاق">✕</button></div><div class="db">
+<div class="acts"><button class="btn p" data-a="clUAdd">+ إضافة مستخدم</button></div>${msg?'<p class="sub">'+esc(msg)+'</p>':''}
+${T([{h:'البريد',k:'t'},{h:'الاسم',k:'t'},{h:'الدور',k:'t'},{h:'آخر دخول',k:'d'},{h:'',k:'ac'}],rows)}
+<h3>ما يستطيعه كل دور</h3>${T([{h:'الدور',k:'t'},{h:'الصلاحيات',k:'t'}],[
+ {cells:['<b>مدير</b>','رؤية كل البيانات وتعديلها، استعادة النسخ السحابية، وإدارة المستخدمين والأدوار']},
+ {cells:['<b>محرر</b>','رؤية كل البيانات وتعديلها وحفظها في السحابة. لا يدير المستخدمين ولا يستعيد النسخ']},
+ {cells:['<b>اطلاع فقط</b>','رؤية البيانات والتقارير والطباعة والتصدير. لا تُحفظ له أي تعديلات']}])}
+<p class="sub">يُرفض إزالة آخر مدير أو حذفه، ولا يمكنك حذف حسابك بنفسك.</p></div>`;
+  if(!$('#stm').open)$('#stm').showModal();
+}
+document.addEventListener('change',async e=>{
+  const t=e.target;if(!t.classList)return;
+  if(t.classList.contains('clur')){const r=await native.cloud('users',{action:'setRole',user_id:t.dataset.i,role:t.value});
+    toast(r.ok?'تم تغيير الدور':(r.m||'تعذّر التغيير'));if(!r.ok)clUsersDlg()}
+  else if(t.classList.contains('clun')){const r=await native.cloud('users',{action:'setName',user_id:t.dataset.i,full_name:t.value});toast(r.ok?'تم حفظ الاسم':(r.m||'تعذّر الحفظ'))}
+});
+Object.assign(act,{
+  clUsers:()=>clUsersDlg(),
+  clUAdd:()=>formDlg({title:'إضافة مستخدم',save:'إنشاء الحساب',vals:{role:'editor',pw:clGenPw()},fields:[
+    {k:'email',l:'البريد الإلكتروني',t:'email',full:true},{k:'name',l:'الاسم',full:true},
+    {k:'pw',l:'كلمة المرور (10 أحرف فأكثر، انسخها وأعطها له)',t:'text',full:true},
+    {k:'role',l:'الدور',t:'select',opts:CL_ROLES,full:true}],
+    onSave:o=>{
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(o.email))return 'البريد الإلكتروني غير صحيح';
+      if(o.pw.length<10)return 'كلمة المرور يجب ألا تقل عن 10 أحرف';
+      native.cloud('users',{action:'create',email:o.email,full_name:o.name,password:o.pw,role:o.role}).then(r=>{
+        clUsersDlg(r.ok?'أُنشئ الحساب '+o.email+' — كلمة المرور: '+o.pw+' (سجّلها الآن، لا تُعرض مرة أخرى)':'تعذّر الإنشاء: '+(r.m||''))})}}),
+  clUPw:b=>formDlg({title:'كلمة مرور جديدة: '+b.dataset.e,save:'حفظ',vals:{pw:clGenPw()},fields:[{k:'pw',l:'كلمة المرور الجديدة (10 أحرف فأكثر)',t:'text',full:true}],
+    onSave:o=>{if(o.pw.length<10)return 'كلمة المرور يجب ألا تقل عن 10 أحرف';
+      native.cloud('users',{action:'resetPassword',user_id:b.dataset.i,password:o.pw}).then(r=>clUsersDlg(r.ok?'تم تغيير كلمة مرور '+b.dataset.e+' إلى: '+o.pw+' (سجّلها الآن)':'تعذّر التغيير: '+(r.m||'')))}}),
+  clUDel:b=>arm(b,async()=>{const r=await native.cloud('users',{action:'remove',user_id:b.dataset.i});clUsersDlg(r.ok?'تم حذف المستخدم':'تعذّر الحذف: '+(r.m||''))})
 });
 
 native.onFlush(async()=>{try{await flush()}catch{}native.flushed()});

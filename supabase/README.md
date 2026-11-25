@@ -13,3 +13,6 @@
 ## الجداول العلائقية (للتقارير بـ SQL)
 تُبنى تلقائيًا من المستند عند كل حفظ (قراءة فقط): `rel_projects` و`rel_units` و`rel_contracts` و`rel_payments` و`rel_fee_units` و`rel_owners` و`rel_tenants`، وعرض `v_contract_paid` (المدفوع لكل عقد). التعديل يتم من التطبيق فقط؛ أي تعديل مباشر عليها يُمحى عند الحفظ التالي.
 مثال: `select project, sum(paid) from v_contract_paid group by 1;`
+
+## إدارة المستخدمين من التطبيق
+دالة Edge اسمها `manage-users` (المصدر في `supabase/functions/manage-users/index.ts`، تُنشر بـ verify_jwt=false لأنها تتحقق بنفسها). تقبل الطلب من حساب مدير فقط، وتستخدم مفتاح الخدمة المحفوظ داخل Supabase وحده. من التطبيق: الإعدادات > «إدارة المستخدمين»: إضافة مستخدم بدور، تغيير دور أو اسم، كلمة مرور جديدة، حذف. لا يُسمح بإزالة آخر مدير.

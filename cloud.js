@@ -53,6 +53,7 @@ module.exports=function(app,ipcMain,safeStorage,netFetch){
   H('get',async()=>{const r=await raw('/rest/v1/app_docs?select=data,rev,updated_at&id=eq.'+DOC);return r&&r[0]?r[0]:null});
   H('rev',async()=>{const r=await raw('/rest/v1/app_docs?select=rev,updated_at&id=eq.'+DOC);return r&&r[0]?r[0]:null});
   H('save',async(data,base)=>{const r=await raw('/rest/v1/rpc/save_doc',{method:'POST',body:JSON.stringify({p_id:DOC,p_base_rev:base,p_data:data})});return Number(r)});
+  H('users',async body=>raw('/functions/v1/manage-users',{method:'POST',body:JSON.stringify(body)}));
   H('hist',async()=>raw('/rest/v1/app_doc_history?select=id,rev,saved_at&doc_id=eq.'+DOC+'&order=saved_at.desc&limit=50'));
   H('histGet',async id=>{const r=await raw('/rest/v1/app_doc_history?select=data&id=eq.'+Number(id));return r&&r[0]?r[0].data:null});
   H('histRestore',async id=>Number(await raw('/rest/v1/rpc/restore_history',{method:'POST',body:JSON.stringify({p_history_id:Number(id)})})));
