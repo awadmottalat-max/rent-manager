@@ -194,22 +194,22 @@ function anDoc(a){
   const k=anaFor(a),pn=esc(pname(a.pid)),ag=findAgr(a),L=k.lines,yr=String(a.date||iso(TODAY)).slice(0,4),ann=+a.annualRent||0,pct=ann>0?Math.round(k.payment/ann*1000)/10:0;
   const mg=a.mgmt||{},mgLab='إدارة الأملاك'+(mg.type==='pct'&&+mg.value>0?' ('+(+mg.value)+'%)':'');
   const n2=v=>(+v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const row=(lab,val,o={})=>`<tr class="${o.cls||''}"><td class="nt">${o.note?esc(o.note):''}</td><td class="am">${val===''?'':n2(val)}</td><td class="lb">${lab}</td>${o.side||''}</tr>`;
+  const row=(lab,val,o={})=>`<tr class="${o.cls||''}">${o.side||''}<td class="lb">${lab}</td><td class="am">${val===''?'':n2(val)}</td><td class="nt">${o.note?esc(o.note):''}</td></tr>`;
   const ded=[['الرسوم السنوية للخدمات العام '+yr+'م',L.service],[mgLab,L.mgmt],['قيمة مضافة رسوم خدمات وإدارة أملاك ('+VATP()+'%)',k.vat],['قيمة توثيق عقد إيجار',L.contract],['مبالغ سابقة (دفعة من المديونية)',L.prev,a.prevNote],['فواتير صيانة شاملة الضريبة',L.maint],['نظافة شاملة الضريبة',L.clean]];
   ded.push(['كهرباء',L.elec||0],['إنترنت',L.net||0],['أخرى',L.other||0]);
-  const side=`<td class="side" rowspan="${ded.length+1}"><span>الرسوم والاستقطاعات والضريبة</span></td>`;
+  const side=`<td class="asd" rowspan="${ded.length+1}"><span>الرسوم والاستقطاعات والضريبة</span></td>`;
   const dr=ded.map((d,i)=>row(esc(d[0]),d[1],{note:d[2],side:i===0?side:''})).join('');
   const info=`<div class="an-info"><div class="r1"><div><span>رقم الوحدة</span><b>${esc(a.unit)}</b></div><div><span>المالك</span><b>${esc(a.owner)||'—'}</b></div><div><span>المستأجر</span><b>${esc(a.tenant)||'—'}</b></div></div>
 <div class="r2"><div><span>المشروع</span><b>${pn}</b></div><div><span>بداية الإيجار</span><b><bdi>${esc(a.cstart||'—')}</bdi></b></div><div><span>نهاية الإيجار</span><b><bdi>${esc(a.cend||'—')}</bdi></b></div><div><span>تاريخ التحليل</span><b><bdi>${esc(a.date)}</bdi></b></div></div>
 <div class="r3">${a.no?`<div><span>رقم التحليل</span><b><bdi>${esc(a.no)}</bdi></b></div>`:''}${a.ctype?`<div><span>نوع العقد</span><b>${a.ctype==='renew'?'تجديد':'جديد'}</b></div>`:''}${a.ejar?`<div><span>رقم عقد إيجار</span><b><bdi>${esc(a.ejar)}</bdi></b></div>`:''}${a.sap?`<div><span>رقم ساب SAP</span><b><bdi>${esc(a.sap)}</bdi></b></div>`:''}</div></div>`;
-  const body=`${info}<table class="an-tb"><thead><tr><th>ملاحظات</th><th>المبلغ (ريال سعودي)</th><th>تفاصيل وبيان القيمة الإيجارية</th><th class="sd"></th></tr></thead><tbody>
-<tr class="hd"><td></td><td></td><td class="lb">قيمة إيجار الوحدة بعد خصم جميع الاستقطاعات</td><td class="sd"></td></tr>
+  const body=`${info}<table class="an-tb"><colgroup><col style="width:56px"><col><col style="width:21%"><col style="width:22%"></colgroup><thead><tr><th class="sd"></th><th>تفاصيل وبيان القيمة الإيجارية</th><th>المبلغ (ريال سعودي)</th><th>ملاحظات</th></tr></thead><tbody>
+<tr class="hd"><td class="sd"></td><td class="lb">قيمة إيجار الوحدة بعد خصم جميع الاستقطاعات</td><td></td><td></td></tr>
 ${row('قيمة إيجار الوحدة رقم '+esc(a.unit),ann,{cls:'b',side:'<td class="sd"></td>'})}${row('المدفوع من الإيجار'+(pct?' '+pct+'%':''),k.payment,{cls:'b',side:'<td class="sd"></td>'})}
-<tr><td></td><td></td><td class="lb b">ويتم توزيعها كما يلي:</td><td class="sd"></td></tr>
-${dr}${row('إجمالي الاستقطاعات',k.totalDed,{cls:'tot'})}
+<tr><td class="sd"></td><td class="lb b">ويتم توزيعها كما يلي:</td><td></td><td></td></tr>
+${dr}${row('إجمالي الاستقطاعات',k.totalDed,{cls:'tot',side:''})}
 ${row('المتبقي للمالك',k.netOwner,{cls:'net',side:'<td class="sd"></td>'})}
 ${row('المبلغ الذي أودعه المستأجر',k.payment,{cls:'b',side:'<td class="sd"></td>'})}${row('حساب التشغيل '+yr,k.totalDed,{cls:'b',side:'<td class="sd"></td>'})}${row('يحوَّل إلى حساب المالك',Math.max(0,k.netOwner),{cls:'b',side:'<td class="sd"></td>'})}
-<tr class="hd"><td></td><td></td><td class="lb">يبقى رصيد بالحساب</td><td class="sd"></td></tr></tbody></table>
+<tr class="hd"><td class="sd"></td><td class="lb">يبقى رصيد بالحساب</td><td></td><td></td></tr></tbody></table>
 ${k.over?'<p class="warnbox">إجمالي الخصومات يتجاوز قيمة الدفعة</p>':''}
 <p class="an-tf">${esc(Fin.tafqeet(Math.max(0,k.netOwner)))}</p>
 <div class="an-sign"><div><span>إدارة الحسابات</span><u></u></div><div><span>الرقابة المالية</span><u></u></div><div><span>نائب الرئيس التنفيذي والمدير المكلف</span><u></u></div></div>${ag?`<p style="font-size:12px">مرتبط بالاتفاقية رقم ${esc(ag.no)}</p>`:''}${a.note?`<p style="font-size:12px"><b>ملاحظات:</b> ${esc(a.note)}</p>`:''}`;
