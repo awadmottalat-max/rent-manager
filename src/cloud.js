@@ -46,15 +46,14 @@ function clLabel(p){
   return s;
 }
 
-/* ---- شارة الحالة ---- */
-function clBadge(st,msg){
-  S.cl.st=st;let b=document.getElementById('clb');
-  if(!S.cl.on){if(b)b.remove();return}
-  if(!b){b=document.createElement('div');b.id='clb';b.setAttribute('role','button');b.onclick=e=>{if(!e.target.closest('[data-a]'))clDlg()};document.body.appendChild(b)}
-  const c={ok:'#1f7a4d',sync:'#8a6d1d',err:'#a33',ro:'#555'}[st]||'#555';
-  b.style.cssText='position:fixed;bottom:10px;left:12px;z-index:60;background:#fff;border:1px solid '+c+';color:'+c+';border-radius:14px;padding:3px 10px;font-size:12px;cursor:pointer;box-shadow:0 1px 4px #0002;font-family:inherit';
-  b.innerHTML=esc(({ok:'☁ متزامن',sync:'☁ جارٍ المزامنة…',err:'☁ تعذّرت المزامنة',ro:'☁ للاطلاع فقط'}[st]||'☁')+(msg?' — '+msg:''))+(S.cl.email?' · '+esc(S.cl.email):'')+'';
-  b.title=(S.cl.email||'')+' · v'+S.cl.rev;
+/* ---- حالة المزامنة: تُعرض في أسفل القائمة الجانبية فوق «تسجيل الخروج» (لا شارة عائمة) ---- */
+function clBadge(st,msg){S.cl.st=st;S.cl.stm=msg||'';const w=document.querySelector('#nav .who');if(w)w.outerHTML=clWho()}
+function clWho(){
+  if(!S.cl.on)return '';
+  const c={ok:'#7fe0a8',sync:'#f2d98a',err:'#ff9d9d',ro:'#cfd6e4'}[S.cl.st]||'#cfd6e4';
+  const t={ok:'☁ متزامن',sync:'☁ جارٍ المزامنة…',err:'☁ تعذّرت المزامنة',ro:'☁ للاطلاع فقط'}[S.cl.st]||'';
+  const role={admin:'مدير',editor:'محرر',viewer:'اطلاع فقط'}[S.cl.role]||'';
+  return `<div class="who" title="${esc(S.cl.email||'')} · v${S.cl.rev}">${esc(S.cl.name||S.cl.email||'')}${role?' · '+esc(role):''}${t?`<br><small style="color:${c}">${esc(t+(S.cl.stm?' — '+S.cl.stm:''))}</small>`:''}</div>`;
 }
 
 /* ---- شاشة الدخول (تحجب التطبيق حتى النجاح؛ لا يوجد وضع بلا دخول) ---- */
