@@ -1,6 +1,6 @@
 {
   "name": "rent-manager",
-  "version": "1.25.6",
+  "version": "1.26.0",
   "description": "متابعة الإيجارات وإدارة الأملاك",
   "main": "main.js",
   "scripts": {
@@ -28,6 +28,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "cloud.js",
       "src/**/*",
       "build/icon.png",
       "package.json"

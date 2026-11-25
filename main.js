@@ -1,4 +1,4 @@
-const{app,BrowserWindow,ipcMain,dialog,shell,Menu,nativeImage}=require('electron');
+const{app,BrowserWindow,ipcMain,dialog,shell,Menu,nativeImage,safeStorage,net}=require('electron');
 const path=require('path'),fs=require('fs');
 let autoUpdater=null;try{autoUpdater=require('electron-updater').autoUpdater}catch{}
 let win=null,cfgPath,dataDir,lastBackup=0;
@@ -60,11 +60,14 @@ function createWindow(){
   win.loadFile(path.join(__dirname,'src','index.html'));
   win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
   win.webContents.on('will-navigate',e=>e.preventDefault());
+  let closing=false; // نمهل الصفحة لإنهاء الحفظ المحلي والسحابي قبل الإغلاق
+  win.on('close',e=>{if(closing)return;e.preventDefault();const fin=()=>{if(closing)return;closing=true;try{win.close()}catch{}};ipcMain.once('app:flushed',fin);try{win.webContents.send('app:flush')}catch{return fin()}setTimeout(fin,6000)});
 }
 const lock=app.requestSingleInstanceLock();
 if(!lock)app.quit();else{
   app.on('second-instance',()=>{if(win){if(win.isMinimized())win.restore();win.focus()}});
   app.whenReady().then(()=>{init();
+    require('./cloud')(app,ipcMain,safeStorage,(u,o)=>net.fetch(u,o));
     ipcMain.handle('data:load',()=>load());
     ipcMain.handle('data:save',(_e,d)=>save(d));
     ipcMain.on('data:saveSync',(e,d)=>{try{save(d);e.returnValue=true}catch{e.returnValue=false}});

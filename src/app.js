@@ -18,8 +18,9 @@ function arm(b,fn){if(b.dataset.armed){fn();return}b.dataset.t=b.textContent;b.d
 let dirty=false,st=null;
 let lastFlush=0;
 const SAVE_MS=()=>{const m=Number(S.db?.settings?.saveEvery);return(isFinite(m)&&m>=0?m:5)*60e3};
-function persist(){dirty=true;clearTimeout(st);const w=Math.max(250,lastFlush+SAVE_MS()-Date.now());st=setTimeout(flush,w)}
-async function flush(){if(!dirty)return;dirty=false;lastFlush=Date.now();try{await native.save(S.db)}catch(e){dirty=true;toast('تعذّر الحفظ على القرص: '+(e.message||e))}}
+function persist(){if(S.cl&&S.cl.ro){toast('حسابك للاطلاع فقط: لا تُحفظ التعديلات');return}dirty=true;clearTimeout(st);const w=Math.max(250,lastFlush+SAVE_MS()-Date.now());st=setTimeout(flush,w)}
+async function flush(){if(!dirty)return;dirty=false;lastFlush=Date.now();try{await native.save(S.db)}catch(e){dirty=true;toast('تعذّر الحفظ على القرص: '+(e.message||e))}
+  if(S.cl&&S.cl.on&&!S.cl.ro&&S.cl.base)await clPush()}
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&dirty){clearTimeout(st);flush()}});
 window.addEventListener('beforeunload',()=>{if(dirty){clearTimeout(st);native.saveSync(S.db);dirty=false}});
 const P=()=>S.db.projects;
@@ -628,6 +629,7 @@ ${auditCard()}
 <div class="card"><h3 data-noi18n>اللغة / Language</h3><div class="row"><select id="set_lang" data-noi18n><option value="ar"${window.LANG==='ar'?' selected':''}>العربية</option><option value="en"${window.LANG==='en'?' selected':''}>English</option></select></div></div>
 <div class="card"><h3>تكرار الحفظ على القرص</h3><p>لتقليل مزامنة الملف (مثل OneDrive) يُكتب الملف على القرص مرة كل المدة المختارة بحد أقصى، ويُحفظ فورًا عند إغلاق التطبيق أو تصغيره أو الاستيراد والتحديث.</p><div class="row"><label>الحفظ كل <select id="set_save">${[[0,'فورًا بعد كل تعديل'],[1,'دقيقة'],[5,'5 دقائق (الافتراضي)'],[15,'15 دقيقة']].map(([v,l])=>`<option value="${v}"${(S.db.settings.saveEvery??5)==v?' selected':''}>${l}</option>`).join('')}</select></label></div></div>
 <div class="card"><h3>إصدار التطبيق</h3><p>التاريخ المعتمد: <b class="num">${iso(TODAY)}</b></p><p>الإصدار الحالي: <b class="num">${esc(S.ver||'')}</b> — يتحقق التطبيق من التحديثات تلقائيًا عند التشغيل.</p><div class="row"><button class="btn" data-a="chkUpd">التحقق من التحديثات الآن</button></div></div>
+<div class="card"><h3>قاعدة البيانات السحابية</h3><p class="sub">ربط التطبيق بقاعدة Supabase لمشاركة البيانات بين المستخدمين والأجهزة.</p><div class="row"><button class="btn p" data-a="clOpen">إعداد السحابة</button></div></div>
 <div class="card"><h3>موقع التخزين</h3><p class="num" id="dirp" style="direction:ltr;text-align:end">${esc(S.dir)}</p><div class="row"><button class="btn" data-a="openDir">فتح المجلد</button><button class="btn" data-a="chDir">تغيير المجلد (مثلًا OneDrive أو مجلد مشترك)</button></div></div>
 </div>`;
 }
@@ -784,6 +786,7 @@ native.onUpdate(d=>{
     if(r.data){S.db=normalize(r.data);if(r.recovered)toast('الملف الرئيسي تالف، استُعيدت آخر نسخة سليمة: '+r.recovered)}}
   catch(e){toast('تعذّر تحميل البيانات')}
   if(document.readyState!=='complete')await new Promise(r=>addEventListener('load',r,{once:true}));
+  try{await clBoot()}catch(e){toast('تعذّر الاتصال بالسحابة: '+(e.message||e))}
   render();
   try{const u=await native.getIcon();if(u&&$('#iconprev'))$('#iconprev').src=u}catch{}
 })();
