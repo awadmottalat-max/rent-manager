@@ -159,8 +159,9 @@ create index if not exists rel_fee_units_pid_idx on public.rel_fee_units (pid);
 create or replace function public.rebuild_relational(p jsonb) returns void
 language plpgsql security definer set search_path = '' as $$
 begin
-  delete from public.rel_payments;  delete from public.rel_contracts; delete from public.rel_units;
-  delete from public.rel_projects;  delete from public.rel_fee_units; delete from public.rel_owners; delete from public.rel_tenants;
+  -- Supabase (pg-safeupdate) يرفض DELETE بلا WHERE عبر الواجهة، لذلك where true صريحة
+  delete from public.rel_payments where true;  delete from public.rel_contracts where true; delete from public.rel_units where true;
+  delete from public.rel_projects where true;  delete from public.rel_fee_units where true; delete from public.rel_owners where true; delete from public.rel_tenants where true;
 
   insert into public.rel_projects select pr.key, pr.value->>'name', pr.value->>'no' from jsonb_each(p->'projects') pr;
 
