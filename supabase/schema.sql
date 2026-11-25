@@ -90,6 +90,8 @@ begin
     update public.app_docs set data = p_data, rev = v_new, updated_by = v_uid, updated_at = now() where id = p_id;
   end if;
 
+  perform public.rebuild_relational(p_data); -- مرآة علائقية للقراءة فقط
+
   -- لقطة تاريخية كل 30 دقيقة على الأكثر، ونحتفظ بآخر 300
   if not exists (select 1 from public.app_doc_history where doc_id = p_id and saved_at > now() - interval '30 minutes') then
     insert into public.app_doc_history(doc_id, rev, data, saved_by) values (p_id, v_new, p_data, v_uid);
@@ -111,10 +113,110 @@ begin
   if not found then raise exception 'NOT_FOUND'; end if;
   update public.app_docs set data = h.data, rev = rev + 1, updated_by = (select auth.uid()), updated_at = now()
     where id = h.doc_id returning rev into v_new;
+  perform public.rebuild_relational(h.data);
   return v_new;
 end $$;
 revoke all on function public.restore_history(bigint) from public, anon;
 grant execute on function public.restore_history(bigint) to authenticated;
+
+-- =====================================================================
+-- جداول علائقية للقراءة فقط (للتقارير بـ SQL): تُبنى من المستند عند كل حفظ.
+-- المصدر الوحيد للحقيقة هو المستند app_docs؛ هذه الجداول مرآة تُعاد كتابتها كاملة.
+-- =====================================================================
+create or replace function public.rel_num(v jsonb) returns numeric language sql immutable set search_path = '' as $$
+  select case when jsonb_typeof(v) = 'number' then (v #>> '{}')::numeric
+              when jsonb_typeof(v) = 'string' and (v #>> '{}') ~ '^\s*-?\d+(\.\d+)?\s*$' then trim(v #>> '{}')::numeric end
+$$;
+create or replace function public.rel_date(v jsonb) returns date language plpgsql immutable set search_path = '' as $$
+begin
+  if jsonb_typeof(v) = 'string' and (v #>> '{}') ~ '^\d{4}-\d{2}-\d{2}$' then return (v #>> '{}')::date; end if;
+  return null;
+exception when others then return null;
+end $$;
+
+create table if not exists public.rel_projects (pid text primary key, name text, no text);
+create table if not exists public.rel_units (
+  pid text not null, unit_id text not null, no text, owner text, type text, area text, rooms text,
+  ask_rent numeric, available boolean, notes text, primary key (pid, unit_id));
+create table if not exists public.rel_contracts (
+  pid text not null, cid text not null, kind text, unit text, owner text, tenant text,
+  rent numeric, fee numeric, fee_type text, fee_pct numeric, start_date date, end_date date,
+  period text, inst_count int, sign_date date, ejar text, sap text, notes text, details jsonb,
+  primary key (pid, cid));
+create table if not exists public.rel_payments (
+  pid text not null, cid text not null, pay_id text not null, pay_date date, amount numeric, note text,
+  primary key (pid, cid, pay_id));
+create table if not exists public.rel_fee_units (fee_id text primary key, pid text, no text, owner text, phone text, area text, amt numeric);
+create table if not exists public.rel_owners  (id text primary key, name text, phone text, email text, idno text, addr text, notes text);
+create table if not exists public.rel_tenants (id text primary key, name text, phone text, email text, idno text, addr text, notes text);
+create index if not exists rel_contracts_unit_idx on public.rel_contracts (pid, unit);
+create index if not exists rel_payments_contract_idx on public.rel_payments (pid, cid);
+create index if not exists rel_fee_units_pid_idx on public.rel_fee_units (pid);
+
+create or replace function public.rebuild_relational(p jsonb) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  delete from public.rel_payments;  delete from public.rel_contracts; delete from public.rel_units;
+  delete from public.rel_projects;  delete from public.rel_fee_units; delete from public.rel_owners; delete from public.rel_tenants;
+
+  insert into public.rel_projects select pr.key, pr.value->>'name', pr.value->>'no' from jsonb_each(p->'projects') pr;
+
+  insert into public.rel_units
+  select pr.key, u->>'id', u->>'no', u->>'owner', u->>'type', u->>'area', u->>'rooms', public.rel_num(u->'askRent'),
+         case when u ? 'avail' then (u->>'avail') not in ('false','0') end, u->>'notes'
+  from jsonb_each(p->'projects') pr, jsonb_array_elements(coalesce(pr.value->'units', '[]'::jsonb)) u
+  where u->>'id' is not null
+  on conflict do nothing;
+
+  insert into public.rel_contracts
+  select pr.key, c->>'id', c->>'kind', c->>'unit', c->>'owner', c->>'tenant', public.rel_num(c->'rent'), public.rel_num(c->'fee'),
+         c->>'feeType', public.rel_num(c->'feePct'), public.rel_date(c->'start'), public.rel_date(c->'end'),
+         c->>'period', public.rel_num(c->'count')::int, public.rel_date(c->'signDate'), c->>'ejar', c->>'sap', c->>'notes',
+         c - 'payments' - 'files' - 'notes'
+  from jsonb_each(p->'projects') pr, jsonb_array_elements(coalesce(pr.value->'contracts', '[]'::jsonb)) c
+  where c->>'id' is not null
+  on conflict do nothing;
+
+  insert into public.rel_payments
+  select pr.key, c->>'id', py->>'id', public.rel_date(py->'date'), public.rel_num(py->'amount'), py->>'note'
+  from jsonb_each(p->'projects') pr, jsonb_array_elements(coalesce(pr.value->'contracts', '[]'::jsonb)) c,
+       jsonb_array_elements(coalesce(c->'payments', '[]'::jsonb)) py
+  where c->>'id' is not null and py->>'id' is not null
+  on conflict do nothing;
+
+  insert into public.rel_fee_units
+  select f->>'id', f->>'pid', f->>'no', f->>'owner', f->>'phone', f->>'area', public.rel_num(f->'amt')
+  from jsonb_array_elements(coalesce(p->'feeUnits', '[]'::jsonb)) f where f->>'id' is not null on conflict do nothing;
+
+  insert into public.rel_owners
+  select o->>'id', o->>'name', o->>'phone', o->>'email', o->>'idno', o->>'addr', o->>'notes'
+  from jsonb_array_elements(coalesce(p->'parties'->'owners', '[]'::jsonb)) o where o->>'id' is not null on conflict do nothing;
+  insert into public.rel_tenants
+  select o->>'id', o->>'name', o->>'phone', o->>'email', o->>'idno', o->>'addr', o->>'notes'
+  from jsonb_array_elements(coalesce(p->'parties'->'tenants', '[]'::jsonb)) o where o->>'id' is not null on conflict do nothing;
+end $$;
+revoke all on function public.rebuild_relational(jsonb) from public, anon, authenticated;
+
+-- صلاحيات وحماية الجداول العلائقية: قراءة فقط لكل من له دور
+do $$ declare t text; begin
+  foreach t in array array['rel_projects','rel_units','rel_contracts','rel_payments','rel_fee_units','rel_owners','rel_tenants'] loop
+    execute format('alter table public.%I enable row level security', t);
+    execute format('drop policy if exists %I on public.%I', t||'_read', t);
+    execute format('create policy %I on public.%I for select to authenticated using ((select public.my_role()) is not null)', t||'_read', t);
+    execute format('revoke all on public.%I from anon, authenticated', t);
+    execute format('grant select on public.%I to authenticated', t);
+  end loop; end $$;
+
+-- عرض جاهز: إجمالي المدفوع لكل عقد
+create or replace view public.v_contract_paid with (security_invoker = true) as
+select c.pid, p.name as project, c.cid, c.unit, c.owner, c.tenant, c.rent, c.start_date, c.end_date,
+       coalesce(sum(y.amount), 0) as paid, count(y.pay_id) as pay_count
+from public.rel_contracts c
+left join public.rel_projects p on p.pid = c.pid
+left join public.rel_payments y on y.pid = c.pid and y.cid = c.cid
+group by c.pid, p.name, c.cid, c.unit, c.owner, c.tenant, c.rent, c.start_date, c.end_date;
+revoke all on public.v_contract_paid from anon, authenticated;
+grant select on public.v_contract_paid to authenticated;
 
 -- =====================================================================
 -- إضافة المستخدمين:
