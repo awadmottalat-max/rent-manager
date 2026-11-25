@@ -57,7 +57,10 @@ create policy app_docs_read on public.app_docs for select to authenticated
 create policy history_admin_read on public.app_doc_history for select to authenticated
   using ((select public.my_role()) = 'admin');
 
-revoke insert, update, delete on public.app_docs, public.app_doc_history, public.profiles from anon, authenticated;
+-- الصلاحيات: القراءة فقط للمسجَّلين (RLS تحدد الصفوف). الكتابة عبر الدوال فقط، ولا شيء لـ anon.
+-- (مشاريع Supabase الجديدة لا تمنح SELECT تلقائيًا، فبدون السطر التالي يرجع الخطأ 403)
+revoke all on public.profiles, public.app_docs, public.app_doc_history from anon, authenticated;
+grant select on public.profiles, public.app_docs, public.app_doc_history to authenticated;
 
 -- ---------- الحفظ مع فحص التضارب ----------
 -- يرجع الرقم الجديد، أو يرفع الخطأ 'REV_CONFLICT' إن تغيّر المستند بعد آخر قراءة لك.
