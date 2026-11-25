@@ -1,0 +1,18 @@
+const{app,BrowserWindow}=require('electron');const fs=require('fs'),path=require('path'),os=require('os');
+app.setPath('userData',fs.mkdtempSync(path.join(os.tmpdir(),'rent-')));app.commandLine.appendSwitch('no-sandbox');require('../main.js');
+const D=JSON.parse(fs.readFileSync('/tmp/db2.json','utf8'));const X=fs.readFileSync('/tmp/out/حصر-الوحدات-والملاك.xlsx').toString('base64');
+app.whenReady().then(async()=>{await new Promise(r=>setTimeout(r,2500));const w=BrowserWindow.getAllWindows()[0];w.setSize(1500,1100);
+ w.webContents.on('console-message',(e,l,m)=>{if(l>=2)console.log('CONSOLE',m)});
+ console.log(await w.webContents.executeJavaScript(`(async()=>{const R={};try{const d=${JSON.stringify(D)};normalize(d);S.db=d;const sl=ms=>new Promise(r=>setTimeout(r,ms));
+  const bytes=Uint8Array.from(atob('${X}'),c=>c.charCodeAt(0));
+  const rent0=Object.values(P()).map(p=>p.name+':'+(p.units||[]).length).join(',');R.rent0=rent0;const av0=(()=>{try{return unitsSummary().length}catch(e){return -1}})();
+  go('inv');await sl(150);ivImport({bytes});await sl(600);R.prev=[...document.querySelectorAll('#frm tbody tr')].slice(0,9).map(r=>r.innerText.replace(/\\s+/g,' ')).join(' | ');
+  R.chg=document.querySelector('#frm h3')?.innerText;document.getElementById('fsave').click();await sl(400);
+  R.rent1=Object.values(P()).map(p=>p.name+':'+(p.units||[]).length).join(',');R.fu=FU().length;
+  const m=Object.values(P()).find(p=>p.name.includes('ماربيلا'));R.slash=m.units.filter(u=>/\\//.test(u.no)).length+'/'+m.contracts.filter(c=>/\\//.test(c.unit)).length;
+  const a=ivUnits();R.total=a.length;R.sold=a.filter(o=>o.owner).length;R.fee=a.filter(o=>o.src==='fee').length;
+  go('inv');await sl(200);R.h=document.querySelector('#view h1').textContent;R.rows=document.querySelectorAll('#view tbody tr').length;
+  S.iv.tab='own';go('inv');await sl(150);R.own=document.querySelectorAll('#view tbody tr').length;S.iv.tab='units';go('inv');await sl(150);R.u=document.querySelectorAll('#view tbody tr').length;S.iv.tab='proj';go('inv');await sl(150);
+  R.t2=[...document.querySelectorAll('#view tbody tr')].map(r=>r.innerText.replace(/\\s+/g,' ')).join(' | ');
+    }catch(e){R.e=e.stack}return JSON.stringify(R)})()`));
+ await new Promise(r=>setTimeout(r,200));fs.writeFileSync('/tmp/inv.png',(await w.webContents.capturePage()).toPNG());app.exit(0)});
