@@ -402,3 +402,7 @@ tbody tr{transition:background .12s}tbody tr:hover td{background:#e8f1fc}
 .an-sign{margin-top:26px}.an-sign>div{gap:26px}
 .doc .an-tb{table-layout:fixed;width:100%}.doc .an-tb td.am,.doc .an-tb td.nt,.doc .an-tb .sd,.doc .an-tb td.asd{width:auto}
 .doc .an-tb td.asd{display:table-cell;box-shadow:none;padding:0;vertical-align:middle;text-align:center}
+
+/* 1.25.5: أرقام قابلة للنقر في الحصر */
+.drl{cursor:pointer;color:var(--acc);font-weight:700;border-bottom:1px dashed currentColor;padding:0 4px;border-radius:4px}.drl:hover{background:var(--soft)}
+.kpis.sm .kp[data-a="ivD"]{cursor:pointer}

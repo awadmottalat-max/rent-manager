@@ -19,16 +19,16 @@ function vInv(){
   const L=all.filter(o=>(MS(E.p,o.pid))&&AO(E.s,z=>z==='sold'?o.owner:z==='unsold'?!o.owner:z==='rented'?o.rented:z==='fee'?o.src==='fee':true)&&(!q||txt(o.unit,o.owner,o.pn).includes(q)));
   const sel=(id,v,opts)=>`<select id="${id}">${opts.map(([a,b])=>`<option value="${esc(a)}"${String(a)===String(v)?' selected':''}>${esc(b)}</option>`).join('')}</select>`;
   const tabs=[['proj','حسب المشروع'],['own','حسب المالك'],['units','قائمة الوحدات']];
-  const kp=(l,v,i)=>`<div class="kp static"><span>${l}</span><b>${v}</b><i>${i||''}</i></div>`;
+  const kp=(l,v,m)=>`<div class="kp" data-a="ivD" data-p="*" data-m="${m}" role="button" tabindex="0" title="عرض التفاصيل"><span>${l}</span><b>${v}</b><i></i></div>`;
   const owners=new Set(all.filter(o=>o.owner).map(o=>nm(o.owner)));
   let body='';
   if(E.tab==='proj'){
-    const g=Object.entries(P()).map(([pid,p])=>{const a=all.filter(o=>o.pid===pid);return{n:p.name,t:a.length,s:a.filter(o=>o.owner).length,u:a.filter(o=>!o.owner).length,r:a.filter(o=>o.rented).length,w:new Set(a.filter(o=>o.owner).map(o=>nm(o.owner))).size,f:a.filter(o=>o.src==='fee').length}}).filter(o=>!MSV(E.p).length||MSV(E.p).some(i=>P()[i]&&P()[i].name===o.n)).sort((a,b)=>a.n.localeCompare(b.n,'ar'));
+    const g=Object.entries(P()).map(([pid,p])=>{const a=all.filter(o=>o.pid===pid);return{pid,n:p.name,t:a.length,s:a.filter(o=>o.owner).length,u:a.filter(o=>!o.owner).length,r:a.filter(o=>o.rented).length,w:new Set(a.filter(o=>o.owner).map(o=>nm(o.owner))).size,f:a.filter(o=>o.src==='fee').length}}).filter(o=>!MSV(E.p).length||MSV(E.p).some(i=>P()[i]&&P()[i].name===o.n)).sort((a,b)=>a.n.localeCompare(b.n,'ar'));
     const cols=[{h:'المشروع',k:'t'},{h:'إجمالي الوحدات',k:'n'},{h:'مباعة (لها مالك)',k:'n'},{h:'غير مباعة',k:'n'},{h:'عدد الملاك',k:'n'},{h:'مؤجرة حاليًا',k:'n'},{h:'للرسوم فقط',k:'n'}];
     const foot=['الإجمالي',sum(g,o=>o.t),sum(g,o=>o.s),sum(g,o=>o.u),new Set(all.filter(o=>(MS(E.p,o.pid))&&o.owner).map(o=>nm(o.owner))).size,sum(g,o=>o.r),sum(g,o=>o.f)];
-    const rows=g.map(o=>({cells:['<b>'+esc(o.n)+'</b>',o.t,o.s,o.u,o.w,o.r,o.f]}));
+    const dl=(pid,m,v)=>v?`<a class="drl" data-a="ivD" data-p="${esc(pid)}" data-m="${m}" title="عرض التفاصيل">${v}</a>`:v,rows=g.map(o=>({cells:['<b>'+esc(o.n)+'</b>',dl(o.pid,'t',o.t),dl(o.pid,'s',o.s),dl(o.pid,'u',o.u),dl(o.pid,'w',o.w),dl(o.pid,'r',o.r),dl(o.pid,'f',o.f)]}));
     S.pm={title:'حصر الوحدات حسب المشروع',sub:'إجمالي الوحدات: '+foot[1],cols,rows:g.map(o=>({cells:[o.n,o.t,o.s,o.u,o.w,o.r,o.f]})),foot,footSpan:0};
-    body=T(cols,rows,{foot,footSpan:0});
+    body=T(cols,rows,{foot:foot.map((v,i)=>i===0?v:dl('*',['','t','s','u','w','r','f'][i],v)),footSpan:0});
   }else if(E.tab==='own'){
     const m=new Map();for(const o of L){if(!o.owner)continue;const x=m.get(nm(o.owner))||{n:nm(o.owner),u:[],p:new Set};x.u.push(o);x.p.add(o.pn);m.set(x.n,x)}
     const g=[...m.values()].sort((a,b)=>b.u.length-a.u.length||a.n.localeCompare(b.n,'ar'));
@@ -48,12 +48,29 @@ function vInv(){
 <div class="bar"><div class="tabs">${tabs.map(([k,l])=>`<button class="btn sm${E.tab===k?' p':''}" data-a="ivTab" data-t="${k}">${l}</button>`).join('')}</div>
 ${msel('iv.p',PL(),'كل المشاريع')}${E.tab!=='proj'?msel('iv.s',[['sold','المباعة'],['unsold','غير المباعة'],['rented','المؤجرة حاليًا'],['fee','للرسوم فقط']],'كل الوحدات'):''}${E.tab!=='proj'?`<input type="search" id="iv_q" placeholder="بحث: مالك أو وحدة" value="${esc(E.q)}">`:''}
 <button class="btn p" data-a="ivImp">استيراد حصر (Excel)</button>${pbtn('list')}</div>
-<div class="kpis sm">${kp('إجمالي الوحدات',all.length)}${kp('مباعة',all.filter(o=>o.owner).length)}${kp('غير مباعة',all.filter(o=>!o.owner).length)}${kp('عدد الملاك',owners.size)}${kp('للرسوم فقط',all.filter(o=>o.src==='fee').length)}</div>${body}`;
+<div class="kpis sm">${kp('إجمالي الوحدات',all.length,'t')}${kp('مباعة',all.filter(o=>o.owner).length,'s')}${kp('غير مباعة',all.filter(o=>!o.owner).length,'u')}${kp('عدد الملاك',owners.size,'w')}${kp('للرسوم فقط',all.filter(o=>o.src==='fee').length,'f')}</div>${body}`;
 }
 VF.inv=vInv;
 function ivOwnerDlg(name){
   const L=ivUnits().filter(o=>nm(o.owner)===name);
   $('#stm').innerHTML=`<div class="dh"><div><h2>${esc(name)}</h2><p>${L.length} وحدة</p></div><button class="x" data-a="sclose" aria-label="إغلاق">✕</button></div><div class="db">${T([{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'الإيجار',k:'d'}],L.map(o=>({cells:[esc(o.pn),'<b>'+esc(o.unit)+'</b>',o.rented?'مؤجرة':'—']})))}</div>`;
+  $('#stm').showModal();
+}
+const IV_M={t:'كل الوحدات',s:'المباعة (لها مالك)',u:'غير المباعة (بلا مالك)',w:'الملاك',r:'المؤجرة حاليًا',f:'للرسوم فقط'};
+function ivDrill(pid,m){
+  const all=ivUnits(),inP=o=>pid==='*'?MS(S.iv.p,o.pid):o.pid===pid;
+  const L=all.filter(o=>inP(o)&&(m==='t'||m==='w'?true:m==='s'?o.owner:m==='u'?!o.owner:m==='r'?o.rented:o.src==='fee'));
+  const pn=pid==='*'?(MSV(S.iv.p).length?pname(S.iv.p):'كل المشاريع'):pname(pid);
+  let body,cnt;
+  if(m==='w'){
+    const mp=new Map();for(const o of L){if(!o.owner)continue;const k=nm(o.owner),x=mp.get(k)||{n:k,u:[],p:new Set};x.u.push(o);x.p.add(o.pn);mp.set(k,x)}
+    const g=[...mp.values()].sort((a,b)=>b.u.length-a.u.length||a.n.localeCompare(b.n,'ar'));cnt=g.length;
+    body=T([{h:'المالك',k:'t'},{h:'عدد الوحدات',k:'n'},{h:'المشاريع',k:'t'},{h:'الوحدات',k:'t'}],g.map(o=>({attrs:` data-a="ivOwner" data-n="${esc(o.n)}"`,cells:['<b>'+esc(o.n)+'</b>',o.u.length,esc([...o.p].join('، ')),esc(o.u.map(x=>x.unit).join('، '))]})),{foot:['الإجمالي ('+g.length+' مالك)',sum(g,o=>o.u.length),'',''],footSpan:0});
+  }else{
+    cnt=L.length;const rows=L.map(o=>({cells:[esc(o.pn),'<b>'+esc(o.unit)+'</b>',o.owner?esc(o.owner):'<span class="mut">—</span>',o.owner?'مباعة':'غير مباعة',o.rented?'مؤجرة':'—',o.src==='fee'?'للرسوم فقط':'ضمن الإيجار']}));
+    body=L.length?T([{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المالك',k:'t'},{h:'الحالة',k:'d'},{h:'الإيجار',k:'d'},{h:'المصدر',k:'d'}],rows,{foot:['الإجمالي ('+L.length+')','','','','',''],footSpan:0}):'<p class="empty">لا توجد وحدات.</p>';
+  }
+  $('#stm').innerHTML=`<div class="dh"><div><h2>${esc(pn)} — ${IV_M[m]}</h2><p>${cnt} ${m==='w'?'مالك':'وحدة'}</p></div><button class="x" data-a="sclose" aria-label="إغلاق">✕</button></div><div class="db">${body}<div class="acts" style="margin-top:12px"><button class="btn sm p" data-a="ivGo" data-p="${esc(pid)}" data-m="${m}">فتح في القائمة (بحث وتصدير)</button></div></div>`;
   $('#stm').showModal();
 }
 /* ===== استيراد ===== */
@@ -121,6 +138,6 @@ ${dup.length||bad.length?`<p class="sub" style="color:var(--late)">متجاهَ�
         if(o.phone&&r.phone!==o.phone){r.phone=o.phone;ra++}if(o.idno&&r.idno!==o.idno){r.idno=o.idno;ra++}}}
     persist();render();toast('تم: '+nu+' وحدة جديدة، '+oc+' تحديث مالك، '+rn+' تعديل رقم، '+(ra+rn_?(rn_+' مالك جديد/'+ra+' تحديث جوال وهوية'):'')+(skip?'، '+skip+' تعارض مُتخطى':''))}});
 }
-Object.assign(act,{ivImp:ivImport,ivTab:b=>{S.iv.tab=b.dataset.t;render()},ivOwner:b=>ivOwnerDlg(b.dataset.n)});
+Object.assign(act,{ivD:b=>ivDrill(b.dataset.p,b.dataset.m),ivGo:b=>{const m=b.dataset.m,p=b.dataset.p;$('#stm').close();if(p!=='*')S.iv.p=[p];S.iv.q='';if(m==='w'){S.iv.tab='own';S.iv.s=''}else{S.iv.tab='units';S.iv.s=({t:'',s:'sold',u:'unsold',r:'rented',f:'fee'})[m]||''}render()},ivImp:ivImport,ivTab:b=>{S.iv.tab=b.dataset.t;render()},ivOwner:b=>ivOwnerDlg(b.dataset.n)});
 document.addEventListener('input',e=>{if(e.target.id==='iv_q'){S.iv.q=e.target.value.trim();render()}});
 document.addEventListener('change',e=>{const m={iv_p:'p',iv_s:'s'}[e.target.id];if(m){S.iv[m]=e.target.value;render()}});
