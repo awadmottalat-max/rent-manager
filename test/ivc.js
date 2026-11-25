@@ -1,0 +1,20 @@
+const{app,BrowserWindow}=require('electron');const fs=require('fs'),path=require('path'),os=require('os');
+app.setPath('userData',fs.mkdtempSync(path.join(os.tmpdir(),'rent-')));app.commandLine.appendSwitch('no-sandbox');require('../main.js');
+const D=JSON.parse(fs.readFileSync('/tmp/db3.json','utf8'));
+app.whenReady().then(async()=>{await new Promise(r=>setTimeout(r,2500));const w=BrowserWindow.getAllWindows()[0];w.setSize(1500,1000);
+ console.log(await w.webContents.executeJavaScript(`(async()=>{const R={errs:[]};try{const d=${JSON.stringify(D)};normalize(d);S.db=d;const sl=ms=>new Promise(r=>setTimeout(r,ms));
+  window.addEventListener('error',e=>R.errs.push(e.message));
+  const pids=Object.keys(d.projects),a=pids.find(k=>/129/.test(d.projects[k].name)),b=pids.find(k=>/132/.test(d.projects[k].name));
+  const before=d.projects[a].units.length;
+  const mv=d.projects[a].contracts.filter(x=>/^(H01|K31)$/.test(x.unit));d.projects[a].contracts=d.projects[a].contracts.filter(x=>!/^(H01|K31|M05)$/.test(x.unit));d.projects[b].contracts.push(...mv);R.moved=mv.length;
+  
+  go('inv');await sl(200);
+  const btn=document.querySelector('[data-a="ivClean"]');R.btn=btn&&btn.textContent;
+  R.cnt129=ivUnits().filter(o=>o.pid===a).length;
+  btn.click();await sl(100);const cb=[...document.querySelectorAll('#frm .ivc')];R.rows=cb.length;R.checked=cb.filter(x=>x.checked).length;
+  document.querySelector('#frm .dh ~ * [type=submit], #frm button.p')&&0;
+  const sv=document.getElementById('fsave');R.sv=sv&&sv.textContent;sv.click();await sl(300);R.toast=(document.querySelector('.toast,#toast')||{}).textContent;
+  R.units129=P()[a].units.map(u=>u.no+('')).join(',');R.after=P()[a].units.length+'/'+before;R.btnTxt=(document.querySelector('[data-a="ivClean"]')||{}).textContent;
+  R.btnAfter=!!document.querySelector('[data-a="ivClean"]');
+  }catch(e){R.e=e.stack}return JSON.stringify(R,null,1)})()`));
+ app.exit(0)});

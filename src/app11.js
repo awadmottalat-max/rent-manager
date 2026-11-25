@@ -14,8 +14,31 @@ function ivUnits(){
   for(const o of out.values())if(/شركه?\s*السليمان\s*العقار/.test(String(o.owner).replace(/ة/g,'ه')))o.owner='';
   return[...out.values()].sort((a,b)=>a.pn.localeCompare(b.pn,'ar')||String(a.unit).localeCompare(String(b.unit),'ar',{numeric:true}));
 }
+
+/* وحدات مسجّلة في مشروع بلا أي عقد فيه (بطاقة وحدة قديمة بعد نقل العقد أو حذفه) */
+function ivGhosts(){
+  const out=[];
+  for(const[pid,p]of Object.entries(P())){
+    for(const u of p.units||[]){
+      if((p.contracts||[]).some(c=>normU(c.unit)===normU(u.no)))continue;
+      const els=Object.entries(P()).filter(([k,q])=>k!==pid&&(q.contracts||[]).some(c=>normU(c.unit)===normU(u.no))).map(([,q])=>q.name);
+      out.push({pid,pn:p.name,u,els});
+    }
+  }
+  return out;
+}
+function ivCleanDlg(){
+  const L=ivGhosts();
+  if(!L.length){toast('لا توجد وحدات بلا عقود: كل بطاقات الوحدات لها عقود في مشروعها');return}
+  const html='<p class="sub">وحدات مسجّلة في مشروع ولا يوجد لها أي عقد فيه. المحدَّدة مسبقًا لها عقد في مشروع آخر، فهي بطاقات قديمة بعد نقل العقد وتُحتسب مرتين. غير المحدَّدة وحدات متاحة للإيجار بلا عقود، فاحذفها فقط إن كانت خطأ. لا يُحذف أي عقد.</p>'+
+   L.map(o=>`<label class="chk" style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" class="ivc" value="${esc(o.pid+'|'+o.u.id)}"${o.els.length?' checked':''}><span>${esc(o.pn)}</span><b>${esc(o.u.no)}</b>${o.u.owner?'<small>— '+esc(o.u.owner)+'</small>':''}${o.els.length?'<small>— لها عقود في: '+esc(o.els.join('، '))+'</small>':'<small>— متاحة بلا عقود</small>'}</label>`).join('');
+  formDlg({title:'وحدات بلا عقود في مشروعها ('+L.length+')',save:'حذف المحدد',vals:{},fields:[{t:'info',k:'i',html}],onSave:()=>{
+    const sel=[...document.querySelectorAll('#frm .ivc:checked')].map(i=>i.value.split('|'));if(!sel.length)return 'لم تحدد أي وحدة';
+    for(const pid of new Set(sel.map(x=>x[0])))mutate(pid,q=>{q.units=(q.units||[]).filter(u=>!sel.some(x=>x[0]===pid&&x[1]===u.id))});
+    toast('تم حذف '+sel.length+' وحدة');setTimeout(render,80)}});
+}
 function vInv(){
-  const E=S.iv,all=ivUnits(),q=E.q.toLowerCase();
+  const E=S.iv,all=ivUnits(),q=E.q.toLowerCase(),gh=ivGhosts();
   const L=all.filter(o=>(MS(E.p,o.pid))&&AO(E.s,z=>z==='sold'?o.owner:z==='unsold'?!o.owner:z==='rented'?o.rented:z==='fee'?o.src==='fee':true)&&(!q||txt(o.unit,o.owner,o.pn).includes(q)));
   const sel=(id,v,opts)=>`<select id="${id}">${opts.map(([a,b])=>`<option value="${esc(a)}"${String(a)===String(v)?' selected':''}>${esc(b)}</option>`).join('')}</select>`;
   const tabs=[['proj','حسب المشروع'],['own','حسب المالك'],['units','قائمة الوحدات']];
@@ -47,7 +70,7 @@ function vInv(){
   return `<h1>حصر الوحدات والملاك</h1><p class="sub">عدد وحدات كل مشروع وكل مالك، المباعة وغير المباعة. الوحدات التي لا ندير تأجيرها تظهر هنا وفي الرسوم فقط، ولا تظهر في شاشات الإيجار.</p>
 <div class="bar"><div class="tabs">${tabs.map(([k,l])=>`<button class="btn sm${E.tab===k?' p':''}" data-a="ivTab" data-t="${k}">${l}</button>`).join('')}</div>
 ${msel('iv.p',PL(),'كل المشاريع')}${E.tab!=='proj'?msel('iv.s',[['sold','المباعة'],['unsold','غير المباعة'],['rented','المؤجرة حاليًا'],['fee','للرسوم فقط']],'كل الوحدات'):''}${E.tab!=='proj'?`<input type="search" id="iv_q" placeholder="بحث: مالك أو وحدة" value="${esc(E.q)}">`:''}
-<button class="btn p" data-a="ivImp">استيراد حصر (Excel)</button>${pbtn('list')}</div>
+<button class="btn p" data-a="ivImp">استيراد حصر (Excel)</button>${gh.length?`<button class="btn dng" data-a="ivClean">وحدات بلا عقود (${gh.length})</button>`:''}${pbtn('list')}</div>
 <div class="kpis sm">${kp('إجمالي الوحدات',all.length,'t')}${kp('مباعة',all.filter(o=>o.owner).length,'s')}${kp('غير مباعة',all.filter(o=>!o.owner).length,'u')}${kp('عدد الملاك',owners.size,'w')}${kp('للرسوم فقط',all.filter(o=>o.src==='fee').length,'f')}</div>${body}`;
 }
 VF.inv=vInv;
@@ -138,6 +161,6 @@ ${dup.length||bad.length?`<p class="sub" style="color:var(--late)">متجاهَ�
         if(o.phone&&r.phone!==o.phone){r.phone=o.phone;ra++}if(o.idno&&r.idno!==o.idno){r.idno=o.idno;ra++}}}
     persist();render();toast('تم: '+nu+' وحدة جديدة، '+oc+' تحديث مالك، '+rn+' تعديل رقم، '+(ra+rn_?(rn_+' مالك جديد/'+ra+' تحديث جوال وهوية'):'')+(skip?'، '+skip+' تعارض مُتخطى':''))}});
 }
-Object.assign(act,{ivD:b=>ivDrill(b.dataset.p,b.dataset.m),ivGo:b=>{const m=b.dataset.m,p=b.dataset.p;$('#stm').close();if(p!=='*')S.iv.p=[p];S.iv.q='';if(m==='w'){S.iv.tab='own';S.iv.s=''}else{S.iv.tab='units';S.iv.s=({t:'',s:'sold',u:'unsold',r:'rented',f:'fee'})[m]||''}render()},ivImp:ivImport,ivTab:b=>{S.iv.tab=b.dataset.t;render()},ivOwner:b=>ivOwnerDlg(b.dataset.n)});
+Object.assign(act,{ivD:b=>ivDrill(b.dataset.p,b.dataset.m),ivGo:b=>{const m=b.dataset.m,p=b.dataset.p;$('#stm').close();if(p!=='*')S.iv.p=[p];S.iv.q='';if(m==='w'){S.iv.tab='own';S.iv.s=''}else{S.iv.tab='units';S.iv.s=({t:'',s:'sold',u:'unsold',r:'rented',f:'fee'})[m]||''}render()},ivImp:ivImport,ivClean:ivCleanDlg,ivTab:b=>{S.iv.tab=b.dataset.t;render()},ivOwner:b=>ivOwnerDlg(b.dataset.n)});
 document.addEventListener('input',e=>{if(e.target.id==='iv_q'){S.iv.q=e.target.value.trim();render()}});
 document.addEventListener('change',e=>{const m={iv_p:'p',iv_s:'s'}[e.target.id];if(m){S.iv[m]=e.target.value;render()}});
