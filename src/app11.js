@@ -16,7 +16,7 @@ function ivUnits(){
 }
 function vInv(){
   const E=S.iv,all=ivUnits(),q=E.q.toLowerCase();
-  const L=all.filter(o=>(MS(E.p,o.pid))&&(!E.s||(E.s==='sold'?o.owner:E.s==='unsold'?!o.owner:E.s==='rented'?o.rented:E.s==='fee'?o.src==='fee':true))&&(!q||txt(o.unit,o.owner,o.pn).includes(q)));
+  const L=all.filter(o=>(MS(E.p,o.pid))&&AO(E.s,z=>z==='sold'?o.owner:z==='unsold'?!o.owner:z==='rented'?o.rented:z==='fee'?o.src==='fee':true)&&(!q||txt(o.unit,o.owner,o.pn).includes(q)));
   const sel=(id,v,opts)=>`<select id="${id}">${opts.map(([a,b])=>`<option value="${esc(a)}"${String(a)===String(v)?' selected':''}>${esc(b)}</option>`).join('')}</select>`;
   const tabs=[['proj','حسب المشروع'],['own','حسب المالك'],['units','قائمة الوحدات']];
   const kp=(l,v,i)=>`<div class="kp static"><span>${l}</span><b>${v}</b><i>${i||''}</i></div>`;
@@ -46,7 +46,7 @@ function vInv(){
   }
   return `<h1>حصر الوحدات والملاك</h1><p class="sub">عدد وحدات كل مشروع وكل مالك، المباعة وغير المباعة. الوحدات التي لا ندير تأجيرها تظهر هنا وفي الرسوم فقط، ولا تظهر في شاشات الإيجار.</p>
 <div class="bar"><div class="tabs">${tabs.map(([k,l])=>`<button class="btn sm${E.tab===k?' p':''}" data-a="ivTab" data-t="${k}">${l}</button>`).join('')}</div>
-${msel('iv.p',PL(),'كل المشاريع')}${E.tab!=='proj'?sel('iv_s',E.s,[['','كل الوحدات'],['sold','المباعة'],['unsold','غير المباعة'],['rented','المؤجرة حاليًا'],['fee','للرسوم فقط']]):''}${E.tab!=='proj'?`<input type="search" id="iv_q" placeholder="بحث: مالك أو وحدة" value="${esc(E.q)}">`:''}
+${msel('iv.p',PL(),'كل المشاريع')}${E.tab!=='proj'?msel('iv.s',[['sold','المباعة'],['unsold','غير المباعة'],['rented','المؤجرة حاليًا'],['fee','للرسوم فقط']],'كل الوحدات'):''}${E.tab!=='proj'?`<input type="search" id="iv_q" placeholder="بحث: مالك أو وحدة" value="${esc(E.q)}">`:''}
 <button class="btn p" data-a="ivImp">استيراد حصر (Excel)</button>${pbtn('list')}</div>
 <div class="kpis sm">${kp('إجمالي الوحدات',all.length)}${kp('مباعة',all.filter(o=>o.owner).length)}${kp('غير مباعة',all.filter(o=>!o.owner).length)}${kp('عدد الملاك',owners.size)}${kp('للرسوم فقط',all.filter(o=>o.src==='fee').length)}</div>${body}`;
 }

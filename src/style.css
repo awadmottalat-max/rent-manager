@@ -110,7 +110,7 @@ dialog::backdrop{background:#0f1b3d99}
   body.pr #printarea{display:block}
   .doc.land{page:land}
   .rcv{page:rcv}
-  @page rcv{size:A5 landscape;margin:0}
+  @page rcv{size:210mm 105mm;margin:0}
   .pf{display:block;position:fixed;bottom:0;inset-inline:0;font-size:9.5px;color:#777;border-top:1px solid var(--gold);padding-top:3px;text-align:center;direction:ltr}
   thead{display:table-header-group}tr{break-inside:avoid}
 }
@@ -392,3 +392,13 @@ tbody tr{transition:background .12s}tbody tr:hover td{background:#e8f1fc}
 .g3r>label:has(.dtf),.g2r>label:has(.dtf){grid-column:1/-1}
 .g3r .dtf,.g2r .dtf{width:100%;box-sizing:border-box}.g3r .dtf .dtm,.g2r .dtf .dtm{min-width:0;flex:1}
 .g3r .dtf select,.g3r .dtf input{flex:0 0 auto}.g3r .dtf .dtm{flex:1 1 auto}
+
+/* 1.25.2: سند قبض بحجم ورقة السندات (21×10.5 سم) */
+.rcv{width:210mm;height:105mm;padding:4mm 6mm;font-size:11.5px}
+.rcv-in{border:1.6px solid #5e2132;outline:1px solid #b39973;outline-offset:-5px;border-radius:6px;padding:3.2mm 7mm 2.4mm;gap:0;position:relative;overflow:hidden}
+.rc-top{align-items:center}.rc-logo img{width:21mm;margin:0 auto 1px}.rc-logo h2{font-size:14px}
+.rc-dates,.rc-amt{padding-top:0;gap:4px}.rcv .bx{min-width:40mm;padding:2px 9px;font-size:11.5px;background:#fbf7ef}
+.rc-amt .bx{border:1.5px solid #5e2132;background:#fff}.rc-amt .bx b{font-size:15px;color:#5e2132}
+.rl .lb{font-size:12px}.rl .ln{min-height:6mm;font-size:13px}.rl .ln.box{padding:2px 9px;font-size:12.5px}
+.rc-sign{gap:18px;font-size:11.5px}.rc-sign u{height:7mm}
+.rc-foot{font-size:8.5px;padding-top:3px;line-height:1.4}

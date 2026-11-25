@@ -5,9 +5,9 @@ function extInstTable(x,print){
     x.r.inst.map(i=>({cells:[i.n,fd(i.date),fm(i.amount),i.date!=null&&i.date<TODAY?'<span class="ch">حلّ موعده</span>':i.date!=null&&i.date<=TODAY+30*DAY?'<span class="ch warn">خلال 30 يومًا</span>':'<span class="ch">لم يحن بعد</span>']})),{print});
 }
 const feeSt=x=>{const f=x.f;return !(f.total>0)?'<span class="ch">بلا رسوم</span>':f.late_n?`<span class="ch late">متأخر ${f.late_n}</span>`:f.rem<=0.005?'<span class="ch ok">مسدد</span>':f.paid>0?'<span class="ch warn">مسدد جزئيًا</span>':'<span class="ch warn">غير مسدد</span>'};
-const exPass=x=>{const{p,q,s,o,f}=S.ex;if(!MS(p,x.pid))return false;if(o&&(String(x.c.owner||'').trim()||'(بدون مالك)')!==o)return false;
-  if(s==='active'&&x.r.st!=='ساري')return false;if(s==='ended'&&x.r.st!=='منتهي')return false;if(s==='future'&&x.r.st!=='لم يبدأ')return false;
-  if(f==='late'&&!x.f.late_n)return false;if(f==='open'&&!(x.f.rem>0.005))return false;if(f==='paid'&&!(x.f.total>0&&x.f.rem<=0.005))return false;
+const exPass=x=>{const{p,q,s,o,f}=S.ex;if(!MS(p,x.pid))return false;if(!AO(o,z=>(String(x.c.owner||'').trim()||'(بدون مالك)')===z))return false;
+  if(!AO(s,z=>z==='active'?x.r.st==='ساري':z==='ended'?x.r.st==='منتهي':z==='future'?x.r.st==='لم يبدأ':true))return false;
+  if(!AO(f,z=>z==='late'?x.f.late_n:z==='open'?x.f.rem>0.005:z==='paid'?(x.f.total>0&&x.f.rem<=0.005):true))return false;
   if(q&&!txt(x.c.unit,x.c.tenant,x.c.owner,x.pn).includes(q.toLowerCase()))return false;return true};
 function extFeeDetail(x){
   const f=x.f,c=x.c,ps=[...(c.feePays||[]).map(p=>({...p,L:0})),...(c.cfeePays||[]).map(p=>({...p,L:1}))].sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
@@ -57,9 +57,9 @@ function vExt(all){
   const k=(l,v,i,c)=>`<div class="kp static ${c||''}"><span>${l}</span><b>${v}</b><i>${i||''}</i></div>`;
   return `<h1>العقود الخارجية</h1><p class="sub">عقود يُسدَّد إيجارها من المستأجر إلى المالك مباشرة، وتتابع فيها رسوم إدارة الأملاك فقط (استحقاقها وسدادها). لا تدخل في إجماليات الإيجارات ولا تنبيهاتها.</p>
 <div class="bar">${msel('ex.p',PL(),'كل المشاريع')}
-<select id="ex_o" aria-label="المالك"><option value="">كل الملاك</option>${owners.map(n=>`<option value="${esc(n)}"${E.o===n?' selected':''}>${esc(n)}</option>`).join('')}</select>
-<select id="ex_s" aria-label="حالة العقد">${[['','كل العقود'],['active','سارية'],['future','لم تبدأ'],['ended','منتهية']].map(([v,l])=>`<option value="${v}"${E.s===v?' selected':''}>${l}</option>`).join('')}</select>
-<select id="ex_f" aria-label="حالة الرسوم">${[['','كل حالات الرسوم'],['late','رسوم متأخرة'],['open','عليها متبقٍ'],['paid','مسددة']].map(([v,l])=>`<option value="${v}"${E.f===v?' selected':''}>${l}</option>`).join('')}</select>
+${msel('ex.o',owners.map(n=>[n,n]),'كل الملاك')}
+${msel('ex.s',[['active','سارية'],['future','لم تبدأ'],['ended','منتهية']],'كل العقود')}
+${msel('ex.f',[['late','رسوم متأخرة'],['open','عليها متبقٍ'],['paid','مسددة']],'كل حالات الرسوم')}
 <input type="search" id="ex_q" placeholder="بحث: وحدة، مستأجر، مالك" value="${esc(E.q)}" aria-label="بحث">
 <label class="mlb">تقرير شهري <input type="month" id="ex_m" value="${esc(E.m)}"></label>${E.m?'<button class="btn" data-a="exM0">عرض كل الفترات</button>':''}
 <button class="btn p" data-a="newExt">+ عقد خارجي</button>${pbtn('list')}</div>

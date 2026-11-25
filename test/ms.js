@@ -9,12 +9,13 @@ app.whenReady().then(async()=>{await new Promise(r=>setTimeout(r,2500));const w=
   const views=['alerts','avail','contracts','ext','ended','due','flow','renew','props','owners','tenants','agr','fin','maint','svc','inv','rep'];
   R.v={};
   for(const v of views){try{S.view=v;go(v);await sl(120);const n0=document.querySelectorAll('#view tbody tr').length;
-    const b=document.querySelector('#view .ms .msb');if(!b){R.v[v]='nomsel';continue}
-    const k=b.dataset.k;const cs=[...document.querySelectorAll('.msc[data-k="'+k+'"]')];
-    cs[0].checked=true;cs[0].dispatchEvent(new Event('change',{bubbles:true}));await sl(120);
-    const c2=[...document.querySelectorAll('.msc[data-k="'+k+'"]')];c2[1].checked=true;c2[1].dispatchEvent(new Event('change',{bubbles:true}));await sl(120);
-    const n2=document.querySelectorAll('#view tbody tr').length;const lab=document.querySelector('#view .ms .msb').textContent;
-    MSsp(k,'');render();await sl(60);R.v[v]=n0+'->'+n2+' '+lab;}catch(e){R.v[v]='ERR '+e.message}}
+    const ks=[...document.querySelectorAll('#view .ms')].map(e=>e.dataset.k);let res=[];
+    for(const k of ks){const cs=[...document.querySelectorAll('.msc[data-k="'+k+'"]')];if(cs.length<2){res.push(k+':few');continue}
+      cs[0].checked=true;cs[0].dispatchEvent(new Event('change',{bubbles:true}));await sl(80);
+      const c2=[...document.querySelectorAll('.msc[data-k="'+k+'"]')];c2[1].checked=true;c2[1].dispatchEvent(new Event('change',{bubbles:true}));await sl(80);
+      res.push(k+':'+document.querySelectorAll('#view tbody tr').length);MSsp(k,'');render();await sl(40)}
+    R.v[v]=n0+' | '+res.join(' ')}catch(e){R.v[v]='ERR '+e.message}}
+  S.pr.tab='units';S.view='props';go('props');await sl(200);{const ks=[...document.querySelectorAll('#view .ms')].map(e=>e.dataset.k);R.units=ks.join(',');for(const k of ks){const cs=[...document.querySelectorAll('.msc[data-k="'+k+'"]')];if(cs.length<2)continue;cs[0].checked=true;cs[0].dispatchEvent(new Event('change',{bubbles:true}));await sl(80);const c2=[...document.querySelectorAll('.msc[data-k="'+k+'"]')];c2[1].checked=true;c2[1].dispatchEvent(new Event('change',{bubbles:true}));await sl(80);R.units+=' '+k+':'+document.querySelectorAll('#view tbody tr').length;MSsp(k,'');render();await sl(40)}}
   // internal contract fee pct
   go('contracts');await sl(100);contractForm&&contractForm();await sl(200);
   const k=document.getElementById('cf_kind');R.kindOpts=k?[...k.options].map(o=>o.value).join(','):null;
