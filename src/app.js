@@ -123,7 +123,7 @@ function renderNav(all){
   const late=all.filter(x=>x.r.late_n).length,ren=renewalsOpen(all,90).length;
   const pendN=all.filter(x=>x.r.st==='منتهي'&&endState(x.pid,x.c)==='pend').length;
   const bd={svc:(()=>{const n=(S.db.svc||[]).filter(x=>typeof svLate==='function'&&svLate(x)).length;return n?`<span class="bd">${n}</span>`:''})(),maint:(()=>{const n=(S.db.mreq||[]).filter(x=>x.status==='new'||x.status==='wait').length;return n?`<span class="bd">${n}</span>`:''})(),ext:(()=>{const n=rows().filter(x=>x.ext&&x.f.late_n).length;return n?`<span class="bd">${n}</span>`:''})(),alerts:(()=>{const n=typeof alertCount==='function'?alertCount(all):0;return n?`<span class="bd">${n}</span>`:''})(),ended:pendN?`<span class="bd">${pendN}</span>`:'',due:late?`<span class="bd">${late}</span>`:'',renew:ren?`<span class="bd">${ren}</span>`:''};
-  $('#nav').innerHTML=VIEWS.map(([k,l])=>`<button data-a="go" data-v="${k}" class="${S.view===k?'on':''}">${ico(NAVIC[k])}<span>${l}</span>${bd[k]||''}</button>`).join('')+(S.cl&&S.cl.on?`<button data-a="clLogout" class="lo" title="${esc(S.cl.email||'')}"><span>تسجيل الخروج</span></button>`:'');
+  $('#nav').innerHTML=VIEWS.map(([k,l])=>`<button data-a="go" data-v="${k}" class="${S.view===k?'on':''}">${ico(NAVIC[k])}<span>${l}</span>${bd[k]||''}</button>`).join('')+(S.cl&&S.cl.on?`<div class="who">${esc(S.cl.name||S.cl.email||'')}${S.cl.role?' · '+esc({admin:'مدير',editor:'محرر',viewer:'اطلاع فقط'}[S.cl.role]||''):''}</div><button data-a="clLogout" class="lo" title="${esc(S.cl.email||'')}"><span>تسجيل الخروج</span></button>`:'');
 }
 function render(){
   const allX=rows(),all=allX.filter(x=>!x.ext);renderNav(all);

@@ -57,21 +57,28 @@ function clBadge(st,msg){
   b.title=(S.cl.email||'')+' · v'+S.cl.rev;
 }
 
-/* ---- شاشة الدخول (تحجب التطبيق حتى النجاح) ---- */
-function clGate(msg){
+/* ---- شاشة الدخول (تحجب التطبيق حتى النجاح؛ لا يوجد وضع بلا دخول) ---- */
+const clApply=v=>{S.cl.email=v.email;S.cl.role=v.role;S.cl.name=v.name||''};
+async function clGate(msg){
+  const sv=(await native.cloud('saved')).v||{};
+  if(!msg&&sv.hasPw){const r=await native.cloud('autologin');if(r.ok){clApply(r.v);return true}msg=r.m==='NO_SAVED'?'':r.m}
   return new Promise(res=>{
     document.getElementById('clg')?.remove();
     const g=document.createElement('div');g.id='clg';
     g.style.cssText='position:fixed;inset:0;z-index:200;background:#edf0f3;display:flex;align-items:center;justify-content:center;direction:rtl;font-family:inherit';
-    g.innerHTML=`<form style="background:#fff;border-radius:14px;padding:26px;width:340px;box-shadow:0 8px 30px #0003;display:grid;gap:10px"><h2 style="margin:0">تسجيل الدخول</h2><p style="margin:0;color:#667">بيانات الأملاك مشتركة على السحابة.</p>
-<input id="clg_e" type="email" autocomplete="username" placeholder="البريد الإلكتروني" style="direction:ltr;padding:9px" required><input id="clg_p" type="password" autocomplete="current-password" placeholder="كلمة المرور" style="direction:ltr;padding:9px" required>
-<div id="clg_m" style="color:#a33;min-height:18px;font-size:13px">${esc(msg||'')}</div><button class="btn p" type="submit">دخول</button><button class="btn" type="button" id="clg_x">العمل محليًا بدون سحابة</button></form>`;
+    g.innerHTML=`<form style="background:#fff;border-radius:14px;padding:26px;width:350px;box-shadow:0 8px 30px #0003;display:grid;gap:10px"><h2 style="margin:0">تسجيل الدخول</h2><p style="margin:0;color:#667">سجّل الدخول لفتح بيانات الأملاك.</p>
+<input id="clg_e" type="email" autocomplete="username" placeholder="البريد الإلكتروني" style="direction:ltr;padding:9px" required>
+<div style="position:relative"><input id="clg_p" type="password" autocomplete="current-password" placeholder="كلمة المرور" style="direction:ltr;padding:9px;width:100%;box-sizing:border-box" required></div>
+<label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" id="clg_s"> إظهار كلمة المرور</label>
+<label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" id="clg_r" ${sv.canSave===false?'disabled':'checked'}> ${sv.canSave===false?'حفظ كلمة المرور غير متاح على هذا الجهاز':'حفظ البريد وكلمة المرور على هذا الجهاز (دخول تلقائي)'}</label>
+<div id="clg_m" style="color:#a33;min-height:18px;font-size:13px">${esc(msg||'')}</div><button class="btn p" type="submit">دخول</button></form>`;
     document.body.appendChild(g);
-    g.querySelector('#clg_e').value=S.cl.email||'';g.querySelector('#clg_e').focus();
-    g.querySelector('form').onsubmit=async e=>{e.preventDefault();const m=g.querySelector('#clg_m');m.textContent='جارٍ الدخول…';
-      const r=await native.cloud('login',g.querySelector('#clg_e').value,g.querySelector('#clg_p').value);
-      if(r.ok){S.cl.email=r.v.email;S.cl.role=r.v.role;g.remove();res(true)}else m.textContent=r.m||'تعذّر الدخول'};
-    g.querySelector('#clg_x').onclick=async()=>{await native.cloud('on',false);S.cl.on=false;g.remove();res(false)};
+    const E=g.querySelector('#clg_e'),P=g.querySelector('#clg_p');
+    E.value=sv.email||S.cl.email||'';(E.value?P:E).focus();
+    g.querySelector('#clg_s').onchange=e=>{P.type=e.target.checked?'text':'password'};
+    g.querySelector('form').onsubmit=async e=>{e.preventDefault();const m=g.querySelector('#clg_m');m.style.color='#667';m.textContent='جارٍ الدخول…';
+      const r=await native.cloud('login',E.value,P.value,g.querySelector('#clg_r').checked);
+      if(r.ok){clApply(r.v);g.remove();res(true)}else{m.style.color='#a33';m.textContent=r.m||'تعذّر الدخول'}};
   });
 }
 
@@ -173,12 +180,20 @@ async function clPoll(){
 }
 setInterval(()=>clPoll().catch(()=>{}),CL_POLL);
 
-/* ---- الإقلاع ---- */
+/* ---- الإقلاع: لا يُعرض شيء قبل نجاح الدخول وتحميل بيانات السحابة ---- */
 async function clBoot(){
-  const s=await native.cloud('status');if(!s.ok||!s.v.configured||!s.v.on)return;
-  S.cl.on=true;S.cl.email=s.v.email;
-  if(!s.v.signed&&!await clGate())return;
-  if(!await clPull(true)&&S.cl.on&&!S.cl.base)clBadge('err');
+  const s=await native.cloud('status');
+  if(!s.ok||s.v.skip)return; // RENT_NO_LOGIN=1 للاختبارات الآلية فقط
+  S.cl.on=true;S.cl.email=s.v.email||'';
+  let msg='';
+  for(;;){
+    const st=(await native.cloud('status')).v||{};
+    if(!st.signed){if(!await clGate(msg))continue}
+    else{const rl=await native.cloud('role');if(rl.ok){const sv=(await native.cloud('saved')).v||{};S.cl.role=rl.v||'';S.cl.name=sv.name||'';S.cl.email=st.email||S.cl.email}}
+    if(await clPull(true))return;
+    msg='تعذّر تحميل البيانات من السحابة. تحقق من الإنترنت ثم سجّل الدخول من جديد.';
+    await native.cloud('logout');
+  }
 }
 
 /* ---- نافذة الإعداد ---- */
@@ -190,7 +205,7 @@ async function clDlg(){
 <div class="db"><div class="g2"><label>رابط المشروع (Project URL)<input id="cl_u" dir="ltr" placeholder="https://xxxx.supabase.co" value="${esc(s.url||'')}"></label>
 <label>مفتاح anon / publishable فقط<input id="cl_k" dir="ltr" type="password" placeholder="${s.configured?'محفوظ — اتركه فارغًا للإبقاء':'eyJ… أو sb_publishable_…'}"></label></div>
 ${S.cl.lastUp?'<p class="sub">'+esc(S.cl.lastUp)+'</p>':''}<p class="sub">لا تضع مفتاح service_role هنا أبدًا. التنفيذ الأول: شغّل supabase/schema.sql في SQL Editor ثم أضف المستخدمين كما في آخر الملف.</p>
-<div class="acts"><button class="btn p" data-a="clSave">حفظ الاتصال</button>${s.configured&&!S.cl.on?'<button class="btn p" data-a="clEnable">تفعيل المزامنة وتسجيل الدخول</button>':''}${S.cl.on?'<button class="btn" data-a="clCmp">مطابقة هذا الجهاز مع السحابة</button>':''}${S.cl.on?'<button class="btn" data-a="clPullNow">تحديث من السحابة الآن</button>':''}${S.cl.on&&S.cl.role==='admin'?'<button class="btn p" data-a="clUsers">إدارة المستخدمين</button>':''}${S.cl.on&&S.cl.role==='admin'?'<button class="btn dng" data-a="clUp">رفع بياناتي المحلية إلى السحابة</button>':''}${S.cl.on?'<button class="btn" data-a="clLogout">تسجيل الخروج</button><button class="btn" data-a="clOut">إيقاف المزامنة والعمل محليًا</button>':''}</div>
+<div class="acts"><button class="btn p" data-a="clSave">حفظ الاتصال</button>${S.cl.on?'<button class="btn" data-a="clCmp">مطابقة هذا الجهاز مع السحابة</button>':''}${S.cl.on?'<button class="btn" data-a="clPullNow">تحديث من السحابة الآن</button>':''}${S.cl.on&&S.cl.role==='admin'?'<button class="btn p" data-a="clUsers">إدارة المستخدمين</button>':''}${S.cl.on&&S.cl.role==='admin'?'<button class="btn dng" data-a="clUp">رفع بياناتي المحلية إلى السحابة</button>':''}${S.cl.on?'<button class="btn" data-a="clLogout">تسجيل الخروج</button><button class="btn" data-a="clOut">إيقاف المزامنة والعمل محليًا</button>':''}</div>
 <div id="cl_msg" class="sub" style="white-space:pre-wrap"></div>
 ${hist.length?`<h3>نسخ السحابة (آخر ${hist.length})</h3>${T([{h:'التاريخ',k:'t'},{h:'الرقم',k:'d'},{h:'',k:'ac'}],hist.map(x=>({cells:[esc(new Date(x.saved_at).toLocaleString('ar-SA')),x.rev,`<button class="btn sm dng" data-a="clRest" data-i="${x.id}">استعادة</button>`]})))}`:''}</div>`;
   if(!$('#stm').open)$('#stm').showModal();
