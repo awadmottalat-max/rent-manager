@@ -1,0 +1,17 @@
+const{app,BrowserWindow}=require('electron');const fs=require('fs'),path=require('path'),os=require('os');
+app.setPath('userData',fs.mkdtempSync(path.join(os.tmpdir(),'rent-')));app.commandLine.appendSwitch('no-sandbox');require('../main.js');
+const D=JSON.parse(fs.readFileSync('/tmp/db3.json','utf8'));const X=fs.readFileSync('/tmp/out/حصر-الوحدات-والملاك-محدّث.xlsx').toString('base64');
+app.whenReady().then(async()=>{await new Promise(r=>setTimeout(r,2500));const w=BrowserWindow.getAllWindows()[0];w.setSize(1500,1100);
+ console.log(await w.webContents.executeJavaScript(`(async()=>{const R={};try{const d=${JSON.stringify(D)};normalize(d);S.db=d;const sl=ms=>new Promise(r=>setTimeout(r,ms));
+  const bytes=Uint8Array.from(atob('${X}'),c=>c.charCodeAt(0));
+  go('inv');await sl(150);ivImport({bytes});await sl(700);
+  R.tbl=[...document.querySelectorAll('#frm table')][0].innerText.replace(/\\s+/g,' ');
+  R.ren=[...document.querySelectorAll('#frm table')][1]&&[...document.querySelectorAll('#frm table')][1].innerText.split(String.fromCharCode(10)).filter(x=>/معرض|الحضانة|فساتين|ريفايف|صالون|A802|A803|B802|C80|D201|B801/.test(x)).join(' | ');
+  document.getElementById('fsave').click();await sl(400);
+  const m=Object.values(P()).find(p=>p.name.includes('ماربيلا'));
+  R.units=m.units.map(u=>u.no).filter(n=>/معرض|الحضانة|فساتين|ريفايف|صالون|^[ABCD]\\/?(802|803|801|201|8\\d\\d)$/.test(n)).join(',');
+  R.contracts=m.contracts.filter(c=>/معرض|الحضانة|فساتين|ريفايف|صالون|802|803|801|804|805|201/.test(c.unit)).map(c=>c.unit+'→'+c.owner).join(' | ');
+  R.fu=FU().filter(f=>P()[f.pid].name.includes('ماربيلا')&&/معرض|ريفايف/.test(f.no)).map(f=>f.no+'→'+f.owner).join(' | ');
+  const a=ivUnits();R.total=a.length;R.mar=a.filter(o=>o.pn.includes('ماربيلا')).length;
+    }catch(e){R.e=e.stack}return JSON.stringify(R,null,1)})()`));
+ app.exit(0)});

@@ -65,17 +65,18 @@ async function ivImport(pre){
   for(const sn of wb.SheetNames){
     const R=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:'',raw:true});
     const hi=R.findIndex(r=>r.some(c=>/وحدة/.test(String(c)))&&r.some(c=>/مالك|عميل/.test(String(c))));if(hi<0)continue;
-    const H=R[hi].map(c=>String(c).trim()),ci=re=>H.findIndex(h=>re.test(h)),cp=ci(/مشروع/),cu=ci(/وحدة/),co=ci(/مالك|عميل/),ca=ci(/مساحة/),ci_=ci(/هوية|سجل/),ph=ci(/جوال|هاتف/);
+    const H=R[hi].map(c=>String(c).trim()),ci=re=>H.findIndex(h=>re.test(h)),cp=ci(/مشروع/),cu=ci(/وحدة/),co=ci(/مالك|عميل/),ca=ci(/مساحة/),ci_=ci(/هوية|سجل/),ph=ci(/جوال|هاتف/),cv=ci(/سابق|قديم/);
     R.slice(hi+1).forEach((r,i)=>{const u=String(r[cu]??'').trim();if(!u)return;const pn=cp>=0&&String(r[cp]).trim()?String(r[cp]).trim():sn,pr=pf(pn);
       if(!pr){bad.push('ورقة '+sn+' سطر '+(hi+i+2)+': المشروع «'+pn+'» غير موجود في التطبيق');return}
-      rows.push({pid:pr[0],pn:pr[1].name,unit:ivCanon(u),owner:nm(String(r[co]??'').replace(/[\t\n]/g,' ')),area:ca>=0?(+r[ca]||''):'',idno:ci_>=0?String(r[ci_]??'').replace(/\D/g,''):'',phone:ph>=0?(d=>d.length===9&&d[0]==='5'?'0'+d:d)(String(r[ph]??'').replace(/\D/g,'')):'',sheet:sn})});
+      rows.push({pid:pr[0],pn:pr[1].name,unit:ivCanon(u),owner:nm(String(r[co]??'').replace(/[\t\n]/g,' ')),area:ca>=0?(+r[ca]||''):'',idno:ci_>=0?String(r[ci_]??'').replace(/\D/g,''):'',prev:cv>=0?String(r[cv]??'').trim():'',phone:ph>=0?(d=>d.length===9&&d[0]==='5'?'0'+d:d)(String(r[ph]??'').replace(/\D/g,'')):'',sheet:sn})});
   }
   if(!rows.length){toast(bad[0]||'لم أجد أعمدة (رقم الوحدة، المالك) في الملف');return}
   const seen=new Set(),dup=[],R2=[];for(const r of rows){const k=r.pid+'|'+ivKey(r.unit);if(seen.has(k)){dup.push(r.pn+' / '+r.unit);continue}seen.add(k);R2.push(r)}
   const plan=[];
   for(const r of R2){
     const p=P()[r.pid],k=ivKey(r.unit);
-    const un=(p.units||[]).filter(u=>ivKey(u.no)===k),cs=(p.contracts||[]).filter(c=>ivKey(c.unit)===k),fu=FU().find(f=>f.pid===r.pid&&ivKey(f.no)===k);
+    let un=(p.units||[]).filter(u=>ivKey(u.no)===k),cs=(p.contracts||[]).filter(c=>ivKey(c.unit)===k),fu=FU().find(f=>f.pid===r.pid&&ivKey(f.no)===k);
+    if(r.prev&&!un.length&&!cs.length&&!fu){const kp=ivKey(r.prev);un=(p.units||[]).filter(u=>ivKey(u.no)===kp);cs=(p.contracts||[]).filter(c=>ivKey(c.unit)===kp);fu=FU().find(f=>f.pid===r.pid&&ivKey(f.no)===kp)}
     const exists=un.length||cs.length,curNames=[...new Set([...un.map(u=>nm(u.owner)),...cs.map(c=>nm(c.owner)),fu&&nm(fu.owner)].filter(Boolean))];
     const curUnit=(un[0]&&un[0].no)||(cs[0]&&cs[0].unit)||(fu&&fu.no)||'';
     plan.push({...r,exists:!!(exists||fu),inRent:!!exists,fu,un,cs,curNames,rename:(exists||fu)&&curUnit&&curUnit!==r.unit,curUnit,change:r.owner&&curNames.length&&!curNames.includes(r.owner)});
