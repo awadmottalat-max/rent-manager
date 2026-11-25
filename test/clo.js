@@ -1,10 +1,12 @@
 const{app,BrowserWindow}=require('electron');const fs=require('fs'),path=require('path'),os=require('os');
 process.env.RENT_CLOUD_TEST='1';
 app.setPath('userData',fs.mkdtempSync(path.join(os.tmpdir(),'rent-')));app.commandLine.appendSwitch('no-sandbox');require('../main.js');
-app.whenReady().then(async()=>{await new Promise(r=>setTimeout(r,2500));const w=BrowserWindow.getAllWindows()[0];
+app.whenReady().then(async()=>{await new Promise(r=>setTimeout(r,2500));const w=BrowserWindow.getAllWindows()[0];w.setSize(1400,900);
  console.log(await w.webContents.executeJavaScript(`(async()=>{const R={};try{const sl=ms=>new Promise(r=>setTimeout(r,ms));
-  S.cl.on=true;S.cl.email='a@b.c';S.cl.role='admin';clBadge('ok');
-  R.badge=document.getElementById('clb').textContent;
-  document.querySelector('#clb [data-a="clLogout"]').click();await sl(400);
-  R.gate=!!document.getElementById('clg');R.email=S.cl.email;
-  clDlg&&0;}catch(e){R.e=e.stack}return JSON.stringify(R)})()`));app.exit(0)});
+  S.cl.on=true;S.cl.email='a@b.c';S.cl.role='admin';clBadge('ok');render();await sl(200);
+  const bs=[...document.querySelectorAll('#nav button')];R.last=bs[bs.length-1].textContent+'|prev='+bs[bs.length-2].textContent;
+  R.badgeHasLogout=document.getElementById('clb').textContent.includes('تسجيل الخروج');
+  window.__s=1;const b=bs[bs.length-1];b.scrollIntoView();await sl(150);window.__shot=1;await sl(300);b.click();await sl(200);R.afterFirst=!!document.getElementById('clg')+'/'+b.textContent;
+  b.click();await sl(400);R.gate=!!document.getElementById('clg');R.email=S.cl.email;
+  }catch(e){R.e=e.stack}return JSON.stringify(R)})()`));
+ fs.writeFileSync('/tmp/clo.png',(await w.webContents.capturePage()).toPNG());app.exit(0)});

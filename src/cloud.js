@@ -53,7 +53,7 @@ function clBadge(st,msg){
   if(!b){b=document.createElement('div');b.id='clb';b.setAttribute('role','button');b.onclick=e=>{if(!e.target.closest('[data-a]'))clDlg()};document.body.appendChild(b)}
   const c={ok:'#1f7a4d',sync:'#8a6d1d',err:'#a33',ro:'#555'}[st]||'#555';
   b.style.cssText='position:fixed;bottom:10px;left:12px;z-index:60;background:#fff;border:1px solid '+c+';color:'+c+';border-radius:14px;padding:3px 10px;font-size:12px;cursor:pointer;box-shadow:0 1px 4px #0002;font-family:inherit';
-  b.innerHTML=esc(({ok:'☁ متزامن',sync:'☁ جارٍ المزامنة…',err:'☁ تعذّرت المزامنة',ro:'☁ للاطلاع فقط'}[st]||'☁')+(msg?' — '+msg:''))+(S.cl.email?' · '+esc(S.cl.email):'')+' · <a data-a="clLogout" style="text-decoration:underline;font-weight:700">تسجيل الخروج</a>';
+  b.innerHTML=esc(({ok:'☁ متزامن',sync:'☁ جارٍ المزامنة…',err:'☁ تعذّرت المزامنة',ro:'☁ للاطلاع فقط'}[st]||'☁')+(msg?' — '+msg:''))+(S.cl.email?' · '+esc(S.cl.email):'')+'';
   b.title=(S.cl.email||'')+' · v'+S.cl.rev;
 }
 
@@ -169,8 +169,8 @@ Object.assign(act,{
     if(!await clGate()){return}
     if(await clPull(true)){render();clDlg()}},
   clPullNow:async()=>{if(dirty)await flush();if(await clPull(true)){render();toast('تم التحديث من السحابة')}},
-  clLogout:async()=>{if(dirty)await flush();await native.cloud('logout');S.cl.email='';S.cl.role='';S.cl.base=null;S.cl.ro=false;try{$('#stm').close()}catch{}
-    if(await clGate()){if(await clPull(true))render()}},
+  clLogout:b=>arm(b,async()=>{if(dirty)await flush();await native.cloud('logout');S.cl.email='';S.cl.role='';S.cl.base=null;S.cl.ro=false;try{$('#stm').close()}catch{}
+    if(await clGate()){if(await clPull(true))render()}}),
   clOut:async()=>{await flush();await native.cloud('logout');await native.cloud('on',false);S.cl.on=false;clBadge('off');$('#stm').close();toast('أُوقفت المزامنة. البيانات المحلية كما هي')},
   clUp:b=>arm(b,async()=>{
     await flush();const g=await native.cloud('get');if(!g.ok){clMsg('تعذّر القراءة: '+g.m);return}

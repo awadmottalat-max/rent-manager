@@ -406,3 +406,6 @@ tbody tr{transition:background .12s}tbody tr:hover td{background:#e8f1fc}
 /* 1.25.5: أرقام قابلة للنقر في الحصر */
 .drl{cursor:pointer;color:var(--acc);font-weight:700;border-bottom:1px dashed currentColor;padding:0 4px;border-radius:4px}.drl:hover{background:var(--soft)}
 .kpis.sm .kp[data-a="ivD"]{cursor:pointer}
+
+#nav .lo{margin-top:14px;opacity:.8;border-top:1px solid rgba(255,255,255,.15);padding-top:12px}
+#nav .lo:hover{opacity:1}
