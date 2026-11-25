@@ -3,7 +3,7 @@
 function pickProject(title,cb){
   const L=Object.entries(P()).sort((a,b)=>a[1].name.localeCompare(b[1].name,'ar'));
   if(!L.length)return toast('أضف مشروعًا أولًا');
-  if(S.av.p||L.length===1)return cb(S.av.p||L[0][0]);
+  {const a=MSV(S.av.p);if(a.length===1||L.length===1)return cb(a[0]||L[0][0])}
   formDlg({title,save:'متابعة',vals:{pid:L[0][0]},fields:[{k:'pid',l:'المشروع',t:'select',opts:L.map(([k,p])=>[k,p.name]),full:1}],onSave:o=>{setTimeout(()=>cb(o.pid),80)}});
 }
 const unitOf=b=>{const p=P()[b.dataset.p];return{p,u:p?.units.find(u=>u.id===b.dataset.i)}};

@@ -21,7 +21,7 @@ function svDefs(){const d=S.db.settings.svcDef=S.db.settings.svcDef||{};return d
 function svIssueDlg(){
   const pids=Object.keys(P());if(!pids.length){toast('أضف مشروعًا أولًا');return}
   const yr=+iso(TODAY).slice(0,4),st={rows:[]};
-  formDlg({title:'إصدار رسوم سنوية لمشروع',save:'إصدار الرسوم',vals:{pid:S.sv.p||pids[0],type:SV_TYPES[0],year:String(yr),party:'owner',due:yr+'-01-01',payee:'company',all:''},fields:[
+  formDlg({title:'إصدار رسوم سنوية لمشروع',save:'إصدار الرسوم',vals:{pid:MSV(S.sv.p)[0]||pids[0],type:SV_TYPES[0],year:String(yr),party:'owner',due:yr+'-01-01',payee:'company',all:''},fields:[
     {k:'pid',l:'المشروع',t:'select',opts:pids.map(k=>[k,P()[k].name])},{k:'type',l:'نوع الرسم',dl:SV_TYPES},
     {k:'year',l:'السنة',t:'number'},{k:'party',l:'على',t:'select',opts:SV_PARTY},
     {k:'due',l:'تاريخ الاستحقاق',t:'date'},{k:'payee',l:'تُدفع إلى',t:'select',opts:SV_PAYEE},
@@ -50,7 +50,7 @@ function svIssueDlg(){
   pay();build();
 }
 function svForm(id){
-  const x=id?svById(id):null,yr=iso(TODAY).slice(0,4),v=x||{pid:S.sv.p||Object.keys(P())[0],type:SV_TYPES[0],year:yr,party:'owner',due:yr+'-01-01',payee:'company'};
+  const x=id?svById(id):null,yr=iso(TODAY).slice(0,4),v=x||{pid:MSV(S.sv.p)[0]||Object.keys(P())[0],type:SV_TYPES[0],year:yr,party:'owner',due:yr+'-01-01',payee:'company'};
   formDlg({title:x?'تعديل الرسم رقم '+x.no:'رسم جديد',save:'حفظ',vals:{...v,base:x?x.base:''},fields:[
     {k:'pid',l:'المشروع',t:'select',opts:Object.entries(P()).map(([k,p])=>[k,p.name])},{k:'unit',l:'رقم الوحدة',dl:mtUnits(v.pid)},
     {k:'type',l:'نوع الرسم',dl:SV_TYPES},{k:'year',l:'السنة',t:'number'},{k:'party',l:'على',t:'select',opts:SV_PARTY},{k:'name',l:'الاسم'},
@@ -98,12 +98,12 @@ function svWaForm(id){
 }
 function vSvc(){
   const E=S.sv,all=SV(),pn=id=>P()[id]?.name||'—',q=E.q.toLowerCase();
-  const L=all.filter(x=>(!E.p||x.pid===E.p)&&(!E.t||x.type===E.t)&&(!E.w||x.party===E.w)&&(!E.e||x.payee===E.e)&&(!E.y||String(x.year)===E.y)&&(E.s===''||(E.s==='open'?svRem(x)>0.005:E.s==='late'?svLate(x):E.s==='carry'?svCarry(x):svRem(x)<=0.005))&&(!q||txt(x.unit,x.name,pn(x.pid),x.type,x.no).includes(q))).sort((a,b)=>(+b.year-+a.year)||String(a.unit).localeCompare(String(b.unit),'ar',{numeric:true}));
+  const L=all.filter(x=>(MS(E.p,x.pid))&&(!E.t||x.type===E.t)&&(!E.w||x.party===E.w)&&(!E.e||x.payee===E.e)&&(!E.y||String(x.year)===E.y)&&(E.s===''||(E.s==='open'?svRem(x)>0.005:E.s==='late'?svLate(x):E.s==='carry'?svCarry(x):svRem(x)<=0.005))&&(!q||txt(x.unit,x.name,pn(x.pid),x.type,x.no).includes(q))).sort((a,b)=>(+b.year-+a.year)||String(a.unit).localeCompare(String(b.unit),'ar',{numeric:true}));
   const kp=(l,v,i,c)=>`<div class="kp static ${c||''}"><span>${l}</span><b>${v}</b><i>${i||''}</i></div>`;
   const cols=[{h:'الرقم',k:'d'},{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'النوع',k:'t'},{h:'السنة',k:'d'},{h:'على',k:'t'},{h:'الاسم',k:'t'},{h:'تُدفع إلى',k:'t'},{h:'الإجمالي',k:'n'},{h:'المسدد',k:'n'},{h:'المتبقي',k:'n'},{h:'الاستحقاق',k:'d'},{h:'الحالة',k:'d'}];
   const cell=x=>[x.no,esc(pn(x.pid)),'<b>'+esc(x.unit)+'</b>',esc(x.type),x.year+(svCarry(x)?' <small>مرحّل</small>':''),SV_PL[x.party],esc(x.name)||'—',SV_YL[x.payee],fm(x.total),fm(svPaid(x)),fm(svRem(x)),fs_(x.due),`<span class="ch ${svCls(x)}">${svSt(x)}</span>`];
   const tt=sum(L,x=>+x.total||0),tp=sum(L,svPaid),tr=sum(L,svRem);
-  S.pm={title:'تقرير الرسوم والخدمات',sub:'عدد البنود: '+L.length+' — المتبقي: '+fm(tr)+(E.p?' — المشروع: '+esc(pn(E.p)):''),cols,rows:L.map(x=>({cells:cell(x).map(c=>String(c).replace(/<[^>]+>/g,''))})),foot:['الإجمالي ('+L.length+')','','','','','','','',fm(tt),fm(tp),fm(tr),'',''],footSpan:0};
+  S.pm={title:'تقرير الرسوم والخدمات',sub:'عدد البنود: '+L.length+' — المتبقي: '+fm(tr)+(E.p?' — المشروع: '+esc(pname(E.p)):''),cols,rows:L.map(x=>({cells:cell(x).map(c=>String(c).replace(/<[^>]+>/g,''))})),foot:['الإجمالي ('+L.length+')','','','','','','','',fm(tt),fm(tp),fm(tr),'',''],footSpan:0};
   const rws=L.map(x=>({cls:svLate(x)?'late':'',attrs:` data-a="svOpen" data-i="${esc(x.id)}"`,cells:cell(x)}));
   const grp=(keyF,labF)=>{const m=new Map();for(const x of L){const k=keyF(x),o=m.get(k)||{k,n:0,t:0,p:0,r:0,l:0};o.n++;o.t+=+x.total||0;o.p+=svPaid(x);o.r+=svRem(x);if(svLate(x))o.l+=svRem(x);m.set(k,o)}return[...m.values()]};
   const gt=(h,a,lab)=>T([{h,k:'t'},{h:'البنود',k:'n'},{h:'الإجمالي',k:'n'},{h:'المسدد',k:'n'},{h:'المتبقي',k:'n'},{h:'منه متأخر',k:'n'}],a.map(o=>({cells:[esc(lab(o.k)),o.n,fm(o.t),fm(o.p),fm(o.r),o.l?'<span style="color:var(--late)">'+fm(o.l)+'</span>':'—']})),{foot:['الإجمالي',sum(a,o=>o.n),fm(sum(a,o=>o.t)),fm(sum(a,o=>o.p)),fm(sum(a,o=>o.r)),fm(sum(a,o=>o.l))],footSpan:0});
@@ -113,7 +113,7 @@ function vSvc(){
   const types=[...new Set([...SV_TYPES,...all.map(x=>x.type)])],years=[...new Set(all.map(x=>String(x.year)))].sort().reverse();
   const open=all.filter(x=>svRem(x)>0.005),late=all.filter(svLate);
   return `<h1>الرسوم والخدمات</h1><p class="sub">رسوم الخدمات والمياه السنوية على الملاك أو المستأجرين: الإجمالي شامل الضريبة والمسدد والمتبقي. غير المسدد يبقى مستحقًا ويظهر «مرحّلًا» في السنة التالية. اضغط البند لتسجيل السداد.</p>
-<div class="bar">${sel('sv_p',E.p,[['','كل المشاريع'],...Object.entries(P()).map(([k,p])=>[k,p.name])])}${sel('sv_t',E.t,[['','كل الأنواع'],...types.map(t=>[t,t])])}${sel('sv_s',E.s,[['open','غير المسددة'],['late','المتأخرة'],['carry','المرحّلة من سنوات سابقة'],['paid','المسددة'],['','الكل']])}${sel('sv_w',E.w,[['','المالك والمستأجر'],...SV_PARTY])}${sel('sv_y',E.y,[['','كل السنوات'],...years.map(y=>[y,y])])}${sel('sv_e',E.e,[['','كل جهات السداد'],...SV_PAYEE])}
+<div class="bar">${msel('sv.p',PL(),'كل المشاريع')}${sel('sv_t',E.t,[['','كل الأنواع'],...types.map(t=>[t,t])])}${sel('sv_s',E.s,[['open','غير المسددة'],['late','المتأخرة'],['carry','المرحّلة من سنوات سابقة'],['paid','المسددة'],['','الكل']])}${sel('sv_w',E.w,[['','المالك والمستأجر'],...SV_PARTY])}${sel('sv_y',E.y,[['','كل السنوات'],...years.map(y=>[y,y])])}${sel('sv_e',E.e,[['','كل جهات السداد'],...SV_PAYEE])}
 <input type="search" id="sv_q" placeholder="بحث: وحدة، اسم، مشروع" value="${esc(E.q)}"><button class="btn p" data-a="svIssue">+ إصدار رسوم سنوية</button><button class="btn" data-a="svNew">+ رسم منفرد</button><button class="btn" data-a="svImp">استيراد وحدات وملاك ورسوم (Excel)</button><button class="btn" data-a="svTpl">تنزيل قالب Excel</button>${pbtn('list')}</div>
 <div class="kpis sm">${kp('إجمالي المستحق (شامل الضريبة)',fm(sum(open,x=>+x.total||0)+0),'للبنود غير المسددة بالكامل')}${kp('المسدد',fm(sum(all,svPaid)))}${kp('المتبقي',fm(sum(all,svRem)),open.length+' بند')}${kp('متأخر',fm(sum(late,svRem)),late.length+' بند','lt')}${kp('مرحّل من سنوات سابقة',fm(sum(all.filter(svCarry),svRem)),all.filter(svCarry).length+' بند')}</div>
 ${L.length?T(cols,rws,{foot:S.pm.foot}):'<p class="empty">لا توجد رسوم مطابقة. اضغط «+ إصدار رسوم سنوية» لإنشاء رسوم الخدمات أو المياه لمشروع.</p>'}${smry}`;

@@ -16,16 +16,16 @@ function ivUnits(){
 }
 function vInv(){
   const E=S.iv,all=ivUnits(),q=E.q.toLowerCase();
-  const L=all.filter(o=>(!E.p||o.pid===E.p)&&(!E.s||(E.s==='sold'?o.owner:E.s==='unsold'?!o.owner:E.s==='rented'?o.rented:E.s==='fee'?o.src==='fee':true))&&(!q||txt(o.unit,o.owner,o.pn).includes(q)));
+  const L=all.filter(o=>(MS(E.p,o.pid))&&(!E.s||(E.s==='sold'?o.owner:E.s==='unsold'?!o.owner:E.s==='rented'?o.rented:E.s==='fee'?o.src==='fee':true))&&(!q||txt(o.unit,o.owner,o.pn).includes(q)));
   const sel=(id,v,opts)=>`<select id="${id}">${opts.map(([a,b])=>`<option value="${esc(a)}"${String(a)===String(v)?' selected':''}>${esc(b)}</option>`).join('')}</select>`;
   const tabs=[['proj','حسب المشروع'],['own','حسب المالك'],['units','قائمة الوحدات']];
   const kp=(l,v,i)=>`<div class="kp static"><span>${l}</span><b>${v}</b><i>${i||''}</i></div>`;
   const owners=new Set(all.filter(o=>o.owner).map(o=>nm(o.owner)));
   let body='';
   if(E.tab==='proj'){
-    const g=Object.entries(P()).map(([pid,p])=>{const a=all.filter(o=>o.pid===pid);return{n:p.name,t:a.length,s:a.filter(o=>o.owner).length,u:a.filter(o=>!o.owner).length,r:a.filter(o=>o.rented).length,w:new Set(a.filter(o=>o.owner).map(o=>nm(o.owner))).size,f:a.filter(o=>o.src==='fee').length}}).filter(o=>!E.p||P()[E.p].name===o.n).sort((a,b)=>a.n.localeCompare(b.n,'ar'));
+    const g=Object.entries(P()).map(([pid,p])=>{const a=all.filter(o=>o.pid===pid);return{n:p.name,t:a.length,s:a.filter(o=>o.owner).length,u:a.filter(o=>!o.owner).length,r:a.filter(o=>o.rented).length,w:new Set(a.filter(o=>o.owner).map(o=>nm(o.owner))).size,f:a.filter(o=>o.src==='fee').length}}).filter(o=>!MSV(E.p).length||MSV(E.p).some(i=>P()[i]&&P()[i].name===o.n)).sort((a,b)=>a.n.localeCompare(b.n,'ar'));
     const cols=[{h:'المشروع',k:'t'},{h:'إجمالي الوحدات',k:'n'},{h:'مباعة (لها مالك)',k:'n'},{h:'غير مباعة',k:'n'},{h:'عدد الملاك',k:'n'},{h:'مؤجرة حاليًا',k:'n'},{h:'للرسوم فقط',k:'n'}];
-    const foot=['الإجمالي',sum(g,o=>o.t),sum(g,o=>o.s),sum(g,o=>o.u),new Set(all.filter(o=>(!E.p||o.pid===E.p)&&o.owner).map(o=>nm(o.owner))).size,sum(g,o=>o.r),sum(g,o=>o.f)];
+    const foot=['الإجمالي',sum(g,o=>o.t),sum(g,o=>o.s),sum(g,o=>o.u),new Set(all.filter(o=>(MS(E.p,o.pid))&&o.owner).map(o=>nm(o.owner))).size,sum(g,o=>o.r),sum(g,o=>o.f)];
     const rows=g.map(o=>({cells:['<b>'+esc(o.n)+'</b>',o.t,o.s,o.u,o.w,o.r,o.f]}));
     S.pm={title:'حصر الوحدات حسب المشروع',sub:'إجمالي الوحدات: '+foot[1],cols,rows:g.map(o=>({cells:[o.n,o.t,o.s,o.u,o.w,o.r,o.f]})),foot,footSpan:0};
     body=T(cols,rows,{foot,footSpan:0});
@@ -46,7 +46,7 @@ function vInv(){
   }
   return `<h1>حصر الوحدات والملاك</h1><p class="sub">عدد وحدات كل مشروع وكل مالك، المباعة وغير المباعة. الوحدات التي لا ندير تأجيرها تظهر هنا وفي الرسوم فقط، ولا تظهر في شاشات الإيجار.</p>
 <div class="bar"><div class="tabs">${tabs.map(([k,l])=>`<button class="btn sm${E.tab===k?' p':''}" data-a="ivTab" data-t="${k}">${l}</button>`).join('')}</div>
-${sel('iv_p',E.p,[['','كل المشاريع'],...Object.entries(P()).map(([k,p])=>[k,p.name])])}${E.tab!=='proj'?sel('iv_s',E.s,[['','كل الوحدات'],['sold','المباعة'],['unsold','غير المباعة'],['rented','المؤجرة حاليًا'],['fee','للرسوم فقط']]):''}${E.tab!=='proj'?`<input type="search" id="iv_q" placeholder="بحث: مالك أو وحدة" value="${esc(E.q)}">`:''}
+${msel('iv.p',PL(),'كل المشاريع')}${E.tab!=='proj'?sel('iv_s',E.s,[['','كل الوحدات'],['sold','المباعة'],['unsold','غير المباعة'],['rented','المؤجرة حاليًا'],['fee','للرسوم فقط']]):''}${E.tab!=='proj'?`<input type="search" id="iv_q" placeholder="بحث: مالك أو وحدة" value="${esc(E.q)}">`:''}
 <button class="btn p" data-a="ivImp">استيراد حصر (Excel)</button>${pbtn('list')}</div>
 <div class="kpis sm">${kp('إجمالي الوحدات',all.length)}${kp('مباعة',all.filter(o=>o.owner).length)}${kp('غير مباعة',all.filter(o=>!o.owner).length)}${kp('عدد الملاك',owners.size)}${kp('للرسوم فقط',all.filter(o=>o.src==='fee').length)}</div>${body}`;
 }

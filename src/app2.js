@@ -26,7 +26,7 @@ function agrFilters(){
 }
 function agrRows(){
   const q=S.agr.q.toLowerCase(),F=S.agr;
-  return A_().filter(a=>(!F.p||a.pid===F.p)&&(!F.o||nm(a.owner)===nm(F.o))&&(!F.m||a.mgmt?.type===F.m)&&(!F.s||agrSt(a)===F.s)&&(!q||txt(a.no,a.unit,a.owner,a.tenant,pname(a.pid)).includes(q)));
+  return A_().filter(a=>(MS(F.p,a.pid))&&(!F.o||nm(a.owner)===nm(F.o))&&(!F.m||a.mgmt?.type===F.m)&&(!F.s||agrSt(a)===F.s)&&(!q||txt(a.no,a.unit,a.owner,a.tenant,pname(a.pid)).includes(q)));
 }
 function vAgr(){
   const L=agrRows(),cols=[{h:'رقم',k:'d'},{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المستأجر',k:'t'},{h:'الإيجار السنوي',k:'n'},{h:'رسوم الإدارة',k:'t'},{h:'إجمالي الإدارة بالضريبة',k:'n'},{h:'رسوم العقد',k:'t'},{h:'',k:'ac'}];
@@ -35,7 +35,7 @@ function vAgr(){
       `<button class="btn sm p" data-a="agrPrint" data-i="${esc(a.id)}">طباعة</button> <button class="btn sm" data-a="agrPdf" data-i="${esc(a.id)}">PDF</button> <button class="btn sm" data-a="agrEdit" data-i="${esc(a.id)}">تعديل</button> <button class="btn sm" data-a="finFromAgr" data-i="${esc(a.id)}">تحليل</button> <button class="btn sm dng" data-a="agrDel" data-i="${esc(a.id)}">حذف</button>`]}});
   S.pm={title:'اتفاقيات التأجير',sub:'ثلاثية: المالك والمستأجر والمشغّل',cols,rows:rws,foot:['الإجمالي: '+L.length,'','','',fm(sum(L,a=>+a.annualRent||0)),'',fm(sum(L,a=>Fin.agrCalc(a,VATP()).mgmtTotal)),'','']};
   return `<h1>اتفاقيات التأجير</h1><p class="sub">اتفاقية ثلاثية بين المالك والمستأجر و${esc(S.db.settings.operator)}، تحدد الإيجار السنوي ورسوم إدارة الأملاك (نسبة أو مبلغ مقطوع) ورسوم عقد الإيجار والدفعات التي تُخصم منها. تُربط تلقائيًا بالتحليل المالي.</p>
-<div class="bar"><button class="btn p" data-a="agrNew">+ اتفاقية جديدة</button><select id="ag_p">${projOpts(S.agr.p,true)}</select>${agrFilters()}<input type="search" id="ag_q" placeholder="بحث: وحدة، مالك، مستأجر" value="${esc(S.agr.q)}">${pbtn('list')}</div>
+<div class="bar"><button class="btn p" data-a="agrNew">+ اتفاقية جديدة</button>${msel('agr.p',PL(),'كل المشاريع')}${agrFilters()}<input type="search" id="ag_q" placeholder="بحث: وحدة، مالك، مستأجر" value="${esc(S.agr.q)}">${pbtn('list')}</div>
 ${rws.length?T(cols,rws,{foot:S.pm.foot}):'<div class="tw"><p class="empty">لا توجد اتفاقيات بعد. اضغط «اتفاقية جديدة» واختر العقد لتعبئة البيانات تلقائيًا.</p></div>'}`;
 }
 function agrInstRow(x,i,mode){
@@ -124,14 +124,14 @@ function findAgr(an){const L=A_();return L.find(a=>an.aid&&a.id===an.aid)||L.fin
 function vFin(all){
   const q=S.fin.q.toLowerCase(),per=(a,f)=>{if(!f)return true;const d=String(a.date||'').slice(0,10),t=iso(TODAY),y=+t.slice(0,4),m=+t.slice(5,7);if(f==='m0')return d.slice(0,7)===t.slice(0,7);if(f==='m1'){const pm=m===1?(y-1)+'-12':y+'-'+String(m-1).padStart(2,'0');return d.slice(0,7)===pm}if(f==='q')return d>=iso(TODAY-92*DAY);if(f==='y')return d.slice(0,4)===String(y);return true},
   owners=[...new Set(N_().map(a=>String(a.owner||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar')),
-  L=N_().filter(a=>(!S.fin.p||a.pid===S.fin.p)&&(!S.fin.o||String(a.owner||'').trim()===S.fin.o)&&per(a,S.fin.d)&&(!S.fin.v||anaFor(a).over)&&(!q||txt(a.unit,a.owner,a.tenant,pname(a.pid),a.sap).includes(q))).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  L=N_().filter(a=>(MS(S.fin.p,a.pid))&&(!S.fin.o||String(a.owner||'').trim()===S.fin.o)&&per(a,S.fin.d)&&(!S.fin.v||anaFor(a).over)&&(!q||txt(a.unit,a.owner,a.tenant,pname(a.pid),a.sap).includes(q))).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
   const cols=[{h:'التاريخ',k:'d'},{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المستأجر',k:'t'},{h:'الدفعة',k:'n'},{h:'إدارة+خدمات+عقد',k:'n'},{h:'الضريبة',k:'n'},{h:'خصومات أخرى',k:'n'},{h:'إجمالي الخصم',k:'n'},{h:'صافي المالك',k:'n'},{h:'',k:'ac'}];
   const rws=L.map(a=>{const k=anaFor(a);return{cls:k.over?'late':'',cells:[fs_(a.date),'<b>'+esc(pname(a.pid))+'</b>','<b>'+esc(a.unit)+'</b>',esc(a.tenant)||'—',fm(k.payment),fm(k.taxBase),fm(k.vat),fm(k.nonTax),fm(k.totalDed),'<b>'+fm(k.netOwner)+'</b>',
     `<button class="btn sm p" data-a="finPrint" data-i="${esc(a.id)}">طباعة</button> <button class="btn sm" data-a="finPdf" data-i="${esc(a.id)}">PDF</button> <button class="btn sm" data-a="finEdit" data-i="${esc(a.id)}">تعديل</button> <button class="btn sm dng" data-a="finDel" data-i="${esc(a.id)}">حذف</button>`]}});
   const ks=L.map(anaFor),foot=['الإجمالي: '+L.length,'','','',fm(sum(ks,k=>k.payment)),fm(sum(ks,k=>k.taxBase)),fm(sum(ks,k=>k.vat)),fm(sum(ks,k=>k.nonTax)),fm(sum(ks,k=>k.totalDed)),fm(sum(ks,k=>k.netOwner)),''];
   S.pm={title:'التحليل المالي للدفعات',sub:S.fin.p?'المشروع: '+esc(pname(S.fin.p)):'كل المشاريع',cols,rows:rws,foot};
   return `<h1>التحليل المالي</h1><p class="sub">تحليل الدفعات المسددة وخصوماتها: رسوم الخدمات وإدارة الأملاك ورسوم العقد (تُضاف عليها ضريبة ${VATP()}%)، والصيانة والنظافة والكهرباء والإنترنت والمبالغ السابقة (بدون ضريبة). إن وُجدت اتفاقية للوحدة تُسحب منها رسوم الإدارة والعقد ويمكن تعديلها يدويًا.</p>
-<div class="bar"><button class="btn p" data-a="finNew">+ تحليل جديد</button><select id="fn_p">${projOpts(S.fin.p,true)}</select><select id="fn_o"><option value="">كل الملاك</option>${owners.map(o=>`<option value="${esc(o)}"${o===S.fin.o?' selected':''}>${esc(o)}</option>`).join('')}</select><select id="fn_d">${[['','كل الفترات'],['m0','هذا الشهر'],['m1','الشهر الماضي'],['q','آخر 3 أشهر'],['y','هذه السنة']].map(([a,b])=>`<option value="${a}"${a===S.fin.d?' selected':''}>${b}</option>`).join('')}</select><select id="fn_v"><option value="">كل التحليلات</option><option value="over"${S.fin.v?' selected':''}>الخصومات تتجاوز الدفعة</option></select><input type="search" id="fn_q" placeholder="بحث: وحدة، مالك، مستأجر" value="${esc(S.fin.q)}">${pbtn('list')}</div>
+<div class="bar"><button class="btn p" data-a="finNew">+ تحليل جديد</button>${msel('fin.p',PL(),'كل المشاريع')}<select id="fn_o"><option value="">كل الملاك</option>${owners.map(o=>`<option value="${esc(o)}"${o===S.fin.o?' selected':''}>${esc(o)}</option>`).join('')}</select><select id="fn_d">${[['','كل الفترات'],['m0','هذا الشهر'],['m1','الشهر الماضي'],['q','آخر 3 أشهر'],['y','هذه السنة']].map(([a,b])=>`<option value="${a}"${a===S.fin.d?' selected':''}>${b}</option>`).join('')}</select><select id="fn_v"><option value="">كل التحليلات</option><option value="over"${S.fin.v?' selected':''}>الخصومات تتجاوز الدفعة</option></select><input type="search" id="fn_q" placeholder="بحث: وحدة، مالك، مستأجر" value="${esc(S.fin.q)}">${pbtn('list')}</div>
 ${rws.length?T(cols,rws,{foot}):'<div class="tw"><p class="empty">لا توجد تحليلات. اضغط «تحليل جديد» واختر العقد والدفعة.</p></div>'}`;
 }
 function anCollect(){
@@ -196,7 +196,7 @@ function anDoc(a){
   const n2=v=>(+v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
   const row=(lab,val,o={})=>`<tr class="${o.cls||''}"><td class="nt">${o.note?esc(o.note):''}</td><td class="am">${val===''?'':n2(val)}</td><td class="lb">${lab}</td>${o.side||''}</tr>`;
   const ded=[['الرسوم السنوية للخدمات العام '+yr+'م',L.service],[mgLab,L.mgmt],['قيمة مضافة رسوم خدمات وإدارة أملاك ('+VATP()+'%)',k.vat],['قيمة توثيق عقد إيجار',L.contract],['مبالغ سابقة (دفعة من المديونية)',L.prev,a.prevNote],['فواتير صيانة شاملة الضريبة',L.maint],['نظافة شاملة الضريبة',L.clean]];
-  if(L.elec)ded.push(['كهرباء',L.elec]);if(L.net)ded.push(['إنترنت',L.net]);if(L.other)ded.push(['أخرى',L.other]);
+  ded.push(['كهرباء',L.elec||0],['إنترنت',L.net||0],['أخرى',L.other||0]);
   const side=`<td class="side" rowspan="${ded.length+1}"><span>الرسوم والاستقطاعات والضريبة</span></td>`;
   const dr=ded.map((d,i)=>row(esc(d[0]),d[1],{note:d[2],side:i===0?side:''})).join('');
   const info=`<div class="an-info"><div class="r1"><div><span>رقم الوحدة</span><b>${esc(a.unit)}</b></div><div><span>المالك</span><b>${esc(a.owner)||'—'}</b></div><div><span>المستأجر</span><b>${esc(a.tenant)||'—'}</b></div></div>
@@ -207,9 +207,12 @@ function anDoc(a){
 ${row('قيمة إيجار الوحدة رقم '+esc(a.unit),ann,{cls:'b',side:'<td class="sd"></td>'})}${row('المدفوع من الإيجار'+(pct?' '+pct+'%':''),k.payment,{cls:'b',side:'<td class="sd"></td>'})}
 <tr><td></td><td></td><td class="lb b">ويتم توزيعها كما يلي:</td><td class="sd"></td></tr>
 ${dr}${row('إجمالي الاستقطاعات',k.totalDed,{cls:'tot'})}
-${row('المتبقي للمالك',k.netOwner,{cls:'net',side:'<td class="sd"></td>'})}</tbody></table>
+${row('المتبقي للمالك',k.netOwner,{cls:'net',side:'<td class="sd"></td>'})}
+${row('المبلغ الذي أودعه المستأجر',k.payment,{cls:'b',side:'<td class="sd"></td>'})}${row('حساب التشغيل '+yr,k.totalDed,{cls:'b',side:'<td class="sd"></td>'})}${row('يحوَّل إلى حساب المالك',Math.max(0,k.netOwner),{cls:'b',side:'<td class="sd"></td>'})}
+<tr class="hd"><td></td><td></td><td class="lb">يبقى رصيد بالحساب</td><td class="sd"></td></tr></tbody></table>
 ${k.over?'<p class="warnbox">إجمالي الخصومات يتجاوز قيمة الدفعة</p>':''}
-<p class="an-tf">${esc(Fin.tafqeet(Math.max(0,k.netOwner)))}</p>${ag?`<p style="font-size:12px">مرتبط بالاتفاقية رقم ${esc(ag.no)}</p>`:''}${a.note?`<p style="font-size:12px"><b>ملاحظات:</b> ${esc(a.note)}</p>`:''}`;
+<p class="an-tf">${esc(Fin.tafqeet(Math.max(0,k.netOwner)))}</p>
+<div class="an-sign"><div><span>إدارة الحسابات</span><u></u></div><div><span>الرقابة المالية</span><u></u></div><div><span>نائب الرئيس التنفيذي والمدير المكلف</span><u></u></div></div>${ag?`<p style="font-size:12px">مرتبط بالاتفاقية رقم ${esc(ag.no)}</p>`:''}${a.note?`<p style="font-size:12px"><b>ملاحظات:</b> ${esc(a.note)}</p>`:''}`;
   return docHtml({title:'تحليل إيجار وحدة سكنية',sub:pn+' / '+esc(a.unit),body});
 }
 

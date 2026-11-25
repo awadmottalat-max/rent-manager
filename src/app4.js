@@ -21,9 +21,9 @@ function vParties(kind,all){
   const F=S[kind==='owners'?'ow':'tn'],q=F.q.toLowerCase(),uq=String(F.u||'').toLowerCase();
   const ow=kind==='owners',key=x=>nm(ow?x.c.owner:x.c.tenant)||(ow?'(بدون مالك)':'(بدون مستأجر)');
   let ok=null;
-  if(F.p||uq){ok=new Set();
-    for(const x of all){if(F.p&&x.pid!==F.p)continue;if(uq&&!txt(x.c.unit).includes(uq))continue;ok.add(key(x))}
-    if(ow)for(const[pid,p]of Object.entries(P())){if(F.p&&pid!==F.p)continue;for(const u of p.units||[]){if(!nm(u.owner))continue;if(uq&&!txt(u.no).includes(uq))continue;ok.add(nm(u.owner))}}}
+  if(MSV(F.p).length||uq){ok=new Set();
+    for(const x of all){if(!MS(F.p,x.pid))continue;if(uq&&!txt(x.c.unit).includes(uq))continue;ok.add(key(x))}
+    if(ow)for(const[pid,p]of Object.entries(P())){if(!MS(F.p,pid))continue;for(const u of p.units||[]){if(!nm(u.owner))continue;if(uq&&!txt(u.no).includes(uq))continue;ok.add(nm(u.owner))}}}
   const L=partyList(kind,all).filter(o=>(!ok||ok.has(o.name))&&(!q||txt(o.name,o.reg?.phone,o.reg?.idno,o.projects.join(' ')).includes(q)));
   const cols=[{h:ow?'المالك':'المستأجر',k:'t'},{h:'الجوال',k:'t'},{h:'الهوية / السجل',k:'t'},{h:'المشاريع',k:'t'},{h:'وحدات',k:'n'},{h:'عقود',k:'n'},{h:'إجمالي الإيجار',k:'n'},{h:'المحصَّل',k:'n'},{h:'المتبقي',k:'n'},{h:'المتأخر',k:'n'},...(ow?[{h:'صافي المحصَّل',k:'n'}]:[]),{h:'',k:'ac'}];
   const rws=L.map(o=>({attrs:` data-a="${ow?'ownOpen':'tenOpen'}" data-n="${esc(o.name)}"`,cells:['<b>'+esc(o.name)+'</b>',esc(o.reg?.phone)||'—',esc(o.reg?.idno)||'—',esc(o.projects.join('، '))||'—',o.units,o.contracts,fm(o.total),fm(o.paid),fm(o.rem),o.late?fm(o.late):'—',...(ow?['<b>'+fm(o.net)+'</b>']:[]),
@@ -32,7 +32,7 @@ function vParties(kind,all){
   const foot=['الإجمالي ('+L.length+')','','','',sum(L,o=>o.units),sum(L,o=>o.contracts),fm(sum(L,o=>o.total)),fm(sum(L,o=>o.paid)),fm(sum(L,o=>o.rem)),fm(sum(L,o=>o.late)),...(ow?[fm(sum(L,o=>o.net))]:[]),''];
   S.pm={title:ow?'سجل الملاك':'سجل المستأجرين',sub:'عدد: '+L.length,cols:pcols,rows:rws.map(r=>({...r,cells:r.cells.slice(0,pcols.length)})),foot:foot.slice(0,pcols.length)};
   return `<h1>${ow?'الملاك':'المستأجرون'}</h1><p class="sub">${ow?'سجل الملاك مع كشف حساب لكل مالك: المحصَّل من الإيجارات ناقصًا رسوم الأملاك.':'سجل المستأجرين وعقودهم وأرصدتهم، وكشف حساب لكل مستأجر.'} انقر على الاسم لعرض الكشف. «إضافة» لتسجيل ${PLAB[kind]} جديد قبل ربطه بعقد، و«تعديل» لتحديث بياناته (تغيير الاسم يُحدَّث في كل عقوده).</p>
-<div class="bar"><button class="btn p" data-a="partyNew" data-k="${kind}">+ إضافة ${PLAB[kind]}</button><input type="search" id="${ow?'oq':'tq'}" placeholder="بحث بالاسم أو الجوال أو الهوية" value="${esc(F.q)}"><select id="pt_p" aria-label="المشروع">${projOpts(F.p,true)}</select><input type="search" id="pt_u" placeholder="رقم الوحدة" value="${esc(F.u||'')}" style="max-width:150px">${(F.p||F.u||F.q)?'<button class="btn" data-a="ptReset">مسح الفلاتر</button>':''}${pbtn('list')}</div>${T(cols,rws,{foot})}`;
+<div class="bar"><button class="btn p" data-a="partyNew" data-k="${kind}">+ إضافة ${PLAB[kind]}</button><input type="search" id="${ow?'oq':'tq'}" placeholder="بحث بالاسم أو الجوال أو الهوية" value="${esc(F.q)}">${msel(ow?'ow.p':'tn.p',PL(),'كل المشاريع')}<input type="search" id="pt_u" placeholder="رقم الوحدة" value="${esc(F.u||'')}" style="max-width:150px">${(F.p||F.u||F.q)?'<button class="btn" data-a="ptReset">مسح الفلاتر</button>':''}${pbtn('list')}</div>${T(cols,rws,{foot})}`;
 }
 VF.owners=a=>vParties('owners',a);VF.tenants=a=>vParties('tenants',a);
 function partyForm(kind,name){

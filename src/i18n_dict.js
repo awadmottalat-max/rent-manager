@@ -1441,5 +1441,13 @@ window.I18N_EN={
 "إجمالي الاستقطاعات": "Total deductions",
 "المتبقي للمالك": "Remaining for the owner",
 "الرسوم والاستقطاعات والضريبة": "Fees, deductions and VAT",
-"تحليل إيجار وحدة سكنية": "Residential unit rent analysis"
+"تحليل إيجار وحدة سكنية": "Residential unit rent analysis",
+  "مسح التحديد":"Clear selection",
+  "بحث…":"Search…",
+  "المبلغ الذي أودعه المستأجر":"Amount deposited by tenant",
+  "يحوَّل إلى حساب المالك":"Transferred to owner account",
+  "يبقى رصيد بالحساب":"Balance remaining in account",
+  "إدارة الحسابات":"Accounts Management",
+  "الرقابة المالية":"Financial Control",
+  "نائب الرئيس التنفيذي والمدير المكلف":"Deputy CEO and Acting Manager"
 };
