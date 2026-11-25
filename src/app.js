@@ -318,7 +318,7 @@ function receiptDoc(pid,cid,payId){
 <div class="rl"><span class="lb">وذلك مقابل</span><span class="ln hw">${esc(forTxt)}</span><span class="en">For</span></div>
 <div class="rl"><span class="ln"></span></div>
 <div class="rc-sign"><div><span>المدير <i>Manager</i></span><u></u></div><div><span>المحاسب <i>Accountant</i></span><u></u></div><div><span>المستلم <i>Receiver</i></span><u></u></div></div>
-<div class="rc-foot"><div>المقر الرئيسي: ${esc(CO.name)}<br>${esc(CO.addr)}</div><div>رقم ضريبة القيمة المضافة:<br><bdi>${CO.vat}</bdi></div><div>س.ت: <bdi>${CO.cr}</bdi><br><bdi>${CO.phone}</bdi></div><div class="em"><bdi>${CO.mail}</bdi></div></div>
+<div class="rc-foot"><div>المقر الرئيسي: ${esc(S.db.settings.operator||CO.name)}<br>${esc(CO.addr)}</div><div>رقم ضريبة القيمة المضافة:<br><bdi>${CO.vat}</bdi></div><div>س.ت: <bdi>${CO.cr}</bdi><br><bdi>${CO.phone}</bdi></div><div class="em"><bdi>${CO.mail}</bdi></div></div>
 </div></div>`;
   return{html,name:'receipt-'+(rno||'x')+'.pdf'};
 }

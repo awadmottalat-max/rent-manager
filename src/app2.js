@@ -1,6 +1,6 @@
 /* اتفاقيات التأجير والتحليل المالي */
 'use strict';
-Object.assign(S,{agr:{p:'',q:'',s:'',o:'',m:''},fin:{p:'',q:'',m:''}});
+Object.assign(S,{agr:{p:'',q:'',s:'',o:'',m:''},fin:{p:'',q:'',m:'',d:'',o:'',v:''}});
 const VATP=()=>Number(S.db.settings.vat??15);
 const A_=()=>S.db.agreements=S.db.agreements||[];
 const N_=()=>S.db.analyses=S.db.analyses||[];
@@ -122,19 +122,21 @@ const AN_LAB={service:'رسوم الخدمات',mgmt:'إدارة الأملاك'
 function anaFor(an){return Fin.anaCalc(an,VATP())}
 function findAgr(an){const L=A_();return L.find(a=>an.aid&&a.id===an.aid)||L.find(a=>a.pid===an.pid&&an.cid&&a.cid===an.cid)||L.find(a=>a.pid===an.pid&&String(a.unit).trim()===String(an.unit).trim())}
 function vFin(all){
-  const q=S.fin.q.toLowerCase(),L=N_().filter(a=>(!S.fin.p||a.pid===S.fin.p)&&(!q||txt(a.unit,a.owner,a.tenant,pname(a.pid),a.sap).includes(q))).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const q=S.fin.q.toLowerCase(),per=(a,f)=>{if(!f)return true;const d=String(a.date||'').slice(0,10),t=iso(TODAY),y=+t.slice(0,4),m=+t.slice(5,7);if(f==='m0')return d.slice(0,7)===t.slice(0,7);if(f==='m1'){const pm=m===1?(y-1)+'-12':y+'-'+String(m-1).padStart(2,'0');return d.slice(0,7)===pm}if(f==='q')return d>=iso(TODAY-92*DAY);if(f==='y')return d.slice(0,4)===String(y);return true},
+  owners=[...new Set(N_().map(a=>String(a.owner||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar')),
+  L=N_().filter(a=>(!S.fin.p||a.pid===S.fin.p)&&(!S.fin.o||String(a.owner||'').trim()===S.fin.o)&&per(a,S.fin.d)&&(!S.fin.v||anaFor(a).over)&&(!q||txt(a.unit,a.owner,a.tenant,pname(a.pid),a.sap).includes(q))).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
   const cols=[{h:'التاريخ',k:'d'},{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المستأجر',k:'t'},{h:'الدفعة',k:'n'},{h:'إدارة+خدمات+عقد',k:'n'},{h:'الضريبة',k:'n'},{h:'خصومات أخرى',k:'n'},{h:'إجمالي الخصم',k:'n'},{h:'صافي المالك',k:'n'},{h:'',k:'ac'}];
   const rws=L.map(a=>{const k=anaFor(a);return{cls:k.over?'late':'',cells:[fs_(a.date),'<b>'+esc(pname(a.pid))+'</b>','<b>'+esc(a.unit)+'</b>',esc(a.tenant)||'—',fm(k.payment),fm(k.taxBase),fm(k.vat),fm(k.nonTax),fm(k.totalDed),'<b>'+fm(k.netOwner)+'</b>',
     `<button class="btn sm p" data-a="finPrint" data-i="${esc(a.id)}">طباعة</button> <button class="btn sm" data-a="finPdf" data-i="${esc(a.id)}">PDF</button> <button class="btn sm" data-a="finEdit" data-i="${esc(a.id)}">تعديل</button> <button class="btn sm dng" data-a="finDel" data-i="${esc(a.id)}">حذف</button>`]}});
   const ks=L.map(anaFor),foot=['الإجمالي: '+L.length,'','','',fm(sum(ks,k=>k.payment)),fm(sum(ks,k=>k.taxBase)),fm(sum(ks,k=>k.vat)),fm(sum(ks,k=>k.nonTax)),fm(sum(ks,k=>k.totalDed)),fm(sum(ks,k=>k.netOwner)),''];
   S.pm={title:'التحليل المالي للدفعات',sub:S.fin.p?'المشروع: '+esc(pname(S.fin.p)):'كل المشاريع',cols,rows:rws,foot};
   return `<h1>التحليل المالي</h1><p class="sub">تحليل الدفعات المسددة وخصوماتها: رسوم الخدمات وإدارة الأملاك ورسوم العقد (تُضاف عليها ضريبة ${VATP()}%)، والصيانة والنظافة والكهرباء والإنترنت والمبالغ السابقة (بدون ضريبة). إن وُجدت اتفاقية للوحدة تُسحب منها رسوم الإدارة والعقد ويمكن تعديلها يدويًا.</p>
-<div class="bar"><button class="btn p" data-a="finNew">+ تحليل جديد</button><select id="fn_p">${projOpts(S.fin.p,true)}</select><input type="search" id="fn_q" placeholder="بحث: وحدة، مالك، مستأجر" value="${esc(S.fin.q)}">${pbtn('list')}</div>
+<div class="bar"><button class="btn p" data-a="finNew">+ تحليل جديد</button><select id="fn_p">${projOpts(S.fin.p,true)}</select><select id="fn_o"><option value="">كل الملاك</option>${owners.map(o=>`<option value="${esc(o)}"${o===S.fin.o?' selected':''}>${esc(o)}</option>`).join('')}</select><select id="fn_d">${[['','كل الفترات'],['m0','هذا الشهر'],['m1','الشهر الماضي'],['q','آخر 3 أشهر'],['y','هذه السنة']].map(([a,b])=>`<option value="${a}"${a===S.fin.d?' selected':''}>${b}</option>`).join('')}</select><select id="fn_v"><option value="">كل التحليلات</option><option value="over"${S.fin.v?' selected':''}>الخصومات تتجاوز الدفعة</option></select><input type="search" id="fn_q" placeholder="بحث: وحدة، مالك، مستأجر" value="${esc(S.fin.q)}">${pbtn('list')}</div>
 ${rws.length?T(cols,rws,{foot}):'<div class="tw"><p class="empty">لا توجد تحليلات. اضغط «تحليل جديد» واختر العقد والدفعة.</p></div>'}`;
 }
 function anCollect(){
   const o={id:rv('an_id'),date:rv('an_date'),pid:rv('an_pid'),cstart:rv('an_cs'),cend:rv('an_ce'),ejar:rv('an_ejar').trim(),sap:rv('an_sap').trim(),cid:rv('an_cid'),aid:rv('an_aid'),payId:rv('an_pay'),unit:rv('an_unit').trim(),owner:rv('an_owner').trim(),tenant:rv('an_tenant').trim(),
-    payment:nv('an_payment')||0,annualRent:nv('an_annual')||0,mgmt:{type:rv('an_mt'),value:nv('an_mv')||0,base:rv('an_mb')},mgmtManual:rv('an_mman')==='1',mgmtAmt:nv('an_mamt'),vatManual:rv('an_vman')==='1',vatAmt:nv('an_vamt'),note:rv('an_note').trim()};
+    payment:nv('an_payment')||0,annualRent:nv('an_annual')||0,mgmt:{type:rv('an_mt'),value:nv('an_mv')||0,base:rv('an_mb')},mgmtManual:rv('an_mman')==='1',ctype:rv('an_ctype'),prevNote:rv('an_pnote').trim(),no:rv('an_no'),mgmtAmt:nv('an_mamt'),vatManual:rv('an_vman')==='1',vatAmt:nv('an_vamt'),note:rv('an_note').trim()};
   for(const[k]of Fin.ANA_LINES)if(k!=='mgmt')o[k]=nv('an_'+k)||0;
   return o;
 }
@@ -159,22 +161,23 @@ function anPrefill(){
   else{$('#an_aid').value='';$('#an_mman').value='0'}
   anPreview();
 }
+function anPickList(pid,st){const cs=[['','— اختر العقد —']];for(const[k,p]of Object.entries(P())){if(pid&&k!==pid)continue;for(const c of p.contracts){const s_=calc(c,MODE(),TODAY).st;if(st&&s_!==st)continue;cs.push([k+'|'+c.id,(pid?'':p.name+' — ')+c.unit+' — '+(c.tenant||'')+(s_==='منتهي'?' (منتهي)':'')])}}return cs}
 function anForm(id,pre){
   const a=id?N_().find(x=>x.id===id):{date:iso(TODAY),mgmt:{type:'pct',value:0,base:'annual'},...(pre||{})};
   const f=(l,el,full)=>`<label class="${full?'full':''}">${l}${el}</label>`,inp=(i,v,t='text')=>t==='date'?dateField(i,v):`<input id="${i}" type="${t}" ${t==='number'?'step="0.01"':''} value="${esc(v??'')}">`,sel=(i,o,v)=>`<select id="${i}">${o.map(([x,y])=>`<option value="${esc(x)}"${String(x)===String(v)?' selected':''}>${esc(y)}</option>`).join('')}</select>`;
-  const cs=[['','— اختر العقد —']];for(const[pid,p]of Object.entries(P()))for(const c of p.contracts)cs.push([pid+'|'+c.id,p.name+' — '+c.unit+' — '+(c.tenant||'')+(calc(c,MODE(),TODAY).st==='منتهي'?' (منتهي)':'')]);
+  const cs=anPickList(a.pid,'');
   const curC=a.pid&&a.cid?a.pid+'|'+a.cid:'';
   const c0=cOf(a.pid,a.cid),pays=c0?[...c0.payments].sort((x,y)=>String(x.date).localeCompare(String(y.date))).map(p=>[p.id,(p.date||'بلا تاريخ')+' — '+fm(p.amount)]):[];
   $('#frm').innerHTML=`<div class="dh"><h2>${id?'تعديل التحليل المالي':'تحليل مالي جديد'}</h2><button class="x" data-a="fclose" aria-label="إغلاق">✕</button></div>
-<input type="hidden" id="an_id" value="${esc(a.id||'')}"><input type="hidden" id="an_cid" value="${esc(a.cid||'')}"><input type="hidden" id="an_aid" value="${esc(a.aid||'')}">
-<div class="fg">${f('العقد (حالي أو سابق) — أو اتركه فارغًا وأدخل بيانات عقد سابق يدويًا',sel('an_pick',cs,curC),1)}${f('المشروع',`<select id="an_pid"><option value="">— غير محدد —</option>${projOpts(a.pid,false)}</select>`)}${f('بداية العقد (للعقد السابق)',inp('an_cs',a.cstart,'date'))}${f('نهاية العقد (للعقد السابق)',inp('an_ce',a.cend,'date'))}${f('رقم عقد إيجار (اختياري)',inp('an_ejar',a.ejar))}${f('رقم ساب SAP (اختياري)',inp('an_sap',a.sap))}${f('الدفعة المسددة',`<select id="an_pay"><option value="">— يدوي —</option>${pays.map(([x,y])=>`<option value="${esc(x)}"${x===a.payId?' selected':''}>${esc(y)}</option>`).join('')}</select>`)}${f('تاريخ التحليل',inp('an_date',a.date,'date'))}
+<input type="hidden" id="an_id" value="${esc(a.id||'')}"><input type="hidden" id="an_no" value="${esc(a.no||'')}"><input type="hidden" id="an_cid" value="${esc(a.cid||'')}"><input type="hidden" id="an_aid" value="${esc(a.aid||'')}">
+<div class="fg">${f('المشروع (يحدد قائمة العقود)',`<select id="an_pid"><option value="">— كل المشاريع —</option>${projOpts(a.pid,false)}</select>`)}${f('حالة العقد',sel('an_cst',[['','الكل'],['ساري','الساري'],['منتهي','المنتهي']],''))}${f('العقد (حالي أو سابق) — أو اتركه فارغًا وأدخل بيانات عقد سابق يدويًا',sel('an_pick',cs,curC),1)}${f('نوع العقد',sel('an_ctype',[['','—'],['new','جديد'],['renew','تجديد']],a.ctype||''))}${f('بداية العقد (للعقد السابق)',inp('an_cs',a.cstart,'date'))}${f('نهاية العقد (للعقد السابق)',inp('an_ce',a.cend,'date'))}${f('رقم عقد إيجار (اختياري)',inp('an_ejar',a.ejar))}${f('رقم ساب SAP (اختياري)',inp('an_sap',a.sap))}${f('الدفعة المسددة',`<select id="an_pay"><option value="">— يدوي —</option>${pays.map(([x,y])=>`<option value="${esc(x)}"${x===a.payId?' selected':''}>${esc(y)}</option>`).join('')}</select>`)}${f('تاريخ التحليل',inp('an_date',a.date,'date'))}
 ${f('الوحدة',inp('an_unit',a.unit))}${f('المالك',inp('an_owner',a.owner))}${f('المستأجر',inp('an_tenant',a.tenant))}
 ${f('قيمة الدفعة',inp('an_payment',a.payment,'number'))}${f('الإيجار السنوي (أساس النسبة)',inp('an_annual',a.annualRent,'number'))}
 ${f('إدارة الأملاك',sel('an_mt',Object.entries(MG_LAB),a.mgmt.type))}${f('القيمة (% أو مبلغ)',inp('an_mv',a.mgmt.value,'number'))}${f('أساس النسبة',sel('an_mb',[['annual','الإيجار السنوي'],['payment','قيمة الدفعة']],a.mgmt.base||'annual'))}
 ${f('تعديل رسوم الإدارة يدويًا',sel('an_mman',[['0','تلقائي'],['1','يدوي']],a.mgmtManual?'1':'0'))}${f('رسوم الإدارة (يدوي، بدون ضريبة)',inp('an_mamt',a.mgmtAmt,'number'))}
 ${f('رسوم الخدمات (بدون ضريبة)',inp('an_service',a.service,'number'))}${f('رسوم عقد الإيجار (بدون ضريبة)',inp('an_contract',a.contract,'number'))}
 ${f('تعديل الضريبة يدويًا',sel('an_vman',[['0','تلقائي ('+VATP()+'%)'],['1','يدوي']],a.vatManual?'1':'0'))}${f('مبلغ الضريبة (يدوي)',inp('an_vamt',a.vatAmt,'number'))}
-${f('مبالغ سابقة (بدون ضريبة)',inp('an_prev',a.prev,'number'))}${f('صيانة (نهائي بضريبته)',inp('an_maint',a.maint,'number'))}${f('نظافة (نهائي بضريبتها)',inp('an_clean',a.clean,'number'))}
+${f('مبالغ سابقة (تُخصم من الدفعة)',inp('an_prev',a.prev,'number'))}${f('بيان المبالغ السابقة (مثل: دفعة من المديونية)',inp('an_pnote',a.prevNote))}${f('صيانة (نهائي بضريبته)',inp('an_maint',a.maint,'number'))}${f('نظافة (نهائي بضريبتها)',inp('an_clean',a.clean,'number'))}
 ${f('كهرباء',inp('an_elec',a.elec,'number'))}${f('إنترنت',inp('an_net',a.net,'number'))}${f('أخرى',inp('an_other',a.other,'number'))}
 <div class="full" id="an_prev"></div>${f('ملاحظات',inp('an_note',a.note),1)}</div>
 <div class="fg"><div class="full"><span class="fl">المرفقات</span>${attField('an',a.files)}</div></div>
@@ -182,19 +185,32 @@ ${f('كهرباء',inp('an_elec',a.elec,'number'))}${f('إنترنت',inp('an_ne
   if(!$('#frm').open)$('#frm').showModal();
   $('#an_save').onclick=()=>{const o=anCollect();if(!o.unit)return toast('أدخل رقم الوحدة');if(!(o.payment>0))return toast('أدخل قيمة الدفعة');
     o.files=attGet('an');attCommit();
+    if(!o.no){const d=String(o.date||iso(TODAY)).split('-'),pre='H-'+(d[2]||'')+(d[1]||'')+(d[0]||''),n=N_().filter(x=>String(x.no||'').startsWith(pre)).length+1;o.no=pre+n}
     if(o.id)Object.assign(N_().find(x=>x.id===o.id),o);else{o.id='n'+uid();N_().push(o)}
     persist();$('#frm').close();render();toast('تم حفظ التحليل')};
   anPreview();
 }
 function anDoc(a){
-  const k=anaFor(a),pn=esc(pname(a.pid)),ag=findAgr(a);
-  const rowsL=Fin.ANA_LINES.map(([key,,tx])=>[key,tx]).filter(([key])=>k.lines[key]).map(([key,tx])=>({cells:[AN_LAB[key],fm(k.lines[key]),tx?'خاضع':'غير خاضع']}));
-  const body=`<table class="kv"><tr><th style="width:18%">المشروع</th><td>${pn}</td><th style="width:18%">الوحدة</th><td><b>${esc(a.unit)}</b></td></tr><tr><th>المالك</th><td>${esc(a.owner)||'—'}</td><th>المستأجر</th><td>${esc(a.tenant)||'—'}</td></tr><tr><th>تاريخ التحليل</th><td><bdi>${esc(a.date)}</bdi></td><th>الإيجار السنوي</th><td>${fm(a.annualRent)}</td></tr>${a.sap?`<tr><th>رقم ساب SAP</th><td colspan="3">${esc(a.sap)}</td></tr>`:''}${a.cstart||a.cend||a.ejar?`<tr><th>مدة العقد</th><td>${a.cstart||a.cend?'<bdi>'+esc(a.cstart||'—')+'</bdi> إلى <bdi>'+esc(a.cend||'—')+'</bdi>':'—'}</td><th>رقم عقد إيجار</th><td>${esc(a.ejar)||'—'}</td></tr>`:''}</table>
-<h3>الدفعة المسددة: <bdi>${fm(k.payment)}</bdi> ريال</h3>
-${T([{h:'بند الخصم',k:'t'},{h:'المبلغ',k:'n'},{h:'الضريبة',k:'t'}],[...rowsL,{cells:['ضريبة القيمة المضافة '+VATP()+'% على '+fm(k.taxBase),'<b>'+fm(k.vat)+'</b>','']}],{print:true,foot:['إجمالي الخصومات',fm(k.totalDed),'']})}
-<div class="sum" style="margin-top:14px"><div><span>قيمة الدفعة</span><b>${fm(k.payment)}</b></div><div><span>إجمالي الخصومات</span><b>${fm(k.totalDed)}</b></div><div><span>الصافي المستحق للمالك</span><b>${fm(k.netOwner)}</b></div></div>
-<p style="margin-top:8px;font-size:12px">${esc(Fin.tafqeet(Math.max(0,k.netOwner)))}</p>${ag?`<p style="font-size:12px">مرتبط بالاتفاقية رقم ${esc(ag.no)}</p>`:''}${a.note?`<p style="font-size:12px"><b>ملاحظات:</b> ${esc(a.note)}</p>`:''}`;
-  return docHtml({title:'التحليل المالي لدفعة إيجار',sub:pn+' / '+esc(a.unit),body});
+  const k=anaFor(a),pn=esc(pname(a.pid)),ag=findAgr(a),L=k.lines,yr=String(a.date||iso(TODAY)).slice(0,4),ann=+a.annualRent||0,pct=ann>0?Math.round(k.payment/ann*1000)/10:0;
+  const mg=a.mgmt||{},mgLab='إدارة الأملاك'+(mg.type==='pct'&&+mg.value>0?' ('+(+mg.value)+'%)':'');
+  const n2=v=>(+v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const row=(lab,val,o={})=>`<tr class="${o.cls||''}"><td class="nt">${o.note?esc(o.note):''}</td><td class="am">${val===''?'':n2(val)}</td><td class="lb">${lab}</td>${o.side||''}</tr>`;
+  const ded=[['الرسوم السنوية للخدمات العام '+yr+'م',L.service],[mgLab,L.mgmt],['قيمة مضافة رسوم خدمات وإدارة أملاك ('+VATP()+'%)',k.vat],['قيمة توثيق عقد إيجار',L.contract],['مبالغ سابقة (دفعة من المديونية)',L.prev,a.prevNote],['فواتير صيانة شاملة الضريبة',L.maint],['نظافة شاملة الضريبة',L.clean]];
+  if(L.elec)ded.push(['كهرباء',L.elec]);if(L.net)ded.push(['إنترنت',L.net]);if(L.other)ded.push(['أخرى',L.other]);
+  const side=`<td class="side" rowspan="${ded.length+1}"><span>الرسوم والاستقطاعات والضريبة</span></td>`;
+  const dr=ded.map((d,i)=>row(esc(d[0]),d[1],{note:d[2],side:i===0?side:''})).join('');
+  const info=`<div class="an-info"><div class="r1"><div><span>رقم الوحدة</span><b>${esc(a.unit)}</b></div><div><span>المالك</span><b>${esc(a.owner)||'—'}</b></div><div><span>المستأجر</span><b>${esc(a.tenant)||'—'}</b></div></div>
+<div class="r2"><div><span>المشروع</span><b>${pn}</b></div><div><span>بداية الإيجار</span><b><bdi>${esc(a.cstart||'—')}</bdi></b></div><div><span>نهاية الإيجار</span><b><bdi>${esc(a.cend||'—')}</bdi></b></div><div><span>تاريخ التحليل</span><b><bdi>${esc(a.date)}</bdi></b></div></div>
+<div class="r3">${a.no?`<div><span>رقم التحليل</span><b><bdi>${esc(a.no)}</bdi></b></div>`:''}${a.ctype?`<div><span>نوع العقد</span><b>${a.ctype==='renew'?'تجديد':'جديد'}</b></div>`:''}${a.ejar?`<div><span>رقم عقد إيجار</span><b><bdi>${esc(a.ejar)}</bdi></b></div>`:''}${a.sap?`<div><span>رقم ساب SAP</span><b><bdi>${esc(a.sap)}</bdi></b></div>`:''}</div></div>`;
+  const body=`${info}<table class="an-tb"><thead><tr><th>ملاحظات</th><th>المبلغ (ريال سعودي)</th><th>تفاصيل وبيان القيمة الإيجارية</th><th class="sd"></th></tr></thead><tbody>
+<tr class="hd"><td></td><td></td><td class="lb">قيمة إيجار الوحدة بعد خصم جميع الاستقطاعات</td><td class="sd"></td></tr>
+${row('قيمة إيجار الوحدة رقم '+esc(a.unit),ann,{cls:'b',side:'<td class="sd"></td>'})}${row('المدفوع من الإيجار'+(pct?' '+pct+'%':''),k.payment,{cls:'b',side:'<td class="sd"></td>'})}
+<tr><td></td><td></td><td class="lb b">ويتم توزيعها كما يلي:</td><td class="sd"></td></tr>
+${dr}${row('إجمالي الاستقطاعات',k.totalDed,{cls:'tot'})}
+${row('المتبقي للمالك',k.netOwner,{cls:'net',side:'<td class="sd"></td>'})}</tbody></table>
+${k.over?'<p class="warnbox">إجمالي الخصومات يتجاوز قيمة الدفعة</p>':''}
+<p class="an-tf">${esc(Fin.tafqeet(Math.max(0,k.netOwner)))}</p>${ag?`<p style="font-size:12px">مرتبط بالاتفاقية رقم ${esc(ag.no)}</p>`:''}${a.note?`<p style="font-size:12px"><b>ملاحظات:</b> ${esc(a.note)}</p>`:''}`;
+  return docHtml({title:'تحليل إيجار وحدة سكنية',sub:pn+' / '+esc(a.unit),body});
 }
 
 /* ===== ربط العرض والأحداث ===== */
@@ -220,6 +236,8 @@ document.addEventListener('change',e=>{
   else if(id==='an_pick'&&v){const[p,c]=v.split('|');$('#an_pid').value=p;$('#an_cid').value=c;const cc=cOf(p,c),ps=[...cc.payments].sort((x,y)=>String(x.date).localeCompare(String(y.date)));
     $('#an_pay').innerHTML='<option value="">— يدوي —</option>'+ps.map(q=>`<option value="${esc(q.id)}">${esc((q.date||'بلا تاريخ')+' — '+fm(q.amount))}</option>`).join('');if(ps.length)$('#an_pay').value=ps[ps.length-1].id;anPrefill()}
   else if(id==='an_pay')anPrefill();
+  else if(id==='an_pid'||id==='an_cst'){const sel_=document.getElementById('an_pick'),cur=sel_.value,L=anPickList(rv('an_pid'),rv('an_cst'));sel_.innerHTML=L.map(([x,y])=>`<option value="${esc(x)}">${esc(y)}</option>`).join('');if(L.some(o=>o[0]===cur))sel_.value=cur}
+  else if(id==='fn_d'){S.fin.d=v;render()}else if(id==='fn_o'){S.fin.o=v;render()}else if(id==='fn_v'){S.fin.v=v;render()}
   else if(e.target.closest('#frm')){if(id.startsWith('ag_')||e.target.closest('#ag_inst'))agrPreview();else if(id.startsWith('an_'))anPreview()}
 });
 if(typeof printDoc==='function'){/* قائمة الطباعة العامة تستخدم S.pm المعدّ في كل عرض */}

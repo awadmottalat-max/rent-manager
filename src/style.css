@@ -350,3 +350,25 @@ html[lang=en] .dtf .dtm{text-align-last:center}
 .mtk>div{border:1px solid var(--line,#d6e0ee);border-radius:10px;padding:8px 12px;background:#fff}.mtk span{display:block;color:var(--mut,#56637e);font-size:12px}.mtk b{font-weight:600}
 .mtl{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px}.mtl li{border:1px solid var(--line,#d6e0ee);border-radius:10px;padding:8px 12px;background:#fff}.mtl small{color:var(--mut,#56637e);margin-inline-end:8px}
 .mtsm{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-top:12px}
+
+/* ===== تحليل الإيجار (نموذج الأكسل) ===== */
+.an-info{border:1px solid #cbd5e4;border-radius:8px;overflow:hidden;margin-bottom:12px;font-size:12px}
+.an-info>div{display:grid;gap:0;border-bottom:1px solid #dde5f0}.an-info>div:last-child{border-bottom:0}
+.an-info .r1{grid-template-columns:repeat(3,1fr)}.an-info .r2{grid-template-columns:repeat(4,1fr)}.an-info .r3{display:flex;flex-wrap:wrap}.an-info .r3:empty{display:none}
+.an-info>div>div{padding:6px 10px;border-inline-start:1px solid #dde5f0;display:flex;flex-direction:column;gap:2px}.an-info>div>div:first-child{border-inline-start:0}.an-info .r3>div{flex:1}
+.an-info span{color:#6a7a92;font-size:10.5px}.an-info b{font-weight:700}
+.doc .an-tb{font-size:12px}.doc .an-tb th{background:#eef3fb;text-align:center;font-weight:700}.doc .an-tb td{padding:6px 10px;height:26px}
+.doc .an-tb td.am{text-align:center;font-variant-numeric:tabular-nums;width:22%}.doc .an-tb td.nt{width:22%;font-size:11px;color:#56637e}.doc .an-tb td.lb{text-align:start}
+.doc .an-tb tr.hd td{background:#e6ebf3;font-weight:700}.doc .an-tb tr.b td,.doc .an-tb td.b{font-weight:700}
+.doc .an-tb tr.tot td{background:#f4f7fc;font-weight:700}.doc .an-tb tr.net td{background:#fff7e4;font-weight:800;border-top:2px solid var(--gold);border-bottom:2px solid var(--gold);font-size:13px}
+.doc .an-tb .sd{width:34px;padding:0;border:0;background:none}.doc .an-tb td.side{border:1px solid #d6deea;background:#fafbfe;text-align:center;vertical-align:middle;width:34px;padding:0}
+.doc .an-tb td.side span{white-space:nowrap;writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;font-weight:700;color:var(--acc);display:inline-block;padding:8px 0;letter-spacing:.2px}
+.an-tf{margin-top:10px;font-size:12.5px;font-weight:600;padding:8px 12px;background:#f4f7fc;border-radius:8px;border-inline-start:4px solid var(--gold)}
+
+/* ===== 1.24.0 — لمسات صباحية ===== */
+.kp{transition:transform .18s,box-shadow .18s,border-color .18s}.kp:hover{transform:translateY(-2px);box-shadow:var(--shadow-m)}
+tbody tr{transition:background .12s}tbody tr:hover td{background:#e8f1fc}
+.btn{transition:transform .12s,box-shadow .15s,background .15s}.btn:active{transform:scale(.97)}.btn.p:hover{box-shadow:0 6px 16px #14234b33}
+::selection{background:#e9d9bb;color:#14203a}
+*{scrollbar-width:thin;scrollbar-color:#b9c8de transparent}
+*::-webkit-scrollbar{width:9px;height:9px}*::-webkit-scrollbar-thumb{background:#b9c8de;border-radius:9px;border:2px solid transparent;background-clip:padding-box}*::-webkit-scrollbar-thumb:hover{background:#8fa6c8;background-clip:padding-box}
