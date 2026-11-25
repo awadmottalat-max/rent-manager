@@ -1,0 +1,10 @@
+const{app,BrowserWindow}=require('electron');const fs=require('fs'),path=require('path'),os=require('os');
+process.env.RENT_CLOUD_TEST='1';
+app.setPath('userData',fs.mkdtempSync(path.join(os.tmpdir(),'rent-')));app.commandLine.appendSwitch('no-sandbox');require('../main.js');
+app.whenReady().then(async()=>{await new Promise(r=>setTimeout(r,2500));const w=BrowserWindow.getAllWindows()[0];
+ console.log(await w.webContents.executeJavaScript(`(async()=>{const R={};try{const sl=ms=>new Promise(r=>setTimeout(r,ms));
+  S.cl.on=true;S.cl.email='a@b.c';S.cl.role='admin';clBadge('ok');
+  R.badge=document.getElementById('clb').textContent;
+  document.querySelector('#clb [data-a="clLogout"]').click();await sl(400);
+  R.gate=!!document.getElementById('clg');R.email=S.cl.email;
+  clDlg&&0;}catch(e){R.e=e.stack}return JSON.stringify(R)})()`));app.exit(0)});
