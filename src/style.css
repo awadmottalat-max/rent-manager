@@ -386,3 +386,9 @@ tbody tr{transition:background .12s}tbody tr:hover td{background:#e8f1fc}
 .msl{max-height:260px;overflow:auto;display:flex;flex-direction:column}
 .msl label{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;cursor:pointer;font-size:13.5px}.msl label:hover{background:var(--soft)}.msl input{width:auto;accent-color:var(--acc)}
 .msf{display:flex;justify-content:flex-end;padding-top:6px;border-top:1px solid var(--line);margin-top:6px}
+
+/* 1.25.1: القوائم المنسدلة فوق البطاقات + حقل التاريخ كاملًا داخل الشبكات */
+.bar{position:relative;z-index:30}.ms.open{z-index:70}.ms.open .msp{z-index:80}
+.g3r>label:has(.dtf),.g2r>label:has(.dtf){grid-column:1/-1}
+.g3r .dtf,.g2r .dtf{width:100%;box-sizing:border-box}.g3r .dtf .dtm,.g2r .dtf .dtm{min-width:0;flex:1}
+.g3r .dtf select,.g3r .dtf input{flex:0 0 auto}.g3r .dtf .dtm{flex:1 1 auto}

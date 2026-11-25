@@ -1,0 +1,10 @@
+const{app,BrowserWindow}=require('electron');const fs=require('fs'),path=require('path'),os=require('os');
+app.setPath('userData',fs.mkdtempSync(path.join(os.tmpdir(),'rent-')));app.commandLine.appendSwitch('no-sandbox');require('../main.js');
+const D=JSON.parse(fs.readFileSync('/tmp/db2.json','utf8'));
+app.whenReady().then(async()=>{await new Promise(r=>setTimeout(r,2500));const w=BrowserWindow.getAllWindows()[0];w.setSize(1400,1000);
+ const R=await w.webContents.executeJavaScript(`(async()=>{const d=${JSON.stringify(D)};normalize(d);S.db=d;const sl=ms=>new Promise(r=>setTimeout(r,ms));
+ go('inv');await sl(300);document.querySelector('#view .msb').click();await sl(200);
+ const m=document.querySelector('.msp').getBoundingClientRect(),el=document.elementFromPoint(m.left+40,m.top+60);return JSON.stringify({top:!!el.closest('.msp')})})()`);
+ console.log(R);fs.writeFileSync('/tmp/ms1.png',(await w.webContents.capturePage()).toPNG());
+ await w.webContents.executeJavaScript(`(async()=>{document.body.click();contractForm();await new Promise(r=>setTimeout(r,300));const k=document.getElementById('cf_kind');k.value='ext';k.dispatchEvent(new Event('change'));document.getElementById('cf_ftype').value='pct';document.getElementById('cf_ftype').dispatchEvent(new Event('change'));document.getElementById('cf_xf').scrollIntoView();document.getElementById('cf_fmode').value='once';document.getElementById('cf_fmode').dispatchEvent(new Event('change'))})()`);
+ await new Promise(r=>setTimeout(r,500));fs.writeFileSync('/tmp/ms2.png',(await w.webContents.capturePage()).toPNG());app.exit(0)});
