@@ -1,7 +1,7 @@
 /* حصر الوحدات والملاك: استيراد (مشروع / وحدة / مالك) وتقارير الأعداد */
 Object.assign(S,{iv:{tab:'proj',p:'',q:'',s:''}});
 const ivKey=u=>String(u||'').replace(/[\s\/\-_]/g,'').toLowerCase();
-const ivCanon=u=>{const t=String(u||'').replace(/\s+/g,' ').trim(),m=t.match(/^([A-Za-z])\s*[\/\-]?\s*(\d+)$/);return m?m[1].toUpperCase()+m[2]:t};
+const ivCanon=u=>{const t=String(u||'').replace(/\s+/g,' ').trim(),m=t.match(/^([A-Za-z])\s*[\/\-]?\s*(\d+)$/);return m?((m[1].toUpperCase()==='S'&&t.includes('-'))?'S-'+m[2]:m[1].toUpperCase()+m[2]):t};
 function ivUnits(){
   const out=new Map(),act=new Set();
   for(const[pid,p]of Object.entries(P())){
@@ -11,6 +11,7 @@ function ivUnits(){
     for(const c of cs){put(c.unit,c.owner,'rent');const o=out.get(pid+'|'+ivKey(c.unit));if(o&&calc(c,MODE(),TODAY).st==='ساري')o.rented=true}
   }
   for(const f of FU()){if(!P()[f.pid])continue;const k=f.pid+'|'+ivKey(f.no);let o=out.get(k);if(!o){o={pid:f.pid,pn:P()[f.pid].name,unit:f.no,owner:'',src:'fee',rented:false};out.set(k,o)}if(f.owner&&!o.owner)o.owner=nm(f.owner)}
+  for(const o of out.values())if(/شركه?\s*السليمان\s*العقار/.test(String(o.owner).replace(/ة/g,'ه')))o.owner='';
   return[...out.values()].sort((a,b)=>a.pn.localeCompare(b.pn,'ar')||String(a.unit).localeCompare(String(b.unit),'ar',{numeric:true}));
 }
 function vInv(){
@@ -64,10 +65,10 @@ async function ivImport(pre){
   for(const sn of wb.SheetNames){
     const R=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:'',raw:true});
     const hi=R.findIndex(r=>r.some(c=>/وحدة/.test(String(c)))&&r.some(c=>/مالك|عميل/.test(String(c))));if(hi<0)continue;
-    const H=R[hi].map(c=>String(c).trim()),ci=re=>H.findIndex(h=>re.test(h)),cp=ci(/مشروع/),cu=ci(/وحدة/),co=ci(/مالك|عميل/);
+    const H=R[hi].map(c=>String(c).trim()),ci=re=>H.findIndex(h=>re.test(h)),cp=ci(/مشروع/),cu=ci(/وحدة/),co=ci(/مالك|عميل/),ca=ci(/مساحة/),ci_=ci(/هوية|سجل/),ph=ci(/جوال|هاتف/);
     R.slice(hi+1).forEach((r,i)=>{const u=String(r[cu]??'').trim();if(!u)return;const pn=cp>=0&&String(r[cp]).trim()?String(r[cp]).trim():sn,pr=pf(pn);
       if(!pr){bad.push('ورقة '+sn+' سطر '+(hi+i+2)+': المشروع «'+pn+'» غير موجود في التطبيق');return}
-      rows.push({pid:pr[0],pn:pr[1].name,unit:ivCanon(u),owner:nm(String(r[co]??'').replace(/[\t\n]/g,' ')),sheet:sn})});
+      rows.push({pid:pr[0],pn:pr[1].name,unit:ivCanon(u),owner:nm(String(r[co]??'').replace(/[\t\n]/g,' ')),area:ca>=0?(+r[ca]||''):'',idno:ci_>=0?String(r[ci_]??'').replace(/\D/g,''):'',phone:ph>=0?(d=>d.length===9&&d[0]==='5'?'0'+d:d)(String(r[ph]??'').replace(/\D/g,'')):'',sheet:sn})});
   }
   if(!rows.length){toast(bad[0]||'لم أجد أعمدة (رقم الوحدة، المالك) في الملف');return}
   const seen=new Set(),dup=[],R2=[];for(const r of rows){const k=r.pid+'|'+ivKey(r.unit);if(seen.has(k)){dup.push(r.pn+' / '+r.unit);continue}seen.add(k);R2.push(r)}
@@ -88,9 +89,9 @@ async function ivImport(pre){
       plan.push({pid,pn,unit:cn,owner:'',exists:true,inRent:true,fu:null,un:v.un,cs:v.cs,curNames:[],rename:true,curUnit:v.no,change:false,extra:true})}}
   const st=a=>({t:a.length,new_:a.filter(o=>!o.exists).length,chg:a.filter(o=>o.change).length,ren:a.filter(o=>o.rename).length,uns:a.filter(o=>!o.owner&&!o.curNames.length).length});
   const byP=[...new Set(plan.map(o=>o.pn))].map(n=>({n,...st(plan.filter(o=>o.pn===n))}));
-  const chg=plan.filter(o=>o.change||o.rename);
+  const chg=plan.filter(o=>o.change||o.rename),withC=new Set(plan.filter(o=>o.owner&&(o.phone||o.idno)).map(o=>o.owner)).size;
   const html=`<div class="tw"><table><thead><tr><th>المشروع</th><th>وحدات الملف</th><th>جديدة (للحصر)</th><th>تغيير اسم مالك</th><th>تعديل رقم وحدة</th><th>بلا مالك (غير مباعة)</th></tr></thead><tbody>${byP.map(o=>`<tr><td><b>${esc(o.n)}</b></td><td>${o.t}</td><td>${o.new_}</td><td>${o.chg}</td><td>${o.ren}</td><td>${o.uns}</td></tr>`).join('')}</tbody></table></div>
-<p class="sub">الوحدات الجديدة تُسجَّل للحصر والرسوم فقط ولا تظهر في شاشات الإيجار. الوحدات الموجودة تُحدَّث أسماء ملاكها (وفي عقودها)، ولا تتكرر.</p>
+${withC?`<p class="sub">سيتم تحديث الجوال والهوية في سجل الملاك لـ${withC} مالك.</p>`:''}<p class="sub">الوحدات الجديدة تُسجَّل للحصر والرسوم فقط ولا تظهر في شاشات الإيجار. الوحدات الموجودة تُحدَّث أسماء ملاكها (وفي عقودها)، ولا تتكرر.</p>
 ${chg.length?`<h3>التغييرات (${chg.length})</h3><div class="tw" style="max-height:260px;overflow:auto"><table><thead><tr><th>المشروع</th><th>الوحدة</th><th>التغيير</th></tr></thead><tbody>${chg.slice(0,120).map(o=>`<tr><td>${esc(o.pn)}</td><td><b>${esc(o.unit)}</b></td><td>${o.rename?esc(o.curUnit)+' ← '+esc(o.unit)+' ':''}${o.change?esc(o.curNames.join('، '))+' ← '+esc(o.owner):''}</td></tr>`).join('')}</tbody></table></div>${chg.length>120?'<p class="sub">… والباقي</p>':''}`:''}
 ${dup.length||bad.length?`<p class="sub" style="color:var(--late)">متجاهَل: ${dup.length?dup.length+' وحدة مكررة في الملف. ':''}${bad.slice(0,6).map(esc).join('<br>')}</p>`:''}`;
   formDlg({title:'مراجعة استيراد الحصر',save:'تطبيق الاستيراد',vals:{},fields:[{t:'info',k:'i',html}],onSave:()=>{
@@ -101,7 +102,7 @@ ${dup.length||bad.length?`<p class="sub" style="color:var(--late)">متجاهَ�
         const clash=[...(p.units||[]),...FU().filter(f=>f.pid===o.pid).map(f=>({no:f.no,_f:1}))].some(u=>u.no===o.unit&&ivKey(u.no)!==ivKey(o.curUnit))||false;
         if(clash){skip++}else{for(const u of o.un)u.no=o.unit;for(const c of o.cs)c.unit=o.unit;if(o.fu)o.fu.no=o.unit;rn++}
       }
-      if(!o.exists){FU().push({id:'f'+uid(),pid:o.pid,no:o.unit,owner:o.owner,phone:'',amt:0});nu++;continue}
+      if(!o.exists){FU().push({id:'f'+uid(),pid:o.pid,no:o.unit,owner:o.owner,phone:o.phone||'',area:o.area||'',amt:0});nu++;continue}
       if(o.change){
         const old=o.curNames;
         for(const u of o.un)u.owner=o.owner;for(const c of o.cs)c.owner=o.owner;if(o.fu)o.fu.owner=o.owner;
@@ -112,7 +113,12 @@ ${dup.length||bad.length?`<p class="sub" style="color:var(--late)">متجاهَ�
         for(const c of o.cs)if(!c.owner)c.owner=o.owner
       }
     }
-    persist();render();toast('تم: '+nu+' وحدة جديدة، '+oc+' تحديث مالك، '+rn+' تعديل رقم'+(skip?'، '+skip+' تعارض مُتخطى':''))}});
+    let ra=0,rn_=0;const reg=PR('owners');
+    for(const o of plan){
+      if(o.area>0){const u=P()[o.pid].units?.find(x=>ivKey(x.no)===ivKey(o.unit));if(u&&!u.area)u.area=o.area;const f=FU().find(x=>x.pid===o.pid&&ivKey(x.no)===ivKey(o.unit));if(f&&!f.area)f.area=o.area}
+      if(o.owner&&(o.phone||o.idno)){let r=reg.find(x=>nm(x.name)===o.owner);if(!r){r={id:'r'+uid(),name:o.owner,phone:'',idno:'',email:'',unified:'',tax:'',addr:'',notes:''};reg.push(r);rn_++}
+        if(o.phone&&r.phone!==o.phone){r.phone=o.phone;ra++}if(o.idno&&r.idno!==o.idno){r.idno=o.idno;ra++}}}
+    persist();render();toast('تم: '+nu+' وحدة جديدة، '+oc+' تحديث مالك، '+rn+' تعديل رقم، '+(ra+rn_?(rn_+' مالك جديد/'+ra+' تحديث جوال وهوية'):'')+(skip?'، '+skip+' تعارض مُتخطى':''))}});
 }
 Object.assign(act,{ivImp:ivImport,ivTab:b=>{S.iv.tab=b.dataset.t;render()},ivOwner:b=>ivOwnerDlg(b.dataset.n)});
 document.addEventListener('input',e=>{if(e.target.id==='iv_q'){S.iv.q=e.target.value.trim();render()}});

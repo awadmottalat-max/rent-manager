@@ -1414,5 +1414,7 @@ window.I18N_EN={
 "الوحدات الجديدة تُسجَّل للحصر والرسوم فقط ولا تظهر في شاشات الإيجار. الوحدات الموجودة تُحدَّث أسماء ملاكها (وفي عقودها)، ولا تتكرر.": "New units are registered for inventory and fees only and do not appear in the rental screens. Existing units get their owner names updated (and in their contracts), without duplication.",
 "التغييرات": "Changes",
 "التغيير": "Change",
-"متجاهَل": "Ignored"
+"متجاهَل": "Ignored",
+"سيتم تحديث الجوال والهوية في سجل الملاك لـ": "Phone and ID will be updated in the owners register for",
+" مالك.": " owners."
 };
