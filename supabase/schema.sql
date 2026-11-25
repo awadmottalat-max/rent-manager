@@ -61,6 +61,9 @@ create policy history_admin_read on public.app_doc_history for select to authent
 -- (مشاريع Supabase الجديدة لا تمنح SELECT تلقائيًا، فبدون السطر التالي يرجع الخطأ 403)
 revoke all on public.profiles, public.app_docs, public.app_doc_history from anon, authenticated;
 grant select on public.profiles, public.app_docs, public.app_doc_history to authenticated;
+-- دالة manage-users تعمل بدور service_role وتحتاج هذه الصلاحيات على profiles (لا تُمنح تلقائيًا في المشاريع الجديدة)
+revoke all on public.profiles from service_role;
+grant select, insert, update, delete on public.profiles to service_role;
 
 -- ---------- الحفظ مع فحص التضارب ----------
 -- يرجع الرقم الجديد، أو يرفع الخطأ 'REV_CONFLICT' إن تغيّر المستند بعد آخر قراءة لك.
