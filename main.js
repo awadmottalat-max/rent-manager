@@ -19,7 +19,8 @@ function backup(tag){
   const f=path.join(bdir(),`rent-${stamp()}${tag?'-'+tag:''}.json`);fs.copyFileSync(dataFile(),f);lastBackup=Date.now();
   const all=fs.readdirSync(bdir()).filter(n=>/^rent-.*\.json$/.test(n)).sort();
   // لا نحذف نسخ ما قبل الاستيراد/الاستعادة تلقائيًا إلا إذا زادت كثيرًا
-  const auto=all.filter(n=>!/-(import|restore|manual)\.json$/.test(n));
+  const wk=all.filter(n=>/-weekly\.json$/.test(n));while(wk.length>12)fs.unlinkSync(path.join(bdir(),wk.shift()));
+  const auto=all.filter(n=>!/-(import|restore|manual|weekly)\.json$/.test(n));
   while(auto.length>MAXB)fs.unlinkSync(path.join(bdir(),auto.shift()));
   return f;
 }
@@ -36,6 +37,7 @@ function load(){
 }
 function save(data){
   if(Date.now()-lastBackup>24*3600e3)backup('auto');
+  try{const wk=fs.readdirSync(bdir()).filter(n=>/-weekly\.json$/.test(n)).sort().pop();if(!wk||Date.now()-fs.statSync(path.join(bdir(),wk)).mtimeMs>7*864e5)backup('weekly')}catch{}
   atomicWrite(dataFile(),JSON.stringify(data));return true;
 }
 /* ---------- أيقونة مخصصة ---------- */

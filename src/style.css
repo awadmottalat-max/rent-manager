@@ -447,3 +447,12 @@ dialog::backdrop{background:#0b153580;backdrop-filter:blur(3px)}
 .imps{display:grid;gap:12px}.ib{border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:linear-gradient(180deg,#fff,#f7f9fd)}.ib>b{color:var(--acc);font-size:15px}.ib>span{display:block;color:var(--mut);font-size:13px;margin:3px 0 10px}
 .set[data-tab="g"] .card:not([data-t="g"]),.set[data-tab="d"] .card:not([data-t="d"]),.set[data-tab="c"] .card:not([data-t="c"]){display:none}
 #view>.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 14px}
+.au-add{color:#1f7a4d}.au-del{color:#c0392b}.au-edit{color:var(--acc)}
+.topbar .gs{position:relative}
+#gsr{position:absolute;top:calc(100% + 8px);inset-inline:0;min-width:380px;max-height:70vh;overflow:auto;background:#fff;border:1px solid var(--gld-l);border-radius:16px;box-shadow:0 24px 60px #14234b3d;padding:8px;z-index:200;animation:luxIn .15s ease-out}
+#gsr h6{margin:8px 8px 4px;color:var(--gld);font-size:12px;letter-spacing:.3px}
+#gsr button{all:unset;display:flex;flex-direction:column;gap:2px;width:calc(100% - 16px);padding:8px;border-radius:10px;cursor:pointer;box-sizing:content-box}
+#gsr button:hover,#gsr button:focus{background:#f2f6fd}
+#gsr button b{color:var(--acc)}#gsr button span{color:var(--mut);font-size:12px}
+#gsr p{padding:14px;color:var(--mut);text-align:center;margin:0}
+.hero{position:relative}.hero .dcb{position:absolute;inset-inline-end:16px;top:12px;background:#ffffff22;color:#fff;border-color:#ffffff55}

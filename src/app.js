@@ -18,7 +18,7 @@ function arm(b,fn){if(b.dataset.armed){fn();return}b.dataset.t=b.textContent;b.d
 let dirty=false,st=null;
 let lastFlush=0;
 const SAVE_MS=()=>{const m=Number(S.db?.settings?.saveEvery);return(isFinite(m)&&m>=0?m:5)*60e3};
-function persist(){if(S.cl&&S.cl.ro){toast('حسابك للاطلاع فقط: لا تُحفظ التعديلات');return}dirty=true;clearTimeout(st);const w=Math.max(250,lastFlush+SAVE_MS()-Date.now());st=setTimeout(flush,w)}
+function persist(){if(S.cl&&S.cl.ro){toast('حسابك للاطلاع فقط: لا تُحفظ التعديلات');return}try{auRun()}catch(e){window.__auErr=String(e.stack)}dirty=true;clearTimeout(st);const w=Math.max(250,lastFlush+SAVE_MS()-Date.now());st=setTimeout(flush,w)}
 async function flush(){if(!dirty)return;dirty=false;lastFlush=Date.now();try{await native.save(S.db)}catch(e){dirty=true;toast('تعذّر الحفظ على القرص: '+(e.message||e))}
   if(S.cl&&S.cl.on&&!S.cl.ro&&S.cl.base)await clPush()}
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&dirty){clearTimeout(st);flush()}});
@@ -117,17 +117,17 @@ db:'<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3
 alert:'<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/>',
 clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'};
 const ico=(k,c)=>`<svg class="ic ${c||''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[k]||''}</svg>`;
-const NAVIC={alerts:'bell',dash:'dash',avail:'key',contracts:'file',ext:'ext',maint:'tool',svc:'calc',inv:'db',ended:'filex',due:'wallet',flow:'trend',renew:'refresh',props:'building',owners:'users',tenants:'users',agr:'sign',fin:'calc',rep:'chart',settings:'db'};
+const NAVIC={audit:'file',alerts:'bell',dash:'dash',avail:'key',contracts:'file',ext:'ext',maint:'tool',svc:'calc',inv:'db',ended:'filex',due:'wallet',flow:'trend',renew:'refresh',props:'building',owners:'users',tenants:'users',agr:'sign',fin:'calc',rep:'chart',settings:'db'};
 
 /* ---------- التنقل ---------- */
-const VIEWS=[['dash','لوحة التحكم'],['alerts','التنبيهات'],['avail','الشقق المتاحة'],['contracts','العقود'],['ext','العقود الخارجية'],['ended','العقود المنتهية'],['due','المستحقات'],['flow','التدفقات النقدية'],['renew','التجديدات'],['props','المشاريع والوحدات'],['owners','الملاك'],['tenants','المستأجرون'],['agr','اتفاقيات التأجير'],['fin','التحليل المالي'],['maint','الصيانة والنظافة'],['svc','الرسوم والخدمات'],['inv','حصر الوحدات والملاك'],['rep','التقارير'],['settings','الإعدادات']];
+const VIEWS=[['dash','لوحة التحكم'],['alerts','التنبيهات'],['avail','الشقق المتاحة'],['contracts','العقود'],['ext','العقود الخارجية'],['ended','العقود المنتهية'],['due','المستحقات'],['flow','التدفقات النقدية'],['renew','التجديدات'],['props','المشاريع والوحدات'],['owners','الملاك'],['tenants','المستأجرون'],['agr','اتفاقيات التأجير'],['fin','التحليل المالي'],['maint','الصيانة والنظافة'],['svc','الرسوم والخدمات'],['inv','حصر الوحدات والملاك'],['rep','التقارير'],['audit','سجل التعديلات'],['settings','الإعدادات']];
 const VF={};
 function go(v){S.view=v;render();$('main').scrollTop=0}
 function renderNav(all){
   const late=all.filter(x=>x.r.late_n).length,ren=renewalsOpen(all,90).length;
   const pendN=all.filter(x=>x.r.st==='منتهي'&&endState(x.pid,x.c)==='pend').length;
   const bd={svc:(()=>{const n=(S.db.svc||[]).filter(x=>typeof svLate==='function'&&svLate(x)).length;return n?`<span class="bd">${n}</span>`:''})(),maint:(()=>{const n=(S.db.mreq||[]).filter(x=>x.status==='new'||x.status==='wait').length;return n?`<span class="bd">${n}</span>`:''})(),ext:(()=>{const n=rows().filter(x=>x.ext&&x.f.late_n).length;return n?`<span class="bd">${n}</span>`:''})(),alerts:(()=>{const n=typeof alertCount==='function'?alertCount(all):0;return n?`<span class="bd">${n}</span>`:''})(),ended:pendN?`<span class="bd">${pendN}</span>`:'',due:late?`<span class="bd">${late}</span>`:'',renew:ren?`<span class="bd">${ren}</span>`:''};
-  $('#nav').innerHTML=VIEWS.map(([k,l])=>`<button data-a="go" data-v="${k}" class="${S.view===k?'on':''}">${ico(NAVIC[k])}<span>${l}</span>${bd[k]||''}</button>`).join('')+(S.cl&&S.cl.on?`${clWho()}<button data-a="clLogout" class="lo" title="${esc(S.cl.email||'')}"><span>تسجيل الخروج</span></button>`:'');
+  $('#nav').innerHTML=VIEWS.filter(([k])=>k!=='audit'||!(S.cl&&S.cl.on)||S.cl.role==='admin').map(([k,l])=>`<button data-a="go" data-v="${k}" class="${S.view===k?'on':''}">${ico(NAVIC[k])}<span>${l}</span>${bd[k]||''}</button>`).join('')+(S.cl&&S.cl.on?`${clWho()}<button data-a="clLogout" class="lo" title="${esc(S.cl.email||'')}"><span>تسجيل الخروج</span></button>`:'');
 }
 function render(){
   const allX=rows(),all=allX.filter(x=>!x.ext);renderNav(all);
@@ -745,7 +745,7 @@ const act={
   tpl:async()=>{const f=await native.saveTemplate();if(f)toast('تم حفظ القالب')},
   bkNow:async()=>{await flush();const f=await native.backupNow();toast(f?'تم إنشاء نسخة احتياطية':'لا توجد بيانات بعد')},
   bkList:async()=>{const l=await native.backups();$('#bklist').innerHTML=l.length?'<div class="tw it" style="margin-top:8px;max-height:260px"><table><tbody>'+l.map(b=>`<tr><td class="n">${esc(b.name)}</td><td class="n">${Math.round(b.size/1024)} KB</td><td class="ac"><button class="btn sm" data-a="restore" data-n="${esc(b.name)}">استعادة</button></td></tr>`).join('')+'</tbody></table></div>':'<p>لا توجد نسخ.</p>'},
-  restore:b=>arm(b,async()=>{await flush();await native.backupPre('restore');try{const d=await native.readBackup(b.dataset.n);normalize(d);S.db=d;persist();render();toast('تمت الاستعادة')}catch{toast('تعذّرت الاستعادة')}}),
+  restore:b=>arm(b,async()=>{await flush();await native.backupPre('restore');try{const d=await native.readBackup(b.dataset.n);normalize(d);S.db=d;persist();auNote('استعادة نسخة احتياطية: '+b.dataset.n);persist();render();toast('تمت الاستعادة')}catch{toast('تعذّرت الاستعادة')}}),
   icoSet:async()=>{
     const f=await native.openFile([{name:'صور',extensions:['png','jpg','jpeg','ico','bmp','webp']}]);if(!f)return;
     try{
@@ -783,7 +783,7 @@ document.addEventListener('change',e=>{
   else if(id==='rp'){S.ren.p=v;render()}else if(id==='rw'){S.ren.win=v;render()}
   else if(id==='mode'){S.db.settings.mode=v;persist();render();toast('تم حفظ الإعداد')}
 });
-function normalize(d){d.projects=d.projects||{};delete d.maint;d.mreq=Array.isArray(d.mreq)?d.mreq:[];d.svc=Array.isArray(d.svc)?d.svc:[];d.feeUnits=Array.isArray(d.feeUnits)?d.feeUnits:[];d.settings=d.settings||{mode:'total'};d.settings.vat=d.settings.vat??15;d.settings.nextReceipt=d.settings.nextReceipt||1;d.settings.operator=d.settings.operator||'شركة كثيب للتشغيل والصيانة';d.agreements=d.agreements||[];d.parties=d.parties||{owners:[],tenants:[]};d.parties.owners=d.parties.owners||[];d.parties.tenants=d.parties.tenants||[];d.analyses=d.analyses||[];d.v=1;
+function normalize(d){d.projects=d.projects||{};delete d.maint;d.mreq=Array.isArray(d.mreq)?d.mreq:[];d.svc=Array.isArray(d.svc)?d.svc:[];d.feeUnits=Array.isArray(d.feeUnits)?d.feeUnits:[];d.settings=d.settings||{mode:'total'};d.settings.vat=d.settings.vat??15;d.settings.nextReceipt=d.settings.nextReceipt||1;d.settings.operator=d.settings.operator||'شركة كثيب للتشغيل والصيانة';d.agreements=d.agreements||[];d.parties=d.parties||{owners:[],tenants:[]};d.parties.owners=d.parties.owners||[];d.parties.tenants=d.parties.tenants||[];d.analyses=d.analyses||[];d.audit=Array.isArray(d.audit)?d.audit:[];d.v=1;
   for(const p of Object.values(d.projects)){p.contracts=p.contracts||[];p.units=p.units||[];for(const u of p.units){const t=String(u.type||'').trim();if(t==='شقه')u.type='شقة';else if(t==='ستديو'||t==='استديو')u.type='استديو شقة'}for(const c of p.contracts){c.payments=c.payments||[];ensureUnit(p,c)}}return d}
 native.onUpdate(d=>{
   const b=$('#upd');if(!b)return;
