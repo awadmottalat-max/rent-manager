@@ -63,11 +63,29 @@ function apDo(r){
     if((x.pays||[]).some(y=>y.id===pl.pay.id))return true;
     const pay={...pl.pay};apStamp(r,pay);(x.pays=x.pays||[]).push(pay);mtLog(x,'سداد معتمد: '+fm(pay.amount));persist();render();return true;
   }
+  if(r.kind==='agreement'){
+    const o=pl.obj;if(!o)return false;if(A_().some(x=>x.id===o.id))return true;
+    const g={...o,ap:r.no,apBy:(r.log||[]).filter(l=>l.act==='approve').map(l=>l.name||AP_ROLE[l.role]||'').filter(Boolean).join('، '),apFiles:(r.files||[]).map(f=>f.name)};
+    A_().push(g);persist();render();return true;
+  }
+  if(r.kind==='mt_quote'){
+    const q=pl.req;if(!q||!P()[q.pid])return false;if(MT().some(x=>x.id===q.id))return true;
+    const no=S.db.settings.nextMaint||1;S.db.settings.nextMaint=no+1;
+    const x={notes:[],pays:[],created:iso(TODAY),...q,no,status:'prog',done:'',ap:r.no,apFiles:(r.files||[]).map(f=>f.name)};
+    mtLog(x,'اعتُمد عرض السعر (طلب موافقات رقم '+r.no+') — '+fm(x.cost));MT().unshift(x);persist();render();return true;
+  }
+  if(r.kind==='mt_close'){
+    const x=mtById(pl.id);if(!x)return false;if(x.apc===r.id)return true;
+    x.status='done';x.done=pl.done||iso(TODAY);if(pl.cost!=null)x.cost=+pl.cost;x.apc=r.id;
+    if(pl.paid&&pl.pay&&!(x.pays||[]).some(y=>y.id===pl.pay.id)){const pay={...pl.pay};apStamp(r,pay);(x.pays=x.pays||[]).push(pay)}
+    mtLog(x,'اعتُمد الإقفال (طلب موافقات رقم '+r.no+') — '+(pl.paid?'مع سداد '+fm(pl.pay.amount):'لم يُسدَّد: بقيت مديونية على '+(MT_PL[x.payer]||''))+(pl.note?' — '+pl.note:''));
+    persist();render();return true;
+  }
   return false;
 }
 /* إرسال طلب اعتماد بدل التنفيذ المباشر */
-async function apSubmit(kind,pid,title,amount,payload,files){
-  if(!files||!files.length){toast('المرفق إلزامي');return false}
+async function apSubmit(kind,pid,title,amount,payload,files,optional){
+  files=files||[];if(!files.length&&!optional){toast('المرفق إلزامي');return false}
   toast('جارٍ رفع المرفقات وإرسال الطلب…');
   const r=await native.cloud('apprSubmit',kind,pid,title,amount,payload,files);
   if(!r.ok){toast('تعذّر إرسال الطلب: '+(r.m||r.e));return false}
@@ -112,7 +130,22 @@ async function apDecide(id,ok,note,all){
   toast(ok?(r.v==='approved'?'اعتُمد نهائيًا وسيُسجَّل تلقائيًا':'تم الاعتماد وانتقل للمرحلة التالية'):'رُفض الطلب');
   try{$('#stm').close()}catch{}await apFetch();render();
 }
+function mtCloseForm(id){
+  const x=mtById(id);if(!x)return;
+  formDlg({title:'طلب إقفال — طلب '+x.no+' وحدة '+x.unit,save:'إرسال للاعتماد',vals:{done:iso(TODAY),cost:mtCost(x)||'',paid:'0',amount:mtCost(x)||'',pdate:iso(TODAY)},
+    fields:[{k:'info',t:'info',html:'يمر الإقفال بالاعتماد: مدير المشروع ← المحاسب ← المالك. إن لم تسجّل سدادًا يُقفل الطلب وتبقى المديونية على '+esc(MT_PL[x.payer]||'')+'.'},
+      {k:'done',l:'تاريخ الإنجاز',t:'date'},{k:'cost',l:'التكلفة النهائية شاملة الضريبة',t:'number'},
+      {k:'paid',l:'هل تم السداد؟',t:'select',opts:[['0','لم يُسدَّد — تعليق المديونية'],['1','سُدِّد — إدخال الدفعة']]},
+      {k:'amount',l:'مبلغ المدفوع',t:'number'},{k:'pdate',l:'تاريخ السداد',t:'date'},{k:'note',l:'ملاحظة / رقم الحوالة',full:1},
+      {k:'files',l:'المرفقات (إلزامية عند السداد: إيصال، فاتورة…)',t:'files'}],
+    onSave:o=>{
+      if(!o.done)return 'أدخل تاريخ الإنجاز';if(!numOk(o.cost)||!(Number(o.cost)>=0))return 'التكلفة غير صحيحة';
+      const paid=o.paid==='1';
+      if(paid){if(!(+o.amount>0))return 'أدخل مبلغ المدفوع';if(!o.pdate)return 'أدخل تاريخ السداد';if(!(o.files||[]).length)return 'المرفقات إلزامية عند السداد'}
+      apSubmit('mt_close',x.pid,'إقفال طلب صيانة رقم '+x.no+' — وحدة '+x.unit,paid?+o.amount:(Number(o.cost)||0),{id:x.id,done:o.done,cost:Number(o.cost)||0,paid,note:o.note||'',pay:paid?{id:'q'+uid(),date:o.pdate,amount:+o.amount,note:o.note||''}:null},o.files,!paid);return}});
+}
 Object.assign(act,{
+  mtClose:b=>mtCloseForm(b.dataset.i),
   apOpen:b=>apDlg(b.dataset.i),apTab:b=>{S.ap.tab=b.dataset.t;render()},
   apOk:b=>apDecide(b.dataset.i,true,'',false),apOkAll:b=>apDecide(b.dataset.i,true,'',true),
   apNo:b=>{const id=b.dataset.i;formDlg({title:'رفض الطلب',save:'رفض',fields:[{k:'note',l:'سبب الرفض *',t:'area',full:1}],onSave:o=>{if(!o.note)return 'سبب الرفض مطلوب';apDecide(id,false,o.note,false)}})},

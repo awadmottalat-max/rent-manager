@@ -79,7 +79,13 @@ ${f('بنود الاتفاقية (قابلة للتعديل)',`<textarea id="ag_
   if(!$('#frm').open)$('#frm').showModal();
   $('#ag_save').onclick=()=>{const o=agrCollect();
     if(!o.unit)return toast('أدخل رقم الوحدة');if(!o.pid)return toast('اختر المشروع');if(!(o.annualRent>0))return toast('أدخل الإيجار السنوي');
-    o.files=attGet('ag');attCommit();
+    o.files=attGet('ag');
+    if(S.cl&&S.cl.on&&S.cl.role==='officer'){
+      if(id)return toast('لا يمكن تعديل الاتفاقية مباشرة');
+      if(!o.files.length)return toast('المرفقات إلزامية للاتفاقية');
+      attCommit();$('#frm').close();
+      apSubmit('agreement',o.pid,'اتفاقية تأجير — وحدة '+o.unit+(o.tenant?' / '+o.tenant:''),o.annualRent,{obj:{id:'g'+uid(),...o}},o.files);return}
+    attCommit();
     if(id)Object.assign(A_().find(x=>x.id===id),o);else A_().push({id:'g'+uid(),...o});
     persist();$('#frm').close();render();toast('تم حفظ الاتفاقية')};
   agrPreview();

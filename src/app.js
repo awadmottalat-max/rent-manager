@@ -18,7 +18,7 @@ function arm(b,fn){if(b.dataset.armed){fn();return}b.dataset.t=b.textContent;b.d
 let dirty=false,st=null;
 let lastFlush=0;
 const SAVE_MS=()=>{const m=Number(S.db?.settings?.saveEvery);return(isFinite(m)&&m>=0?m:5)*60e3};
-function persist(){if(S.cl&&S.cl.ro){toast('حسابك للاطلاع فقط: لا تُحفظ التعديلات');return}try{auRun()}catch(e){window.__auErr=String(e.stack)}dirty=true;clearTimeout(st);const w=Math.max(250,lastFlush+SAVE_MS()-Date.now());st=setTimeout(flush,w)}
+function persist(){if(S.cl&&S.cl.ro){toast('حسابك لا يملك صلاحية التعديل المباشر: لم تُحفظ هذه العملية');if(S.cl.base&&!S._ropt){S.db=normalize(structuredClone(S.cl.base));setTimeout(render,0)}return}try{auRun()}catch(e){window.__auErr=String(e.stack)}dirty=true;clearTimeout(st);const w=Math.max(250,lastFlush+SAVE_MS()-Date.now());st=setTimeout(flush,w)}
 async function flush(){if(!dirty)return;dirty=false;lastFlush=Date.now();try{await native.save(S.db)}catch(e){dirty=true;toast('تعذّر الحفظ على القرص: '+(e.message||e))}
   if(S.cl&&S.cl.on&&!S.cl.ro&&S.cl.base)await clPush()}
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&dirty){clearTimeout(st);flush()}});

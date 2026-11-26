@@ -6,7 +6,7 @@ app.whenReady().then(async()=>{await new Promise(r=>setTimeout(r,2500));const w=
  ipcMain.removeHandler('cloud:save');ipcMain.handle('cloud:save',()=>({ok:true,v:2}));
  for(const n of ['me','apprList','apprSubmit','apprApplied','apprClean','apprDecide','apprCancel','apprOpen'])ipcMain.removeHandler('cloud:'+n);
  ipcMain.handle('cloud:me',()=>({ok:true,v:{uid:'U1',projects:[PID]}}));
- ipcMain.handle('cloud:apprList',()=>({ok:true,v:LIST}));
+ ipcMain.handle('cloud:apprList',async()=>({ok:true,v:(await w.webContents.executeJavaScript('window.__L||null'))||LIST}));
  for(const n of ['apprSubmit','apprApplied','apprClean','apprDecide','apprCancel','apprOpen'])ipcMain.handle('cloud:'+n,(_e,...a)=>{calls.push(n);return{ok:true,v:n==='apprSubmit'?'rid':true}});
  const ev=s=>w.webContents.executeJavaScript(`(async()=>{const sl=ms=>new Promise(r=>setTimeout(r,ms));const R=[];${s};return R.join('\\n')})()`).catch(e=>'ERR '+e);
  const L=[];const LP=x=>{L.push(x);console.log('STEP '+String(x).replace(/\n/g,' | '))};
@@ -33,4 +33,11 @@ app.whenReady().then(async()=>{await new Promise(r=>setTimeout(r,2500));const w=
   S.cl.role='pm';S.ap.me={uid:'U1',projects:['zzz']};R.push('pm-wrong='+apCanDecide({status:'pending',chain:['pm'],step:0,project_id:'${PID}',created_by:'U9'}));
   S.ap.me={uid:'U1',projects:['${PID}']};R.push('pm-right='+apCanDecide({status:'pending',chain:['pm'],step:0,project_id:'${PID}',created_by:'U9'}));
   S.cl.role='supervisor';go('dash');await sl(100);R.push('supervisor-view='+S.view+' nav='+document.querySelectorAll('#nav button').length)`));
+ const reqs=[{id:'q1',no:11,kind:'mt_quote',status:'approved',applied:false,project_id:PID,chain:['pm'],step:1,files:[],log:[],payload:{req:{id:'mQ1',pid:PID,unit:'X1',kind:'maint',cat:'سباكة',prio:'normal',date:'2026-11-26',desc:'تسريب',payer:'owner',cost:700,vendor:'ف',owner:'م',tenant:''}}},{id:'g1',no:12,kind:'agreement',status:'approved',applied:false,project_id:PID,chain:['accountant','admin'],step:2,files:[{path:'u/1.pdf',name:'a.pdf'}],log:[],payload:{obj:{id:'gA1',no:'AG-X',pid:PID,unit:'X1',annualRent:1000,mgmt:{type:'pct',value:10},fee:{amount:1,vat:true,mode:'owner',at:1},inst:[]}}}];
+ LIST=reqs;
+ LP(await ev(`S.cl={on:true,role:'admin',ro:false,base:{x:1},rev:1,email:'a@x',name:'م'};S.ap.fail={};await apFetch();await sl(500);const q=MT().find(x=>x.id==='mQ1');R.push('quote='+(q&&q.status+'#'+q.no+' ap='+q.ap));R.push('agr='+A_().filter(x=>x.id==='gA1').length);
+  window.__L=[{id:'c1',no:13,kind:'mt_close',status:'approved',applied:false,project_id:'${PID}',chain:['pm','accountant','admin'],step:3,files:[{path:'u/2.pdf',name:'r.pdf'}],log:[],payload:{id:'mQ1',done:'2026-11-27',cost:650,paid:true,pay:{id:'qP1',date:'2026-11-27',amount:650,note:''}}}];S.ap.fail={};await apFetch();await sl(500);const q2=MT().find(x=>x.id==='mQ1');R.push('close='+q2.status+' cost='+q2.cost+' pays='+(q2.pays||[]).length+' ownDebt='+mtOwnDebt(q2));
+  S.cl={on:true,role:'supervisor',ro:true,base:JSON.parse(JSON.stringify(S.db)),rev:1,email:'s@x',name:'مشرف'};window.__L=[];mtForm();await sl(150);R.push('supervisorForm='+!!$('#fsave'));
+  document.getElementById('ff_unit').value='';$('#fsave').click();await sl(100);R.push('val='+document.getElementById('toast').textContent);
+  const n1=MT().length;mtSt:0;S.db.mreq[0].status='x';persist();await sl(50);R.push('revert='+(MT()[0].status!=='x'))`));
  console.log('OUT='+L.join('\n'));app.exit(0)});

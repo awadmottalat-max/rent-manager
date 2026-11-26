@@ -13,6 +13,7 @@ const mtOpenQ=x=>['new','prog','wait'].includes(x.status);
 const mtPaid=x=>r2((x.pays||[]).reduce((a,p)=>a+(+p.amount||0),0));
 const mtCost=x=>+x.cost||0;
 const mtRem=x=>x.payer==='tenant'&&x.status!=='cancel'?Math.max(0,r2(mtCost(x)-mtPaid(x))):0;
+const mtOwnDebt=x=>Math.max(0,r2(mtCost(x)-mtPaid(x)));
 const mtLate=x=>mtRem(x)>0.005&&x.due&&pd(x.due)<TODAY;
 const mtPer=(x,f)=>{if(!f)return true;const d=String(x.date||'').slice(0,10),t=iso(TODAY),y=+t.slice(0,4),m=+t.slice(5,7),pm=(yy,mm)=>yy+'-'+String(mm).padStart(2,'0');
   if(f==='m0')return d.slice(0,7)===t.slice(0,7);if(f==='m1')return d.slice(0,7)===(m===1?pm(y-1,12):pm(y,m-1));if(f==='y')return d.slice(0,4)===String(y);if(f==='q')return d>=iso(TODAY-92*DAY);return true};
@@ -44,6 +45,10 @@ function mtForm(id){
     onSave:o=>{
       if(!o.pid||!P()[o.pid])return 'اختر المشروع';if(!o.unit)return 'أدخل رقم الوحدة';if(!mtUnits(o.pid).some(u=>normU(u)===normU(o.unit)))return 'رقم الوحدة غير موجود في المشروع المختار';if(!o.desc)return 'اكتب وصف الطلب';
       if(!numOk(o.cost))return 'التكلفة غير صحيحة';if(o.payer==='tenant'&&Number(o.cost)>0&&!o.due)o.due=iso(TODAY);
+      if(S.cl&&S.cl.on&&S.cl.role==='supervisor'){
+        if(x)return 'لا يمكن تعديل الطلب مباشرة. استخدم «طلب إقفال» أو راجع مدير المشروع';
+        const cx0=mtCtx(o.pid,o.unit);
+        apSubmit('mt_quote',o.pid,'عرض سعر '+(o.cat||mtKindL({kind:o.kind}))+' — وحدة '+o.unit,Number(o.cost)||0,{req:{id:'m'+uid(),pid:o.pid,unit:o.unit,kind:o.kind,cat:o.cat,prio:o.prio,date:o.date||iso(TODAY),desc:o.desc,payer:o.payer,cost:Number(o.cost)||0,due:o.payer==='tenant'?o.due:'',vendor:o.vendor,vphone:o.vphone,owner:o.owner||cx0.owner||'',tenant:o.tenant||cx0.tenant||''}},o.files,true);return}
       const cx=mtCtx(o.pid,o.unit),r=x||{id:'m'+uid(),no:(S.db.settings.nextMaint||1),notes:[],pays:[],created:iso(TODAY)};
       if(!x){S.db.settings.nextMaint=r.no+1}
       const old=x?x.status:null;
@@ -75,7 +80,7 @@ function mtDlg(id){
     :x.payer==='warranty'?'طلب على الضمان — تتحمله الشركة المالكة للمشروع ولا يُخصم من المالك أو المستأجر.':'';
   const chip=x.status==='done'?'ok':x.status==='cancel'?'':x.prio==='urgent'?'late':'warn';
   $('#stm').innerHTML=`<div class="dh"><div><h2>طلب ${mtKindL(x)} رقم ${x.no} — وحدة ${esc(x.unit)}</h2><p>${esc(p.name)} · ${esc(x.cat||mtKindL(x))} · <span class="ch ${chip}">${MT_STL[x.status]}</span>${x.prio==='urgent'?' <span class="ch late">عاجل</span>':''}</p></div><button class="x" data-a="sclose" aria-label="إغلاق">✕</button></div>
-<div class="db"><div class="acts"><button class="btn p" data-a="mtEdit" data-i="${x.id}">تعديل الطلب</button><button class="btn" data-a="mtWa" data-i="${x.id}">إرسال للفني عبر واتساب</button><button class="btn" data-a="mtAtt" data-i="${x.id}">المرفقات${(x.files||[]).length?' ('+x.files.length+')':''}</button><button class="btn dng" data-a="mtDel" data-i="${x.id}">حذف</button></div>
+<div class="db"><div class="acts"><button class="btn p" data-a="mtEdit" data-i="${x.id}">تعديل الطلب</button>${S.cl&&S.cl.on&&S.cl.role==='supervisor'&&!['done','cancel'].includes(x.status)?`<button class="btn p" data-a="mtClose" data-i="${x.id}">طلب إقفال</button>`:''}<button class="btn" data-a="mtWa" data-i="${x.id}">إرسال للفني عبر واتساب</button><button class="btn" data-a="mtAtt" data-i="${x.id}">المرفقات${(x.files||[]).length?' ('+x.files.length+')':''}</button><button class="btn dng" data-a="mtDel" data-i="${x.id}">حذف</button></div>
 <h3>الحالة</h3><div class="acts">${MT_ST.map(([s,l])=>`<button class="btn sm${x.status===s?' p':''}" data-a="mtSt" data-i="${x.id}" data-s="${s}">${l}</button>`).join('')}</div>
 <h3>بيانات الطلب</h3><div class="mtk">${k('المشروع',esc(p.name))}${k('الوحدة',esc(x.unit))}${k('المالك',esc(x.owner))}${k('المستأجر',esc(x.tenant))}${k('النوع / التصنيف',esc(mtKindL(x)+(x.cat?' — '+x.cat:'')))}${k('الأولوية',x.prio==='urgent'?'عاجل':'عادي')}${k('تاريخ الطلب',fs_(x.date))}${k('تاريخ الإنجاز',x.done?fs_(x.done):'')}${k('الجهة المنفذة',esc(x.vendor))}${k('جوال الفني',esc(x.vphone))}</div>
 <p style="margin:10px 0;white-space:pre-wrap">${esc(x.desc)}</p>
@@ -105,7 +110,7 @@ function mtWaForm(id){
 }
 function vMaint(){
   const E=S.mt,all=MT(),pn=id=>P()[id]?.name||'—';
-  const q=E.q.toLowerCase(),L=all.filter(x=>(MS(E.p,x.pid))&&AO(E.k,z=>x.kind===z)&&AO(E.y,z=>x.payer===z)&&AO(E.r,z=>x.prio===z)&&AO(E.c,z=>x.cat===z)&&AO(E.v,z=>x.vendor===z)&&mtPer(x,E.d)&&AO(E.s,z=>z==='open'?mtOpenQ(x):z==='late'?mtLate(x):x.status===z)&&(!q||txt(x.unit,x.tenant,x.owner,x.desc,x.vendor,pn(x.pid),x.no).includes(q)));
+  const pmS=S.cl&&S.cl.on&&S.cl.role==='pm'?(S.ap.me&&S.ap.me.projects||[]):null,q=E.q.toLowerCase(),L=all.filter(x=>(!pmS||pmS.includes(x.pid))&&(MS(E.p,x.pid))&&AO(E.k,z=>x.kind===z)&&AO(E.y,z=>x.payer===z)&&AO(E.r,z=>x.prio===z)&&AO(E.c,z=>x.cat===z)&&AO(E.v,z=>x.vendor===z)&&mtPer(x,E.d)&&AO(E.s,z=>z==='open'?mtOpenQ(x):z==='late'?mtLate(x):x.status===z)&&(!q||txt(x.unit,x.tenant,x.owner,x.desc,x.vendor,pn(x.pid),x.no).includes(q)));
   const SO={new:(a,b)=>String(b.date).localeCompare(String(a.date))||b.no-a.no,old:(a,b)=>String(a.date).localeCompare(String(b.date))||a.no-b.no,cost:(a,b)=>mtCost(b)-mtCost(a),urg:(a,b)=>(b.prio==='urgent')-(a.prio==='urgent')||String(a.date).localeCompare(String(b.date))};L.sort(SO[E.o]||SO.new);
   const cats=[...new Set(all.map(x=>x.cat).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar')),vens=[...new Set(all.map(x=>x.vendor).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
   const open=all.filter(mtOpenQ),sm=(f,g)=>sum(all.filter(f),g);
@@ -128,9 +133,9 @@ ${L.length?T(cols,rws,{foot:S.pm.foot}):'<p class="empty">لا توجد طلبا
 VF.maint=vMaint;
 /* قسم في كشف حساب المالك */
 function mtOwnerSec(name,print){
-  const L=MT().filter(x=>x.payer==='owner'&&x.status==='done'&&((String(x.owner||'').trim()||'(بدون مالك)')===name));
+  const L=MT().filter(x=>x.payer==='owner'&&x.status==='done'&&mtOwnDebt(x)>0.005&&((String(x.owner||'').trim()||'(بدون مالك)')===name));
   if(!L.length)return '';
-  const t=sum(L,mtCost),o=ownerStatements(ownerRows(name))[0],net=o?o.net:0;
+  const t=sum(L,mtOwnDebt),o=ownerStatements(ownerRows(name))[0],net=o?o.net:0;
   return `<h3>الصيانة والنظافة المحمَّلة على المالك</h3>${T([{h:'الرقم',k:'d'},{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'النوع',k:'t'},{h:'الوصف',k:'t'},{h:'تاريخ الإنجاز',k:'d'},{h:'التكلفة',k:'n'}],L.map(x=>({cells:[x.no,esc(P()[x.pid]?.name||''),'<b>'+esc(x.unit)+'</b>',esc(mtKindL(x)+(x.cat?' — '+x.cat:'')),esc(String(x.desc||'').slice(0,60)),fs_(x.done),fm(mtCost(x))]})),{print,foot:['الإجمالي','','','','','',fm(t)],footSpan:0})}<div class="sum"><div><span>صافي المحصَّل</span><b>${fm(net)}</b></div><div><span>الصيانة والنظافة</span><b>${fm(t)}</b></div><div><span>الصافي بعد الصيانة والنظافة</span><b>${fm(r2(net-t))}</b></div></div>`;
 }
 Object.assign(act,{mtNew:()=>mtForm(),mtOpen:b=>mtDlg(b.dataset.i),mtEdit:b=>mtForm(b.dataset.i),mtPay:b=>mtPayForm(b.dataset.i),mtWa:b=>mtWaForm(b.dataset.i),
