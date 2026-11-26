@@ -89,8 +89,9 @@ ${(x.notes||[]).length?`<ul class="mtl">${[...x.notes].reverse().map(n=>`<li><sm
 const mtRefresh=()=>{persist();render();if($('#stm').open&&S.mtId&&mtById(S.mtId))mtDlg(S.mtId)};
 function mtPayForm(id){
   const x=mtById(id);if(!x)return;
-  formDlg({title:'تسجيل سداد من المستأجر — طلب '+x.no,save:'تسجيل',vals:{date:iso(TODAY),amount:mtRem(x)||''},fields:[{k:'date',l:'تاريخ السداد',t:'date'},{k:'amount',l:'المبلغ',t:'number'},{k:'note',l:'ملاحظة / رقم الحوالة',full:1}],
-    onSave:o=>{const a=+o.amount;if(!(a>0))return 'أدخل مبلغًا صحيحًا';if(!o.date)return 'أدخل تاريخ السداد';(x.pays=x.pays||[]).push({id:'q'+uid(),date:o.date,amount:a,note:o.note});mtLog(x,'سداد من المستأجر: '+fm(a));mtRefresh();toast('تم تسجيل السداد');setTimeout(()=>mtDlg(id),60)}});
+  formDlg({title:'تسجيل سداد من المستأجر — طلب '+x.no,save:'تسجيل',vals:{date:iso(TODAY),amount:mtRem(x)||''},fields:[{k:'date',l:'تاريخ السداد',t:'date'},{k:'amount',l:'المبلغ',t:'number'},{k:'note',l:'ملاحظة / رقم الحوالة',full:1},...(apprMode()?[{k:'files',l:'المرفقات (إلزامية)',t:'files'}]:[])],
+    onSave:o=>{const a=+o.amount;if(!(a>0))return 'أدخل مبلغًا صحيحًا';if(!o.date)return 'أدخل تاريخ السداد';if(apprMode()){if(!(o.files||[]).length)return 'المرفقات إلزامية (إيصال السداد)';apSubmit('mt_pay',x.pid,'سداد صيانة — طلب '+x.no+' وحدة '+x.unit,a,{id:x.id,pay:{id:'q'+uid(),date:o.date,amount:a,note:o.note}},o.files);return}
+(x.pays=x.pays||[]).push({id:'q'+uid(),date:o.date,amount:a,note:o.note});mtLog(x,'سداد من المستأجر: '+fm(a));mtRefresh();toast('تم تسجيل السداد');setTimeout(()=>mtDlg(id),60)}});
   setTimeout(()=>$('#ff_amount')?.focus(),90);
 }
 function mtWaForm(id){

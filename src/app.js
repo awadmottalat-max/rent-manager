@@ -117,19 +117,25 @@ db:'<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3
 alert:'<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/>',
 clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'};
 const ico=(k,c)=>`<svg class="ic ${c||''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[k]||''}</svg>`;
-const NAVIC={audit:'file',alerts:'bell',dash:'dash',avail:'key',contracts:'file',ext:'ext',maint:'tool',svc:'calc',inv:'db',ended:'filex',due:'wallet',flow:'trend',renew:'refresh',props:'building',owners:'users',tenants:'users',agr:'sign',fin:'calc',rep:'chart',settings:'db'};
+const NAVIC={approvals:'wallet',audit:'file',alerts:'bell',dash:'dash',avail:'key',contracts:'file',ext:'ext',maint:'tool',svc:'calc',inv:'db',ended:'filex',due:'wallet',flow:'trend',renew:'refresh',props:'building',owners:'users',tenants:'users',agr:'sign',fin:'calc',rep:'chart',settings:'db'};
 
 /* ---------- التنقل ---------- */
-const VIEWS=[['dash','لوحة التحكم'],['alerts','التنبيهات'],['avail','الشقق المتاحة'],['contracts','العقود'],['ext','العقود الخارجية'],['ended','العقود المنتهية'],['due','المستحقات'],['flow','التدفقات النقدية'],['renew','التجديدات'],['props','المشاريع والوحدات'],['owners','الملاك'],['tenants','المستأجرون'],['agr','اتفاقيات التأجير'],['fin','التحليل المالي'],['maint','الصيانة والنظافة'],['svc','الرسوم والخدمات'],['inv','حصر الوحدات والملاك'],['rep','التقارير'],['audit','سجل التعديلات'],['settings','الإعدادات']];
+const VIEWS=[['dash','لوحة التحكم'],['alerts','التنبيهات'],['avail','الشقق المتاحة'],['contracts','العقود'],['ext','العقود الخارجية'],['ended','العقود المنتهية'],['due','المستحقات'],['flow','التدفقات النقدية'],['renew','التجديدات'],['props','المشاريع والوحدات'],['owners','الملاك'],['tenants','المستأجرون'],['agr','اتفاقيات التأجير'],['fin','التحليل المالي'],['maint','الصيانة والنظافة'],['svc','الرسوم والخدمات'],['inv','حصر الوحدات والملاك'],['rep','التقارير'],['approvals','الموافقات'],['audit','سجل التعديلات'],['settings','الإعدادات']];
 const VF={};
 function go(v){S.view=v;render();$('main').scrollTop=0}
+const NAV_LIM={supervisor:['maint','props','approvals'],pm:['maint','props','approvals','alerts']};
+function navOk(k){const c=S.cl;if(!c||!c.on)return k!=='approvals';
+  if(k==='approvals')return true;if(k==='audit')return c.role==='admin';
+  if(k==='settings')return c.role==='admin'||c.role==='editor';
+  const L=NAV_LIM[c.role];return !L||L.includes(k)}
 function renderNav(all){
   const late=all.filter(x=>x.r.late_n).length,ren=renewalsOpen(all,90).length;
   const pendN=all.filter(x=>x.r.st==='منتهي'&&endState(x.pid,x.c)==='pend').length;
-  const bd={svc:(()=>{const n=(S.db.svc||[]).filter(x=>typeof svLate==='function'&&svLate(x)).length;return n?`<span class="bd">${n}</span>`:''})(),maint:(()=>{const n=(S.db.mreq||[]).filter(x=>x.status==='new'||x.status==='wait').length;return n?`<span class="bd">${n}</span>`:''})(),ext:(()=>{const n=rows().filter(x=>x.ext&&x.f.late_n).length;return n?`<span class="bd">${n}</span>`:''})(),alerts:(()=>{const n=typeof alertCount==='function'?alertCount(all):0;return n?`<span class="bd">${n}</span>`:''})(),ended:pendN?`<span class="bd">${pendN}</span>`:'',due:late?`<span class="bd">${late}</span>`:'',renew:ren?`<span class="bd">${ren}</span>`:''};
-  $('#nav').innerHTML=VIEWS.filter(([k])=>k!=='audit'||!(S.cl&&S.cl.on)||S.cl.role==='admin').map(([k,l])=>`<button data-a="go" data-v="${k}" class="${S.view===k?'on':''}">${ico(NAVIC[k])}<span>${l}</span>${bd[k]||''}</button>`).join('')+(S.cl&&S.cl.on?`${clWho()}<button data-a="clLogout" class="lo" title="${esc(S.cl.email||'')}"><span>تسجيل الخروج</span></button>`:'');
+  const bd={approvals:(()=>{const n=typeof apPendingMe==='function'?apPendingMe().length:0;return n?`<span class="bd">${n}</span>`:''})(),svc:(()=>{const n=(S.db.svc||[]).filter(x=>typeof svLate==='function'&&svLate(x)).length;return n?`<span class="bd">${n}</span>`:''})(),maint:(()=>{const n=(S.db.mreq||[]).filter(x=>x.status==='new'||x.status==='wait').length;return n?`<span class="bd">${n}</span>`:''})(),ext:(()=>{const n=rows().filter(x=>x.ext&&x.f.late_n).length;return n?`<span class="bd">${n}</span>`:''})(),alerts:(()=>{const n=typeof alertCount==='function'?alertCount(all):0;return n?`<span class="bd">${n}</span>`:''})(),ended:pendN?`<span class="bd">${pendN}</span>`:'',due:late?`<span class="bd">${late}</span>`:'',renew:ren?`<span class="bd">${ren}</span>`:''};
+  $('#nav').innerHTML=VIEWS.filter(([k])=>navOk(k)).map(([k,l])=>`<button data-a="go" data-v="${k}" class="${S.view===k?'on':''}">${ico(NAVIC[k])}<span>${l}</span>${bd[k]||''}</button>`).join('')+(S.cl&&S.cl.on?`${clWho()}<button data-a="clLogout" class="lo" title="${esc(S.cl.email||'')}"><span>تسجيل الخروج</span></button>`:'');
 }
 function render(){
+  if(!navOk(S.view)){const f=VIEWS.find(([k])=>navOk(k));if(f)S.view=f[0]}
   const allX=rows(),all=allX.filter(x=>!x.ext);renderNav(all);
   const v=$('#view'),kf=document.activeElement&&document.activeElement.id;
   S.pm=null;
@@ -298,6 +304,9 @@ function payForm(pid,cid,amount,instNo){
       {k:'files',l:'المرفقات (إيصال الحوالة، صورة الشيك…)',t:'files'}],
     onSave:o=>{const a=+o.amount;if(!(a>0))return 'أدخل مبلغًا صحيحًا';if(!o.date)return 'أدخل تاريخ التحصيل';
       if(o.from&&o.to&&o.to<o.from)return 'نهاية فترة الاستحقاق قبل بدايتها';
+      if(apprMode()){if(!(o.files||[]).length)return 'المرفقات إلزامية: أرفق إيصال الحوالة أو صورة الشيك';
+        const k0=o.inst===''||o.inst==null?null:+o.inst;
+        apSubmit('rent_pay',pid,'دفعة إيجار — وحدة '+c.unit+' / '+c.tenant,a,{pid,cid,pay:{id:'i'+uid(),date:o.date,amount:a,from:o.from,to:o.to,method:o.method,note:o.note,sap:o.sap,inst:k0!=null&&I[k0]?I[k0].n:undefined}},o.files);return}
       const rno=S.db.settings.nextReceipt||1;S.db.settings.nextReceipt=rno+1;
       const id='i'+uid(),k=o.inst===''||o.inst==null?null:+o.inst;
       mutate(pid,p=>p.contracts.find(c=>c.id===cid).payments.push({id,date:o.date,amount:a,from:o.from,to:o.to,method:o.method,note:o.note,sap:o.sap,rno,inst:k!=null&&I[k]?I[k].n:undefined,files:o.files}));

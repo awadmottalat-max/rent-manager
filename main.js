@@ -69,7 +69,7 @@ const lock=app.requestSingleInstanceLock();
 if(!lock)app.quit();else{
   app.on('second-instance',()=>{if(win){if(win.isMinimized())win.restore();win.focus()}});
   app.whenReady().then(()=>{init();
-    require('./cloud')(app,ipcMain,safeStorage,(u,o)=>net.fetch(u,o));
+    require('./cloud')(app,ipcMain,safeStorage,(u,o)=>net.fetch(u,o),f=>path.join(dataDir,'attachments',path.basename(String(f))),p=>shell.openPath(p));
     ipcMain.handle('data:load',()=>load());
     ipcMain.handle('data:save',(_e,d)=>save(d));
     ipcMain.on('data:saveSync',(e,d)=>{try{save(d);e.returnValue=true}catch{e.returnValue=false}});

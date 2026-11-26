@@ -21,7 +21,7 @@ contextBridge.exposeInMainWorld('native',{
   resetIcon:()=>ipc.invoke('icon:reset'),
   saveTemplate:()=>ipc.invoke('template:save'),
   attAdd:()=>ipc.invoke('att:add'),attOpen:f=>ipc.invoke('att:open',f),attDel:f=>ipc.invoke('att:del',f),attDir:()=>ipc.invoke('att:dir'),
-  cloud:(n,...a)=>/^(status|config|on|login|logout|role|get|rev|save|hist|histGet|histRestore|users|saved|autologin)$/.test(n)?ipc.invoke('cloud:'+n,...a):Promise.resolve({ok:false,e:'BAD'}),
+  cloud:(n,...a)=>/^(me|status|config|on|login|logout|role|get|rev|save|hist|histGet|histRestore|users|saved|autologin|apprList|apprSubmit|apprDecide|apprApplied|apprCancel|apprClean|apprOpen)$/.test(n)?ipc.invoke('cloud:'+n,...a):Promise.resolve({ok:false,e:'BAD'}),
   onFlush:cb=>ipc.on('app:flush',()=>cb()),flushed:()=>ipc.send('app:flushed'),
   version:()=>ipc.invoke('app:version'),
   checkUpdate:()=>ipc.invoke('upd:check'),

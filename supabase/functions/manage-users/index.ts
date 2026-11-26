@@ -2,7 +2,8 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // إدارة المستخدمين: للمدير (admin) فقط. نتحقق من الهوية والدور داخل الدالة نفسها.
 // النشر: verify_jwt=false لأن التحقق يتم هنا (التوكنات غير المتماثلة).
-const ROLES = ['admin', 'editor', 'viewer'];
+const ROLES = ['admin', 'editor', 'viewer', 'accountant', 'officer', 'supervisor', 'pm'];
+const cleanProj = (v: unknown) => Array.isArray(v) ? v.map((x) => String(x).slice(0, 64)).slice(0, 200) : [];
 const url = Deno.env.get('SUPABASE_URL')!;
 const sk = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const db = createClient(url, sk, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -34,10 +35,10 @@ Deno.serve(async (req) => {
   if (act === 'list') {
     const { data: lu, error } = await db.auth.admin.listUsers({ page: 1, perPage: 1000 });
     if (error) return bad(error.message, 500);
-    const { data: ps } = await db.from('profiles').select('user_id, role, full_name');
+    const { data: ps } = await db.from('profiles').select('user_id, role, full_name, projects');
     const pm = new Map((ps ?? []).map((p) => [p.user_id, p]));
     const users = lu.users.map((x) => ({
-      id: x.id, email: x.email, role: pm.get(x.id)?.role ?? null, full_name: pm.get(x.id)?.full_name ?? '',
+      id: x.id, email: x.email, role: pm.get(x.id)?.role ?? null, full_name: pm.get(x.id)?.full_name ?? '', projects: pm.get(x.id)?.projects ?? [],
       created_at: x.created_at, last_sign_in_at: x.last_sign_in_at, me: x.id === me,
     })).sort((a, c) => String(a.email).localeCompare(String(c.email)));
     return json({ users });
@@ -53,7 +54,7 @@ Deno.serve(async (req) => {
     if (!ROLES.includes(role)) return bad('الدور غير صحيح');
     const { data: cu, error } = await db.auth.admin.createUser({ email, password: pw, email_confirm: true });
     if (error || !cu?.user) return bad(/already|registered|exists/i.test(error?.message || '') ? 'هذا البريد مسجَّل مسبقًا' : (error?.message || 'تعذّر إنشاء الحساب'), 400);
-    const { error: pe } = await db.from('profiles').upsert({ user_id: cu.user.id, role, full_name: name || null });
+    const { error: pe } = await db.from('profiles').upsert({ user_id: cu.user.id, role, full_name: name || null, projects: cleanProj(b.projects) });
     if (pe) { await db.auth.admin.deleteUser(cu.user.id); return bad('تعذّر ضبط الدور: ' + pe.message, 500); }
     return json({ ok: true, id: cu.user.id });
   }
@@ -66,6 +67,11 @@ Deno.serve(async (req) => {
     if (!ROLES.includes(role)) return bad('الدور غير صحيح');
     if (role !== 'admin' && (await adminCount(id)) === 0) return bad('لا يمكن إزالة آخر مدير');
     const { error } = await db.from('profiles').upsert({ user_id: id, role });
+    return error ? bad(error.message, 500) : json({ ok: true });
+  }
+
+  if (act === 'setProjects') {
+    const { error } = await db.from('profiles').update({ projects: cleanProj(b.projects) }).eq('user_id', id);
     return error ? bad(error.message, 500) : json({ ok: true });
   }
 

@@ -52,7 +52,7 @@ function clWho(){
   if(!S.cl.on)return '';
   const c={ok:'#7fe0a8',sync:'#f2d98a',err:'#ff9d9d',ro:'#cfd6e4'}[S.cl.st]||'#cfd6e4';
   const t={ok:'☁ متزامن',sync:'☁ جارٍ المزامنة…',err:'☁ تعذّرت المزامنة',ro:'☁ للاطلاع فقط'}[S.cl.st]||'';
-  const role={admin:'مدير',editor:'محرر',viewer:'اطلاع فقط'}[S.cl.role]||'';
+  const role=S.cl.role?clRoleL(S.cl.role):'';
   return `<div class="who" title="${esc(S.cl.email||'')} · v${S.cl.rev}">${esc(S.cl.name||S.cl.email||'')}${role?' · '+esc(role):''}${t?`<br><small style="color:${c}">${esc(t+(S.cl.stm?' — '+S.cl.stm:''))}</small>`:''}</div>`;
 }
 
@@ -86,7 +86,7 @@ async function clPull(first){
   let r=await native.cloud('get');
   if(!r.ok&&r.e==='AUTH'){if(!await clGate('انتهت الجلسة، سجّل الدخول من جديد'))return false;r=await native.cloud('get')}
   if(!r.ok){toast('تعذّر الاتصال بالسحابة: '+r.m);clBadge('err');return false}
-  const rl=await native.cloud('role');if(rl.ok)S.cl.role=rl.v||'';S.cl.ro=S.cl.role==='viewer';
+  const rl=await native.cloud('role');if(rl.ok)S.cl.role=rl.v||'';S.cl.ro=clIsRO(S.cl.role);
   if(!r.v){ // السحابة فارغة
     if(S.cl.role==='admin'){ // السحابة فارغة: رفع تلقائي لمرة واحدة (لا يستبدل شيئًا)
       clBadge('sync','رفع البيانات…');const m=await clUpload();toast(m.slice(0,160));
@@ -188,7 +188,7 @@ async function clBoot(){
   for(;;){
     const st=(await native.cloud('status')).v||{};
     if(!st.signed){if(!await clGate(msg))continue}
-    else{const rl=await native.cloud('role');if(rl.ok){const sv=(await native.cloud('saved')).v||{};S.cl.role=rl.v||'';S.cl.name=sv.name||'';S.cl.email=st.email||S.cl.email}}
+    else{const rl=await native.cloud('role');if(rl.ok){const sv=(await native.cloud('saved')).v||{};S.cl.role=rl.v||'';S.cl.ro=clIsRO(S.cl.role);S.cl.name=sv.name||'';S.cl.email=st.email||S.cl.email}}
     if(await clPull(true))return;
     msg='تعذّر تحميل البيانات من السحابة. تحقق من الإنترنت ثم سجّل الدخول من جديد.';
     await native.cloud('logout');
@@ -232,7 +232,8 @@ Object.assign(act,{
 });
 
 /* ---- إدارة المستخدمين (للمدير) ---- */
-const CL_ROLES=[['admin','مدير'],['editor','محرر'],['viewer','اطلاع فقط']];
+const CL_ROLES=[['admin','المالك (صلاحية شاملة)'],['accountant','المحاسب'],['officer','موظف إدارة الأملاك'],['supervisor','مشرف الصيانة والنظافة'],['pm','مدير مشروع'],['editor','محرر (تعديل كامل)'],['viewer','اطلاع فقط']];
+const clIsRO=r=>['viewer','accountant','officer','supervisor','pm'].includes(r);
 const clRoleL=r=>(CL_ROLES.find(x=>x[0]===r)||[0,'بلا دور'])[1];
 const clGenPw=()=>{const a='abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789',b=crypto.getRandomValues(new Uint32Array(12));return[...b].map(x=>a[x%a.length]).join('')};
 async function clUsersDlg(msg){
@@ -243,15 +244,20 @@ async function clUsersDlg(msg){
     '<b>'+esc(u.email)+'</b>'+(u.me?' <small>(أنت)</small>':''),
     `<input class="clun" data-i="${esc(u.id)}" value="${esc(u.full_name||'')}" placeholder="الاسم" style="min-width:110px">`,
     `<select class="clur" data-i="${esc(u.id)}">${u.role?'':'<option value="" selected>— بلا دور —</option>'}${CL_ROLES.map(([k,l])=>`<option value="${k}"${u.role===k?' selected':''}>${l}</option>`).join('')}</select>`,
+    u.role==='pm'?`<button class="btn sm" data-a="clUProj" data-i="${esc(u.id)}" data-p="${esc((u.projects||[]).join(','))}">المشاريع (${(u.projects||[]).length})</button>`:'<span class="mut">—</span>',
     u.last_sign_in_at?esc(new Date(u.last_sign_in_at).toLocaleString('ar-SA')):'<span class="mut">لم يدخل بعد</span>',
     `<button class="btn sm" data-a="clUPw" data-i="${esc(u.id)}" data-e="${esc(u.email)}">كلمة مرور جديدة</button> ${u.me?'':`<button class="btn sm dng" data-a="clUDel" data-i="${esc(u.id)}">حذف</button>`}`]}));
   $('#stm').innerHTML=`<div class="dh"><div><h2>إدارة المستخدمين</h2><p>${L.length} مستخدم</p></div><button class="x" data-a="sclose" aria-label="إغلاق">✕</button></div><div class="db">
 <div class="acts"><button class="btn p" data-a="clUAdd">+ إضافة مستخدم</button></div>${msg?'<p class="sub">'+esc(msg)+'</p>':''}
-${T([{h:'البريد',k:'t'},{h:'الاسم',k:'t'},{h:'الدور',k:'t'},{h:'آخر دخول',k:'d'},{h:'',k:'ac'}],rows)}
+${T([{h:'البريد',k:'t'},{h:'الاسم',k:'t'},{h:'الدور',k:'t'},{h:'المشاريع',k:'t'},{h:'آخر دخول',k:'d'},{h:'',k:'ac'}],rows)}
 <h3>ما يستطيعه كل دور</h3>${T([{h:'الدور',k:'t'},{h:'الصلاحيات',k:'t'}],[
- {cells:['<b>مدير</b>','رؤية كل البيانات وتعديلها، استعادة النسخ السحابية، وإدارة المستخدمين والأدوار']},
- {cells:['<b>محرر</b>','رؤية كل البيانات وتعديلها وحفظها في السحابة. لا يدير المستخدمين ولا يستعيد النسخ']},
- {cells:['<b>اطلاع فقط</b>','رؤية البيانات والتقارير والطباعة والتصدير. لا تُحفظ له أي تعديلات']}])}
+ {cells:['<b>المالك</b>','صلاحية شاملة: يعدّل مباشرة ويدير المستخدمين، ويعتمد المرحلة الأخيرة في كل سلسلة (أو يتخطى المراحل)']},
+ {cells:['<b>المحاسب</b>','يطّلع على كل شيء. يسجّل التحصيلات (إيجار، مياه، صيانة…) بمرفق إلزامي ← اعتماد المالك. يعتمد مرحلة المحاسب في طلبات الموظفين والصيانة']},
+ {cells:['<b>موظف إدارة الأملاك</b>','يسجّل دفعات الإيجار وتحصيل المياه والخدمات والاتفاقيات بمرفق إلزامي ← اعتماد المحاسب ثم المالك']},
+ {cells:['<b>مشرف الصيانة والنظافة</b>','يُدخل طلبات الصيانة كعرض سعر ← اعتماد مدير المشروع، ثم يقفلها ← مدير المشروع ← المحاسب ← المالك (مع سداد أو بقاء مديونية)']},
+ {cells:['<b>مدير مشروع</b>','يعتمد عروض الأسعار وإقفال الصيانة لمشاريعه المسندة فقط (زر «المشاريع»)']},
+ {cells:['<b>محرر</b>','تعديل كامل ومباشر بدون إدارة المستخدمين']},
+ {cells:['<b>اطلاع فقط</b>','رؤية البيانات والتقارير والطباعة والتصدير فقط']}])}
 <p class="sub">يُرفض إزالة آخر مدير أو حذفه، ولا يمكنك حذف حسابك بنفسك.</p></div>`;
   if(!$('#stm').open)$('#stm').showModal();
 }
@@ -263,6 +269,10 @@ document.addEventListener('change',async e=>{
 });
 Object.assign(act,{
   clUsers:()=>clUsersDlg(),
+  clUProj:b=>{const id=b.dataset.i,sel=new Set((b.dataset.p||'').split(',').filter(Boolean));
+    $('#frm').innerHTML=`<div class="dh"><h2>مشاريع مدير المشروع</h2><button class="x" data-a="fclose" aria-label="إغلاق">✕</button></div><div class="fg"><div class="full remi">يعتمد هذا المستخدم عروض الأسعار وإقفال الصيانة للمشاريع المحددة فقط.</div>${PL().map(([k,n])=>`<label class="full" style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-pj="${esc(k)}"${sel.has(k)?' checked':''}> ${esc(n)}</label>`).join('')}</div><div class="ft"><button class="btn p" id="pjSave">حفظ</button><button class="btn" data-a="fclose">إلغاء</button></div>`;
+    $('#frm').showModal();
+    $('#pjSave').onclick=async()=>{const ids=[...$('#frm').querySelectorAll('[data-pj]:checked')].map(x=>x.dataset.pj);const r=await native.cloud('users',{action:'setProjects',user_id:id,projects:ids});$('#frm').close();toast(r.ok?'تم حفظ المشاريع':(r.m||'تعذّر الحفظ'));if(r.ok)clUsersDlg()}},
   clUAdd:()=>formDlg({title:'إضافة مستخدم',save:'إنشاء الحساب',vals:{role:'editor',pw:clGenPw()},fields:[
     {k:'email',l:'البريد الإلكتروني',t:'email',full:true},{k:'name',l:'الاسم',full:true},
     {k:'pw',l:'كلمة المرور (10 أحرف فأكثر، انسخها وأعطها له)',t:'text',full:true},

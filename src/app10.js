@@ -81,8 +81,9 @@ function svDlg(id){
 const svRefresh=()=>{persist();render();if($('#stm').open&&S.svId&&svById(S.svId))svDlg(S.svId)};
 function svPayForm(id){
   const x=svById(id);if(!x)return;
-  formDlg({title:'تسجيل سداد — '+x.type+' '+x.year+' وحدة '+x.unit,save:'تسجيل',vals:{date:iso(TODAY),amount:svRem(x)||''},fields:[{k:'date',l:'تاريخ السداد',t:'date'},{k:'amount',l:'المبلغ (شامل الضريبة)',t:'number'},{k:'note',l:'ملاحظة / رقم الحوالة',full:1}],
+  formDlg({title:'تسجيل سداد — '+x.type+' '+x.year+' وحدة '+x.unit,save:'تسجيل',vals:{date:iso(TODAY),amount:svRem(x)||''},fields:[{k:'date',l:'تاريخ السداد',t:'date'},{k:'amount',l:'المبلغ (شامل الضريبة)',t:'number'},{k:'note',l:'ملاحظة / رقم الحوالة',full:1},...(apprMode()?[{k:'files',l:'المرفقات (إلزامية)',t:'files'}]:[])],
     onSave:o=>{const a=+o.amount;if(!(a>0))return 'أدخل مبلغًا صحيحًا';if(!o.date)return 'أدخل تاريخ السداد';if(a>svRem(x)+0.005)return 'المبلغ أكبر من المتبقي ('+fm(svRem(x))+')';
+      if(apprMode()){if(!(o.files||[]).length)return 'المرفقات إلزامية (إيصال السداد)';apSubmit('svc_pay',x.pid,'سداد '+x.type+' '+x.year+' — وحدة '+x.unit,a,{id:x.id,pay:{id:'q'+uid(),date:o.date,amount:a,note:o.note}},o.files);return}
       (x.pays=x.pays||[]).push({id:'q'+uid(),date:o.date,amount:a,note:o.note});svLog(x,'سداد: '+fm(a));svRefresh();toast('تم تسجيل السداد');setTimeout(()=>svDlg(id),60)}});
   setTimeout(()=>document.getElementById('ff_amount')?.focus(),90);
 }

@@ -1,8 +1,8 @@
 /* الاتصال بـ Supabase من العملية الرئيسية فقط (المفتاح والجلسة لا يصلان إلى صفحة التطبيق) */
-const fs=require('fs'),path=require('path');
+const fs=require('fs'),path=require('path'),os=require('os'),crypto=require('crypto');
 const DOC='main';
 const DEF={url:'https://fiuzxwvqwkcbjykvulrz.supabase.co',key:'sb_publishable_aFAEk2aJfNnu8TzbW6vcAg_b7JkA2JB'}; // مفتاح عام مخصص للتطبيقات، الحماية في القاعدة (RLS)
-module.exports=function(app,ipcMain,safeStorage,netFetch){
+module.exports=function(app,ipcMain,safeStorage,netFetch,attFile,openPath){
   const file=()=>path.join(app.getPath('userData'),'cloud.json');
   let cfg=null,mem=null; // mem: الجلسة في الذاكرة عند تعذّر التشفير
   const rd=()=>{if(cfg)return cfg;try{cfg=JSON.parse(fs.readFileSync(file(),'utf8'))}catch{cfg={}}if(!cfg.url||!cfg.key){cfg.url=DEF.url;cfg.key=DEF.key}return cfg};
@@ -63,6 +63,7 @@ module.exports=function(app,ipcMain,safeStorage,netFetch){
   H('autologin',async()=>{const c=rd(),p=savedPw();if(!c.sv||!c.sv.email||!p)throw err('NO_SAVED');return doLogin(c.sv.email,p,true)});
   H('logout',async()=>{setSes(null);const c=rd();if(c.sv)delete c.sv.pw;wr();return true});
   H('role',()=>myRole());
+  H('me',async()=>{const s=getSes();if(!s)return null;const r=await raw('/rest/v1/profiles?select=projects&user_id=eq.'+encodeURIComponent(s.uid));return{uid:s.uid,projects:(r&&r[0]&&r[0].projects)||[]}});
   H('get',async()=>{const r=await raw('/rest/v1/app_docs?select=data,rev,updated_at&id=eq.'+DOC);return r&&r[0]?r[0]:null});
   H('rev',async()=>{const r=await raw('/rest/v1/app_docs?select=rev,updated_at&id=eq.'+DOC);return r&&r[0]?r[0]:null});
   H('save',async(data,base)=>{const r=await raw('/rest/v1/rpc/save_doc',{method:'POST',body:JSON.stringify({p_id:DOC,p_base_rev:base,p_data:data})});return Number(r)});
@@ -70,4 +71,46 @@ module.exports=function(app,ipcMain,safeStorage,netFetch){
   H('hist',async()=>raw('/rest/v1/app_doc_history?select=id,rev,saved_at&doc_id=eq.'+DOC+'&order=saved_at.desc&limit=50'));
   H('histGet',async id=>{const r=await raw('/rest/v1/app_doc_history?select=data&id=eq.'+Number(id));return r&&r[0]?r[0].data:null});
   H('histRestore',async id=>Number(await raw('/rest/v1/rpc/restore_history',{method:'POST',body:JSON.stringify({p_history_id:Number(id)})})));
+
+  /* ===== الموافقات والمرفقات المؤقتة ===== */
+  const MIME={'.pdf':'application/pdf','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp'};
+  const rpc=(fn,body)=>raw('/rest/v1/rpc/'+fn,{method:'POST',body:JSON.stringify(body)});
+  async function stReq(method,p,body,ct){
+    const c=rd(),t=await token();
+    const r=await f(c.url+'/storage/v1/'+p,{method,headers:{apikey:c.key,Authorization:'Bearer '+t,...(ct?{'Content-Type':ct}:{})},body,signal:AbortSignal.timeout(60000)});
+    return r;
+  }
+  async function stDel(paths){if(!paths||!paths.length)return;await stReq('DELETE','object/approvals',JSON.stringify({prefixes:paths}),'application/json').catch(()=>0)}
+  H('apprList',async()=>raw('/rest/v1/approval_requests?select=*&order=created_at.desc&limit=300'));
+  H('apprSubmit',async(kind,project,title,amount,payload,files)=>{
+    const up=[],dir='u'+crypto.randomUUID();
+    try{
+      for(const [i,x] of (files||[]).entries()){
+        const ext=path.extname(String(x.name||x.f||'')).toLowerCase(),mime=MIME[ext];
+        if(!mime)throw err('نوع المرفق غير مدعوم ('+(ext||'؟')+'). المسموح: PDF أو صورة PNG/JPG');
+        const p=attFile(x.f),buf=fs.readFileSync(p);
+        if(buf.length>10*1048576)throw err('المرفق «'+x.name+'» أكبر من 10 MB');
+        const sp=dir+'/'+(i+1)+ext,r=await stReq('POST','object/approvals/'+sp,buf,mime);
+        if(!r.ok){const t=await r.text().catch(()=>'');throw err('تعذّر رفع المرفق «'+x.name+'»: '+t.slice(0,120))}
+        up.push({path:sp,name:x.name,size:buf.length});
+      }
+      const id=await rpc('appr_submit',{p_kind:kind,p_project:project||'',p_title:title,p_amount:amount==null?null:Number(amount),p_payload:payload||{},p_files:up});
+      return id;
+    }catch(e){await stDel(up.map(u=>u.path));
+      if(/FILES_REQUIRED/.test(e.message))throw err('المرفقات إلزامية لهذه العملية');
+      throw e}
+  });
+  H('apprDecide',async(id,ok,note,all)=>rpc('appr_decide',{p_id:id,p_approve:!!ok,p_note:String(note||''),p_all:!!all}));
+  H('apprApplied',async id=>{await rpc('appr_applied',{p_id:id});return true});
+  H('apprCancel',async id=>{await rpc('appr_cancel',{p_id:id});return true});
+  H('apprClean',async paths=>{await stDel((paths||[]).filter(p=>/^u[0-9a-f-]{36}\/\d+\.\w+$/.test(p)));return true});
+  H('apprOpen',async(sp,name)=>{
+    if(!/^u[0-9a-f-]{36}\/\d+\.\w+$/.test(String(sp)))throw err('BAD_PATH');
+    const r=await stReq('GET','object/authenticated/approvals/'+sp);
+    if(!r.ok)throw err('المرفق غير متاح (ربما حُذف بعد الاعتماد)');
+    const d=path.join(os.tmpdir(),'kathib-approvals');fs.mkdirSync(d,{recursive:true});
+    const fp=path.join(d,crypto.randomBytes(4).toString('hex')+'-'+String(name||'file').replace(/[^\w.\u0600-\u06FF-]/g,'_'));
+    fs.writeFileSync(fp,Buffer.from(await r.arrayBuffer()));
+    const m=await openPath(fp);return m||true;
+  });
 };
