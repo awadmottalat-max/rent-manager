@@ -13,7 +13,7 @@ contextBridge.exposeInMainWorld('native',{
   changeDir:()=>ipc.invoke('dir:change'),
   openFile:f=>ipc.invoke('file:open',f),
   saveFile:(n,b)=>ipc.invoke('file:save',n,b),
-  pdf:n=>ipc.invoke('print:pdf',n),
+  pdf:n=>ipc.invoke('print:pdf',n),reportSave:(h,s,n)=>ipc.invoke('report:save',h,s,n),reportDir:()=>ipc.invoke('report:dir'),
   print:a5=>ipc.invoke('print:now',!!a5),
   show:p=>ipc.invoke('path:show',p),
   getIcon:()=>ipc.invoke('icon:get'),

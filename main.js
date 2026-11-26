@@ -116,6 +116,18 @@ if(!lock)app.quit();else{
       const pdf=await win.webContents.printToPDF({printBackground:true,preferCSSPageSize:true});
       fs.writeFileSync(r.filePath,pdf);return r.filePath;
     });
+    ipcMain.handle('report:save',async(_e,html,sub,name)=>{
+      const clean=s=>String(s||'').replace(/[\\/:*?"<>|\u0000-\u001f]/g,'_').replace(/\.\./g,'_').trim().slice(0,120)||'report';
+      const dir=path.join(dataDir,'reports',...String(sub||'').split('/').map(clean).filter(Boolean));fs.mkdirSync(dir,{recursive:true});
+      const out=path.join(dir,clean(name).replace(/\.pdf$/i,'')+'.pdf');
+      const srcDir=path.join(__dirname,'src').replace(/\\/g,'/'),tmp=path.join(app.getPath('temp'),'kathib-rep-'+Date.now()+'-'+Math.random().toString(36).slice(2,6)+'.html');
+      fs.writeFileSync(tmp,'<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><base href="file:///'+srcDir.replace(/^\//,'')+'/"><link rel="stylesheet" href="style.css"></head><body class="pr"><div id="printarea">'+String(html)+'</div></body></html>');
+      const w2=new BrowserWindow({show:false,webPreferences:{sandbox:true,contextIsolation:true,javascript:false}});
+      try{await w2.loadFile(tmp);await new Promise(r=>setTimeout(r,500));
+        const pdf=await w2.webContents.printToPDF({printBackground:true,preferCSSPageSize:true});fs.writeFileSync(out,pdf);return out}
+      finally{try{w2.destroy()}catch{}try{fs.unlinkSync(tmp)}catch{}}
+    });
+    ipcMain.handle('report:dir',()=>{const d=path.join(dataDir,'reports');fs.mkdirSync(d,{recursive:true});return shell.openPath(d)});
     ipcMain.handle('print:now',(_e,a5)=>{win.webContents.print(a5?{printBackground:true,pageSize:'A5',landscape:true,margins:{marginType:'none'}}:{printBackground:true})});
     ipcMain.handle('path:show',(_e,p)=>shell.showItemInFolder(p));
     ipcMain.handle('template:save',async()=>{

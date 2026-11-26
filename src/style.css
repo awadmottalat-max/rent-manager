@@ -456,3 +456,4 @@ dialog::backdrop{background:#0b153580;backdrop-filter:blur(3px)}
 #gsr button b{color:var(--acc)}#gsr button span{color:var(--mut);font-size:12px}
 #gsr p{padding:14px;color:var(--mut);text-align:center;margin:0}
 .hero{position:relative}.hero .dcb{position:absolute;inset-inline-end:16px;top:12px;background:#ffffff22;color:#fff;border-color:#ffffff55}
+@media print{body,body.pr{background:#fff!important}.kp::before{display:none}}

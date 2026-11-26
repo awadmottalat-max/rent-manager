@@ -23,8 +23,19 @@ async function apFetch(){
   const old=JSON.stringify(S.ap.list.map(x=>[x.id,x.status,x.step,x.applied]));
   S.ap.list=r.v||[];
   const ch=old!==JSON.stringify(S.ap.list.map(x=>[x.id,x.status,x.step,x.applied]));
+  apNotify();
   await apApply();
   if(ch&&!document.querySelector('dialog[open]')){render()}
+}
+function apNotify(){
+  try{const key='apSeen:'+((S.cl&&S.cl.email)||''),first=localStorage.getItem(key)===null;
+    let seen=new Set(JSON.parse(localStorage.getItem(key)||'[]'));
+    const cur=apPendingMe().map(r=>r.id+':'+r.step),fresh=cur.filter(k=>!seen.has(k));
+    if(fresh.length&&!first){const rs=apPendingMe().filter(r=>fresh.includes(r.id+':'+r.step));
+      const t=rs.length===1?'طلب اعتماد جديد: '+(AP_KIND[rs[0].kind]||''):rs.length+' طلبات بانتظار اعتمادك';
+      const b=rs.length===1?rs[0].title+(rs[0].amount!=null?' — '+fm(rs[0].amount):''):rs.slice(0,3).map(r=>r.title).join('، ');
+      const n=new Notification(t,{body:b});n.onclick=()=>{window.focus();go('approvals')}}
+    cur.forEach(k=>seen.add(k));localStorage.setItem(key,JSON.stringify([...seen].slice(-500)))}catch{}
 }
 /* تطبيق الطلبات المعتمدة على المستند (يقوم به أي حساب يملك حق الحفظ، والتطبيق آمن التكرار) */
 async function apApply(){
