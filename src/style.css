@@ -411,3 +411,36 @@ tbody tr{transition:background .12s}tbody tr:hover td{background:#e8f1fc}
 #nav .lo:hover{opacity:1}
 #nav .who{font-size:12px;opacity:.75;padding:12px 14px 0;margin-top:14px;border-top:1px solid rgba(255,255,255,.15)}
 #nav .who+.lo{margin-top:4px;border-top:0;padding-top:8px}
+
+/* ---- 1.29: لوحة الفلتر المفتوحة تعلو أي صف فلاتر لاحق، وبطاقات الأرقام كفلاتر ---- */
+.bar:has(.ms.open){z-index:90}
+.kp.kf{cursor:pointer;transition:transform .15s,box-shadow .15s,border-color .15s,background .15s}
+.kp.kf:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(20,36,74,.12)}
+.kp.kf.on{border-color:var(--acc);border-top-color:var(--gold);background:linear-gradient(180deg,#fffaf0,#fff);box-shadow:0 0 0 2px rgba(20,36,74,.14),0 8px 20px rgba(20,36,74,.1)}
+.kp.kf.on::after{content:"✓";position:absolute;inset-inline-start:10px;bottom:8px;width:20px;height:20px;border-radius:50%;background:var(--acc);color:#fff;font-size:12px;line-height:20px;text-align:center}
+
+/* ---- 1.29: لمسات الفخامة ---- */
+:root{--gld:#b8935a;--gld-l:#e9d9bb;--lux:linear-gradient(135deg,#14234b,#1d3470 60%,#14234b)}
+body{background:radial-gradient(1100px 520px at 88% -8%,#e8eefa 0,transparent 62%),radial-gradient(900px 420px at -5% 105%,#f3ead8 0,transparent 60%),var(--bg);letter-spacing:.1px}
+h1{position:relative;padding-bottom:10px}
+h1::after{content:"";position:absolute;inset-inline-start:0;bottom:0;width:56px;height:3px;border-radius:3px;background:linear-gradient(90deg,var(--gld),var(--gld-l))}
+.kp{border-top-color:var(--gld);box-shadow:var(--shadow-s);position:relative;overflow:hidden}
+.kp::before{content:"";position:absolute;inset:0;background:linear-gradient(160deg,#ffffff00 55%,#b8935a14);pointer-events:none}
+.kp b{letter-spacing:.2px}
+.kp.l{border-top-color:var(--late)}
+.kp.kf.on{border-top-color:var(--gld)}
+.tw{border-radius:16px;box-shadow:var(--shadow-m);border:1px solid #e3eaf5;overflow:auto}
+.tw thead th{background:linear-gradient(180deg,#f7f9fd,#eaf0f9);color:var(--acc);border-bottom:2px solid var(--gld);font-weight:700;letter-spacing:.2px}
+.tw tbody tr{transition:background .12s,box-shadow .12s}
+.tw tbody tr:hover{background:#f2f6fd;box-shadow:inset 3px 0 0 var(--gld)}
+button.p,.btn.p,.pb{background:var(--lux);box-shadow:0 4px 14px #14234b38;border:1px solid #0e1a3a;transition:transform .12s,box-shadow .12s,filter .12s}
+button.p:hover,.btn.p:hover,.pb:hover{transform:translateY(-1px);box-shadow:0 8px 20px #14234b4a;filter:brightness(1.08)}
+button:active{transform:translateY(0) scale(.99)}
+input:focus,select:focus,textarea:focus,.msb:focus-visible{outline:none;border-color:var(--gld);box-shadow:0 0 0 3px #b8935a30}
+.msp{border-radius:16px;border:1px solid var(--gld-l);box-shadow:0 24px 60px #14234b3d;animation:luxIn .16s ease-out}
+@keyframes luxIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+#nav a.on,#nav button.on{box-shadow:inset -3px 0 0 var(--gld)}
+dialog,#stm,#frm,#det{border-radius:20px;box-shadow:0 30px 80px #0b153555;border:1px solid var(--gld-l)}
+dialog::backdrop{background:#0b153580;backdrop-filter:blur(3px)}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#b7c4dc;border-radius:10px;border:2px solid transparent;background-clip:padding-box}::-webkit-scrollbar-thumb:hover{background:var(--gld);background-clip:padding-box}
+#view>*{animation:luxIn .22s ease-out}

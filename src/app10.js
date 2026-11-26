@@ -99,7 +99,7 @@ function svWaForm(id){
 function vSvc(){
   const E=S.sv,all=SV(),pn=id=>P()[id]?.name||'—',q=E.q.toLowerCase();
   const L=all.filter(x=>(MS(E.p,x.pid))&&AO(E.t,z=>x.type===z)&&AO(E.w,z=>x.party===z)&&AO(E.e,z=>x.payee===z)&&AO(E.y,z=>String(x.year)===String(z))&&AO(E.s,z=>z==='open'?svRem(x)>0.005:z==='late'?svLate(x):z==='carry'?svCarry(x):svRem(x)<=0.005)&&(!q||txt(x.unit,x.name,pn(x.pid),x.type,x.no).includes(q))).sort((a,b)=>(+b.year-+a.year)||String(a.unit).localeCompare(String(b.unit),'ar',{numeric:true}));
-  const kp=(l,v,i,c)=>`<div class="kp static ${c||''}"><span>${l}</span><b>${v}</b><i>${i||''}</i></div>`;
+  const kp=(l,v,i,c,val)=>val==null?`<div class="kp static ${c||''}"><span>${l}</span><b>${v}</b><i>${i||''}</i></div>`:kpf(l,v,'sv.s',val,{i,cls:c==='lt'?'l':c});
   const cols=[{h:'الرقم',k:'d'},{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'النوع',k:'t'},{h:'السنة',k:'d'},{h:'على',k:'t'},{h:'الاسم',k:'t'},{h:'تُدفع إلى',k:'t'},{h:'الإجمالي',k:'n'},{h:'المسدد',k:'n'},{h:'المتبقي',k:'n'},{h:'الاستحقاق',k:'d'},{h:'الحالة',k:'d'}];
   const cell=x=>[x.no,esc(pn(x.pid)),'<b>'+esc(x.unit)+'</b>',esc(x.type),x.year+(svCarry(x)?' <small>مرحّل</small>':''),SV_PL[x.party],esc(x.name)||'—',SV_YL[x.payee],fm(x.total),fm(svPaid(x)),fm(svRem(x)),fs_(x.due),`<span class="ch ${svCls(x)}">${svSt(x)}</span>`];
   const tt=sum(L,x=>+x.total||0),tp=sum(L,svPaid),tr=sum(L,svRem);
@@ -115,7 +115,7 @@ function vSvc(){
   return `<h1>الرسوم والخدمات</h1><p class="sub">رسوم الخدمات والمياه السنوية على الملاك أو المستأجرين: الإجمالي شامل الضريبة والمسدد والمتبقي. غير المسدد يبقى مستحقًا ويظهر «مرحّلًا» في السنة التالية. اضغط البند لتسجيل السداد.</p>
 <div class="bar">${msel('sv.p',PL(),'كل المشاريع')}${msel('sv.t',types.map(t=>[t,t]),'كل الأنواع')}${msel('sv.s',[['open','غير المسددة'],['late','المتأخرة'],['carry','المرحّلة من سنوات سابقة'],['paid','المسددة']],'كل الحالات')}${msel('sv.w',SV_PARTY,'المالك والمستأجر')}${msel('sv.y',years.map(y=>[y,y]),'كل السنوات')}${msel('sv.e',SV_PAYEE,'كل جهات السداد')}
 <input type="search" id="sv_q" placeholder="بحث: وحدة، اسم، مشروع" value="${esc(E.q)}"><button class="btn p" data-a="svIssue">+ إصدار رسوم سنوية</button><button class="btn" data-a="svNew">+ رسم منفرد</button><button class="btn" data-a="svImp">استيراد وحدات وملاك ورسوم (Excel)</button><button class="btn" data-a="svTpl">تنزيل قالب Excel</button>${pbtn('list')}</div>
-<div class="kpis sm">${kp('إجمالي المستحق (شامل الضريبة)',fm(sum(open,x=>+x.total||0)+0),'للبنود غير المسددة بالكامل')}${kp('المسدد',fm(sum(all,svPaid)))}${kp('المتبقي',fm(sum(all,svRem)),open.length+' بند')}${kp('متأخر',fm(sum(late,svRem)),late.length+' بند','lt')}${kp('مرحّل من سنوات سابقة',fm(sum(all.filter(svCarry),svRem)),all.filter(svCarry).length+' بند')}</div>
+<div class="kpis sm">${kp('إجمالي المستحق (شامل الضريبة)',fm(sum(open,x=>+x.total||0)+0),'للبنود غير المسددة بالكامل','','open')}${kp('المسدد',fm(sum(all,svPaid)),'','','paid')}${kp('المتبقي',fm(sum(all,svRem)),open.length+' بند','','open')}${kp('متأخر',fm(sum(late,svRem)),late.length+' بند','lt','late')}${kp('مرحّل من سنوات سابقة',fm(sum(all.filter(svCarry),svRem)),all.filter(svCarry).length+' بند','','carry')}</div>
 ${L.length?T(cols,rws,{foot:S.pm.foot}):'<p class="empty">لا توجد رسوم مطابقة. اضغط «+ إصدار رسوم سنوية» لإنشاء رسوم الخدمات أو المياه لمشروع.</p>'}${smry}`;
 }
 VF.svc=vSvc;

@@ -44,6 +44,10 @@ function msel(k,opts,all){
   const lab=cur.length===0?all:cur.length===1?(opts.find(o=>String(o[0])===String(cur[0]))||[0,cur[0]])[1]:all.replace(/^كل\s+/,'')+' ('+cur.length+')';
   return `<div class="ms${open?' open':''}${cur.length?' on':''}" data-k="${k}"><button type="button" class="msb" data-a="msOpen" data-k="${k}">${esc(lab)}<i>▾</i></button><div class="msp">${opts.length>8?'<input class="mss" type="search" placeholder="بحث…" data-noi18n>':''}<div class="msl">${opts.map(([v,l])=>`<label><input type="checkbox" class="msc" data-k="${k}" value="${esc(v)}"${cur.some(c=>String(c)===String(v))?' checked':''}><span>${esc(l)}</span></label>`).join('')}</div><div class="msf"><button type="button" class="btn sm" data-a="msClr" data-k="${k}">مسح التحديد</button></div></div></div>`;
 }
+
+/* بطاقة رقم تعمل كفلتر: الضغط يحدد الصفوف، وبطاقة «الكل» تُلغي. raw=1 لقيمة نصية (وضع) بدل مصفوفة */
+function kpf(l,v,k,val,o){o=o||{};const cur=MSgp(k),on=o.on!=null?o.on:o.raw?cur===val:(val===''?!MSV(cur).length:(MSV(cur).length===1&&MSV(cur)[0]===val));
+  return `<button type="button" class="kp kf${on?' on':''} ${o.cls||''}" data-a="kpf" data-k="${k}" data-v="${esc(val)}" data-raw="${o.raw?1:0}" data-def="${esc(o.def||'')}" aria-pressed="${on}"><span>${l}</span><b>${v}</b><i>${o.i||''}</i></button>`}
 const AO=(v,fn)=>{const a=MSV(v);return !a.length||a.some(fn)};
 const MSopts=o=>Object.entries(o).filter(([k])=>k!=='').map(([k,l])=>[k,l]);
 const txt=(...a)=>a.join(' ').toLowerCase();
@@ -138,11 +142,11 @@ Object.assign(VF,{ended:vEnded,dash:vDash,avail:vAvail,contracts:vContracts,due:
 const J={
   agrReset:()=>{S.agr={p:'',q:'',s:'',o:'',m:''};render()},
   avail:()=>{S.av={p:'',q:'',s:'avail',t:''};go('avail')},
-  active:()=>{S.f={p:'',q:'',s:'active'};go('contracts')},ended:()=>{S.en={p:'',q:''};go('ended')},
+  active:()=>{S.f={p:'',q:'',s:'active'};go('contracts')},ended:()=>{S.en={p:'',q:'',r:''};go('ended')},
   open:()=>{S.f={p:'',q:'',s:'open'};go('contracts')},issues:()=>{S.f={p:'',q:'',s:'issues'};go('contracts')},
   late:()=>{Object.assign(S.due,{p:'',cs:'',mode:'exp',s:'late',from:'',to:'',m:'',g:'month',q:''});go('due')},
   soon:()=>{Object.assign(S.due,{p:'',cs:'',mode:'exp',s:'open',from:iso(TODAY),to:iso(TODAY+30*DAY),m:'',g:'day',q:''});go('due')},
-  exp:()=>{Object.assign(S.ren,{p:'',q:'',win:'u90'});go('renew')},endedR:()=>{S.en={p:'',q:''};go('ended')}
+  exp:()=>{Object.assign(S.ren,{p:'',q:'',win:'u90'});go('renew')},endedR:()=>{S.en={p:'',q:'',r:''};go('ended')}
 };
 
 /* ---------- لوحة التحكم ---------- */
@@ -383,12 +387,12 @@ const rangeBar=(sc,D,extra)=>`<div class="bar"><label>الشهر <input type="mo
 ${selH(sc+'_g',[['month','تجميع شهري'],['day','تجميع يومي'],['none','بدون تجميع']],D.g)}
 <button class="btn" data-a="dueClear" data-d="${sc}">مسح التاريخ</button>${pbtn('list')}<button class="btn" data-a="dueCsv" data-d="${sc}">تصدير CSV</button>${extra||''}</div>`;
 function vDues(all){
-  const D=S.due;D.mode='exp';const m=dueModel(all,D),L=m.L;S.pm={...m};
+  const D=S.due;D.mode='exp';const m=dueModel(all,D),L=m.L,L0=MSV(D.s).length?dueModel(all,{...D,s:''}).L:L;S.pm={...m};
   return `<h1>المستحقات</h1><p class="sub">الأقساط المستحقة على المستأجرين حسب تاريخ الاستحقاق، مع المشروع والوحدة والمالك والمستأجر لكل سطر. زر «دفعة» يقيّد السداد ويطبع سند القبض.</p>
 <div class="bar">${msel('due.p',PL(),'كل المشاريع')}${msel('due.cs',MSopts(DCS_LAB),'كل حالات العقد')}${msel('due.s',MSopts(DS_LAB).filter(o=>o[0]!=='all'),'كل الأقساط')}
 <input type="search" id="due_q" placeholder="بحث: وحدة، مستأجر، مالك" value="${esc(D.q)}"></div>${rangeBar('due',D)}
-<div class="kpis"><div class="kp static"><span>عدد الأقساط</span><b>${L.length}</b></div><div class="kp static"><span>إجمالي الأقساط</span><b>${fm(sum(L,o=>o.amount))}</b></div>
-<div class="kp static"><span>المسدد منها</span><b>${fm(sum(L,o=>o.paid))}</b></div><div class="kp l static"><span>المستحق غير المسدد</span><b>${fm(sum(L,o=>o.due))}</b></div></div>
+<div class="kpis">${kpf('عدد الأقساط',L0.length,'due.s','',{i:'اضغط لعرض الكل'})}${kpf('إجمالي الأقساط',fm(sum(L0,o=>o.amount)),'due.s','',{on:false})}
+${kpf('المسدد منها',fm(sum(L0,o=>o.paid)),'due.s','paid',{i:'الأقساط المسددة بالكامل'})}${kpf('المستحق غير المسدد',fm(sum(L0,o=>o.due)),'due.s','open',{cls:'l',i:'كل غير المسدد'})}</div>
 ${T(m.cols,m.rows,{foot:m.foot,footSpan:m.footSpan})}${m.truncated?'<p class="sub" style="margin-top:8px">يُعرض أول 800 بند فقط؛ الإجماليات تشمل الكل. ضيّق الفترة أو استخدم الطباعة/CSV للكل.</p>':''}`;
 }
 function flowSummary(all,D){
@@ -409,12 +413,12 @@ function vFlow(all){
   const D=S.flow;if(D.g==='none')D.g='month';
   const m=dueModel(all,D),act=D.mode==='act',FS=flowSummary(all,D);S.pm={...m};
   const tE=sum(FS,g=>g.exp),tC=sum(FS,g=>g.col);
-  const sumRows=FS.map(g=>({cells:['<b><bdi>'+g.k+'</bdi></b>',fm(g.exp),fm(g.col),fm(g.col-g.exp)]}));
+  const sumRows=FS.filter(g=>D.neg!=='1'||g.col<g.exp).map(g=>({cells:['<b><bdi>'+g.k+'</bdi></b>',fm(g.exp),fm(g.col),fm(g.col-g.exp)]}));
   return `<h1>التدفقات النقدية</h1><p class="sub">المتوقع حسب تاريخ استحقاق الأقساط مقابل المحصَّل فعليًا حسب تاريخ التحصيل، لكل شهر أو يوم.</p>
 <div class="bar">${msel('flow.p',PL(),'كل المشاريع')}${msel('flow.cs',MSopts(DCS_LAB),'كل حالات العقد')}
 ${selH('fl_mode',[['exp','تفاصيل المتوقع (الأقساط)'],['act','تفاصيل المحصَّل فعليًا (الدفعات)']],D.mode)}${act?'':msel('flow.s',MSopts(DS_LAB).filter(o=>o[0]!=='all'),'كل الأقساط')}
 <input type="search" id="fl_q" placeholder="بحث: وحدة، مستأجر، مالك" value="${esc(D.q)}"></div>${rangeBar('fl',D)}
-<div class="kpis"><div class="kp static"><span>المتوقع في الفترة</span><b>${fm(tE)}</b></div><div class="kp static"><span>المحصَّل فعليًا</span><b>${fm(tC)}</b></div><div class="kp ${tC<tE?'l':''} static"><span>الفرق</span><b>${fm(tC-tE)}</b></div></div>
+<div class="kpis">${kpf('المتوقع في الفترة',fm(tE),'flow.mode','exp',{raw:1,def:'exp',i:'عرض تفاصيل الأقساط'})}${kpf('المحصَّل فعليًا',fm(tC),'flow.mode','act',{raw:1,def:'exp',i:'عرض تفاصيل الدفعات'})}${kpf('الفرق',fm(tC-tE),'flow.neg','1',{raw:1,def:'',cls:tC<tE?'l':'',i:'الأشهر التي فيها عجز'})}</div>
 <h3>ملخص الفترات</h3>${T([{h:D.g==='day'?'اليوم':'الشهر',k:'d'},{h:'المتوقع',k:'n'},{h:'المحصَّل فعليًا',k:'n'},{h:'الفرق',k:'n'}],sumRows,{foot:['الإجمالي',fm(tE),fm(tC),fm(tC-tE)]})}
 <h3>${act?'تفاصيل المحصَّل فعليًا':'تفاصيل المتوقع'}</h3>${T(m.cols,m.rows,{foot:m.foot,footSpan:m.footSpan})}${m.truncated?'<p class="sub" style="margin-top:8px">يُعرض أول 800 بند فقط؛ الإجماليات تشمل الكل.</p>':''}`;
 }
@@ -434,20 +438,20 @@ function exitForm(pid,cid){
       mutate(pid,p=>{p.contracts.find(x=>x.id===cid).exit={date:o.date,reason:o.reason,note:o.note,waive:o.rem==='waive',files:o.files}});
       toast(o.date>iso(TODAY)?'سينتهي العقد بتاريخ '+o.date:'انتهى العقد — الوحدة '+c.unit+' صارت متاحة للإيجار')}});
 }
-function endedList(all){
+function endedList(all,noRem){
   const E=S.en,q=E.q.toLowerCase();
-  return all.filter(x=>x.r.st==='منتهي'&&endState(x.pid,x.c)==='pend'&&(MS(E.p,x.pid))&&(!q||txt(x.c.unit,x.c.tenant,x.c.owner,x.pn).includes(q))).map(x=>({...x,es:'pend'}))
+  return all.filter(x=>x.r.st==='منتهي'&&endState(x.pid,x.c)==='pend'&&(MS(E.p,x.pid))&&(noRem||E.r!=='1'||x.r.rem>0)&&(!q||txt(x.c.unit,x.c.tenant,x.c.owner,x.pn).includes(q))).map(x=>({...x,es:'pend'}))
     .sort((a,b)=>(pd(b.c.end)||0)-(pd(a.c.end)||0));
 }
 function vEnded(all){
-  const E=S.en,L=endedList(all);
+  const E=S.en,L=endedList(all),eAll=endedList(all,1);
   const cols=[{h:'المشروع',k:'t'},{h:'الوحدة',k:'t'},{h:'المالك',k:'t'},{h:'المستأجر',k:'t'},{h:'بداية',k:'d'},{h:'نهاية',k:'d'},{h:'منذ (يوم)',k:'n'},{h:'المتبقي',k:'n'},{h:'الإجراء',k:'ac'}];
   const rws=L.map(x=>({attrs:open_(x),cells:[...pu(x),esc(x.c.owner)||'—',esc(x.c.tenant)||'—',fs_(x.c.start),fs_(x.c.end),Math.max(0,Math.round((TODAY-(pd(x.c.end)||TODAY))/DAY)),fm(x.r.rem>0?x.r.rem:0),endBtns(x)]}));
   const pc=cols.filter(c=>c.k!=='ac');
   S.pm={title:'العقود المنتهية',sub:'بانتظار قرار (تجديد أو إنهاء)'+(E.p?' — المشروع: '+esc(pname(E.p)):''),cols:pc,rows:rws.map(r=>({...r,cells:r.cells.slice(0,pc.length)})),foot:[L.length+' عقدًا','','','','','',fm(sum(L,x=>x.r.rem>0?x.r.rem:0))]};
   return `<h1>العقود المنتهية</h1><p class="sub">هنا فقط العقود المنتهية التي لم يُتخذ فيها قرار. اضغط <b>تجديد</b> فيصبح لها عقد ساري جديد، أو <b>إنهاء</b> فتتحول الوحدة إلى «الشقق المتاحة». وبمجرد اتخاذ القرار يختفي العقد من هذه الصفحة ويُحفظ في «أرشيف» العقود.</p>
 <div class="bar">${msel('en.p',PL(),'كل المشاريع')}<input type="search" id="en_q" placeholder="بحث: وحدة، مستأجر، مالك" value="${esc(E.q)}">${pbtn('list')}</div>
-<div class="kpis"><div class="kp static"><span>منتهية بانتظار القرار</span><b>${L.length}</b></div><div class="kp static l"><span>المتبقي عليها</span><b>${fm(sum(L,x=>x.r.rem>0?x.r.rem:0))}</b></div></div>
+<div class="kpis">${kpf('منتهية بانتظار القرار',eAll.length,'en.r','',{raw:1,i:'اضغط لعرض الكل'})}${kpf('المتبقي عليها',fm(sum(eAll,x=>x.r.rem>0?x.r.rem:0)),'en.r','1',{raw:1,cls:'l',i:eAll.filter(x=>x.r.rem>0).length+' عقدًا عليها متبقٍ'})}</div>
 ${T(cols,rws,{foot:S.pm.foot.concat([''])})}`;
 }
 
@@ -697,6 +701,7 @@ const act={
   qpay:b=>payForm(b.dataset.p,b.dataset.c,b.dataset.v,b.dataset.n),
   rentUnit:b=>{const p=P()[b.dataset.p],u=p.units.find(u=>u.id===b.dataset.i);contractForm(false,{pid:b.dataset.p,unit:u.no,owner:u.owner,fee:'',rent:u.askRent||''})},
   editUnit2:b=>{S.pj=b.dataset.p;unitForm(b.dataset.p,b.dataset.i)},
+  kpf:b=>{const k=b.dataset.k,v=b.dataset.v,cur=MSgp(k);if(b.dataset.raw==='1')MSsp(k,cur===v?b.dataset.def:v);else MSsp(k,v===''||(MSV(cur).length===1&&MSV(cur)[0]===v)?'':[v]);render()},
   msOpen:b=>{const w=b.closest('.ms'),was=w.classList.contains('open');document.querySelectorAll('.ms.open').forEach(x=>x.classList.remove('open'));if(!was){w.classList.add('open');S._ms=b.dataset.k;const i=w.querySelector('.mss');if(i)setTimeout(()=>i.focus(),30)}else S._ms=''},
   msClr:b=>{MSsp(b.dataset.k,'');S._ms=b.dataset.k;render()},
   cSt:b=>{S.f.s=b.dataset.s;render()},puSt:b=>{S.pr.us=b.dataset.s;render()},

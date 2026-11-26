@@ -54,7 +54,8 @@ function vExt(all){
   S.pm={title:'تقرير العقود الخارجية — رسوم إدارة الأملاك',sub:'المشروع: '+(E.p?esc(pname(E.p)):'الكل')+(E.o?' — المالك: '+esc(E.o):'')+' — عدد العقود: '+list.length+' — إجمالي الإيجار: '+fm(tr)+' — رسوم الإدارة: '+fm(tf)+' — المحصَّل: '+fm(tp)+' — المتبقي: '+fm(trm),cols,rows:rws,foot:[list.length+' عقدًا','','','','','',fm(tr),fm(S_(x=>x.f.mg.total)),fm(S_(x=>x.f.ls.total)),fm(tp),fm(trm),fm(tl),'',''],footSpan:0};
   const byP={};for(const x of list){const o=byP[x.pn]=byP[x.pn]||{n:0,r:0,f:0,p:0,m:0,l:0};o.n++;o.r+=rent(x);o.f+=x.f.total;o.p+=x.f.paid;o.m+=x.f.rem;o.l+=x.f.late}
   const sm=Object.keys(byP).length>1?`<h3 style="margin:14px 0 6px">ملخص حسب المشروع</h3>${T([{h:'المشروع',k:'t'},{h:'العقود',k:'n'},{h:'قيمة الإيجار',k:'n'},{h:'رسوم الإدارة',k:'n'},{h:'المسدد',k:'n'},{h:'المتبقي',k:'n'},{h:'المتأخر',k:'n'}],Object.entries(byP).sort((a,b)=>a[0].localeCompare(b[0],'ar')).map(([n,o])=>({cells:['<b>'+esc(n)+'</b>',o.n,fm(o.r),fm(o.f),fm(o.p),fm(o.m),fm(o.l)]})),{foot:['الإجمالي',list.length,fm(tr),fm(tf),fm(tp),fm(trm),fm(tl)],footSpan:0})}`:'';
-  const k=(l,v,i,c)=>`<div class="kp static ${c||''}"><span>${l}</span><b>${v}</b><i>${i||''}</i></div>`;
+  const k=(l,v,i,c,val,on)=>val==null?`<div class="kp static ${c||''}"><span>${l}</span><b>${v}</b><i>${i||''}</i></div>`:kpf(l,v,'ex.f',val,{i,cls:c==='lt'?'l':c,on});
+  const sf0=S.ex.f;S.ex.f='';const list0=all.filter(exPass);S.ex.f=sf0;const T0=g=>sum(list0,g);
   return `<h1>العقود الخارجية</h1><p class="sub">عقود يُسدَّد إيجارها من المستأجر إلى المالك مباشرة، وتتابع فيها رسوم إدارة الأملاك فقط (استحقاقها وسدادها). لا تدخل في إجماليات الإيجارات ولا تنبيهاتها.</p>
 <div class="bar">${msel('ex.p',PL(),'كل المشاريع')}
 ${msel('ex.o',owners.map(n=>[n,n]),'كل الملاك')}
@@ -63,7 +64,7 @@ ${msel('ex.f',[['late','رسوم متأخرة'],['open','عليها متبقٍ']
 <input type="search" id="ex_q" placeholder="بحث: وحدة، مستأجر، مالك" value="${esc(E.q)}" aria-label="بحث">
 <label class="mlb">تقرير شهري <input type="month" id="ex_m" value="${esc(E.m)}"></label>${E.m?'<button class="btn" data-a="exM0">عرض كل الفترات</button>':''}
 <button class="btn p" data-a="newExt">+ عقد خارجي</button>${pbtn('list')}</div>
-${E.m?vExtMonth(all,list,E):''}${E.m?'':`<div class="kpis sm">${k('العقود الخارجية',list.length,'إيجارها '+fm(tr))}${k('رسوم الإدارة المستحقة',fm(tf),pct(tf,tr)+' من الإيجار')}${k('المحصَّل من الرسوم',fm(tp),tf?Math.round(tp/tf*100)+'% من المستحق':'')}${k('المتبقي من الرسوم',fm(trm))}${k('المتأخر من الرسوم',fm(tl),'','lt')}</div>
+${E.m?vExtMonth(all,list,E):''}${E.m?'':`<div class="kpis sm">${k('العقود الخارجية',list0.length,'إيجارها '+fm(T0(rent)),'','')}${k('رسوم الإدارة المستحقة',fm(T0(x=>x.f.total)),pct(T0(x=>x.f.total),T0(rent))+' من الإيجار','',null)}${k('المحصَّل من الرسوم',fm(T0(x=>x.f.paid)),T0(x=>x.f.total)?Math.round(T0(x=>x.f.paid)/T0(x=>x.f.total)*100)+'% من المستحق':'','','paid')}${k('المتبقي من الرسوم',fm(T0(x=>x.f.rem)),list0.filter(x=>x.f.rem>0.005).length+' عقدًا','','open')}${k('المتأخر من الرسوم',fm(T0(x=>x.f.late)),list0.filter(x=>x.f.late_n).length+' عقدًا','lt','late')}</div>
 ${list.length?T(cols,rws,{foot:S.pm.foot}):'<p class="empty">لا توجد عقود خارجية. أضف عقدًا واختر «نوع العقد: خارجي».</p>'}${sm}`}`;
 }
 VF.ext=vExt;
