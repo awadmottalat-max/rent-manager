@@ -70,7 +70,7 @@ function vInv(){
   return `<h1>حصر الوحدات والملاك</h1><p class="sub">عدد وحدات كل مشروع وكل مالك، المباعة وغير المباعة. الوحدات التي لا ندير تأجيرها تظهر هنا وفي الرسوم فقط، ولا تظهر في شاشات الإيجار.</p>
 <div class="bar"><div class="tabs">${tabs.map(([k,l])=>`<button class="btn sm${E.tab===k?' p':''}" data-a="ivTab" data-t="${k}">${l}</button>`).join('')}</div>
 ${msel('iv.p',PL(),'كل المشاريع')}${E.tab!=='proj'?msel('iv.s',[['sold','المباعة'],['unsold','غير المباعة'],['rented','المؤجرة حاليًا'],['fee','للرسوم فقط']],'كل الوحدات'):''}${E.tab!=='proj'?`<input type="search" id="iv_q" placeholder="بحث: مالك أو وحدة" value="${esc(E.q)}">`:''}
-<button class="btn p" data-a="ivImp">استيراد حصر (Excel)</button>${gh.length?`<button class="btn dng" data-a="ivClean">وحدات بلا عقود (${gh.length})</button>`:''}${pbtn('list')}</div>
+${gh.length?`<button class="btn dng" data-a="ivClean">وحدات بلا عقود (${gh.length})</button>`:''}${pbtn('list')}</div>
 <div class="kpis sm">${kp('إجمالي الوحدات',all.length,'t')}${kp('مباعة',all.filter(o=>o.owner).length,'s')}${kp('غير مباعة',all.filter(o=>!o.owner).length,'u')}${kp('عدد الملاك',owners.size,'w')}${kp('للرسوم فقط',all.filter(o=>o.src==='fee').length,'f')}</div>${body}`;
 }
 VF.inv=vInv;

@@ -120,7 +120,7 @@ const ico=(k,c)=>`<svg class="ic ${c||''}" viewBox="0 0 24 24" fill="none" strok
 const NAVIC={alerts:'bell',dash:'dash',avail:'key',contracts:'file',ext:'ext',maint:'tool',svc:'calc',inv:'db',ended:'filex',due:'wallet',flow:'trend',renew:'refresh',props:'building',owners:'users',tenants:'users',agr:'sign',fin:'calc',rep:'chart',settings:'db'};
 
 /* ---------- التنقل ---------- */
-const VIEWS=[['dash','لوحة التحكم'],['alerts','التنبيهات'],['avail','الشقق المتاحة'],['contracts','العقود'],['ext','العقود الخارجية'],['ended','العقود المنتهية'],['due','المستحقات'],['flow','التدفقات النقدية'],['renew','التجديدات'],['props','المشاريع والوحدات'],['owners','الملاك'],['tenants','المستأجرون'],['agr','اتفاقيات التأجير'],['fin','التحليل المالي'],['maint','الصيانة والنظافة'],['svc','الرسوم والخدمات'],['inv','حصر الوحدات والملاك'],['rep','التقارير'],['settings','البيانات والنسخ الاحتياطي']];
+const VIEWS=[['dash','لوحة التحكم'],['alerts','التنبيهات'],['avail','الشقق المتاحة'],['contracts','العقود'],['ext','العقود الخارجية'],['ended','العقود المنتهية'],['due','المستحقات'],['flow','التدفقات النقدية'],['renew','التجديدات'],['props','المشاريع والوحدات'],['owners','الملاك'],['tenants','المستأجرون'],['agr','اتفاقيات التأجير'],['fin','التحليل المالي'],['maint','الصيانة والنظافة'],['svc','الرسوم والخدمات'],['inv','حصر الوحدات والملاك'],['rep','التقارير'],['settings','الإعدادات']];
 const VF={};
 function go(v){S.view=v;render();$('main').scrollTop=0}
 function renderNav(all){
@@ -619,10 +619,14 @@ function ownerDlg(name){
 
 /* ---------- الإعدادات ---------- */
 function vSettings(){
-  return `<h1>البيانات والنسخ الاحتياطي</h1><p class="sub">تُحفظ البيانات تلقائيًا بعد كل تعديل داخل التطبيق على هذا الجهاز.</p>
+  return `<h1>الإعدادات</h1><p class="sub">تُحفظ البيانات تلقائيًا بعد كل تعديل داخل التطبيق على هذا الجهاز.</p>
 <div class="set">
-<div class="card"><h3>استيراد وتصدير Excel</h3><p>الاستيراد يقبل «قالب الاستيراد» الفارغ (المشروع والوحدة في عمودين منفصلين) أو ورقة «ورقه المعالجة» المعتمدة. التصدير ينتج ملفًا بنفس التخطيط مع ورقة «الدفعات» ليعود الاستيراد دقيقًا.</p>
-<div class="row"><button class="btn p" data-a="imp">استيراد من Excel</button><button class="btn" data-a="expX">تصدير كل العقود (Excel)</button><button class="btn" data-a="tpl">تنزيل قالب الاستيراد الفارغ</button></div></div>
+<div class="card"><h3>الاستيراد والتصدير (Excel)</h3><p>كل عمليات الاستيراد في مكان واحد. قبل أي استيراد تُؤخذ نسخة احتياطية تلقائيًا، وتظهر شاشة مراجعة قبل التطبيق.</p>
+<div class="imps">
+<div class="ib"><b>العقود</b><span>يقبل «قالب الاستيراد» الفارغ أو ورقة «ورقه المعالجة». التصدير بنفس التخطيط مع ورقة «الدفعات».</span><div class="row"><button class="btn p" data-a="imp">استيراد عقود من Excel</button><button class="btn" data-a="tpl">تنزيل قالب العقود الفارغ</button><button class="btn" data-a="expX">تصدير كل العقود (Excel)</button></div></div>
+<div class="ib"><b>الرسوم والخدمات</b><span>وحدات وملاك ورسوم سنوية (الكهرباء، المياه، اتحاد الملاك…).</span><div class="row"><button class="btn p" data-a="svImp">استيراد وحدات وملاك ورسوم (Excel)</button><button class="btn" data-a="svTpl">تنزيل قالب الرسوم</button></div></div>
+<div class="ib"><b>حصر الوحدات والملاك</b><span>عدد الوحدات لكل مشروع ومالك، المباعة وغير المباعة.</span><div class="row"><button class="btn p" data-a="ivImp">استيراد حصر (Excel)</button></div></div>
+</div></div>
 <div class="card"><h3>طريقة احتساب العقود التي تزيد مدتها عن سنة</h3><div class="row"><label>قيمة الإيجار تمثل <select id="mode"><option value="total"${MODE()==='total'?' selected':''}>إجمالي قيمة العقد</option><option value="annual"${MODE()==='annual'?' selected':''}>إيجار سنة واحدة</option></select></label></div></div>
 <div class="card"><h3>الإعدادات المالية</h3><div class="row"><label>ضريبة القيمة المضافة % <input type="number" id="set_vat" step="0.01" value="${esc(S.db.settings.vat)}" style="width:90px"></label><label>اسم المشغّل <input id="set_op" value="${esc(S.db.settings.operator)}" style="min-width:260px"></label></div></div>
 <div class="card"><h3>النسخ الاحتياطي</h3><p>تؤخذ نسخة تلقائية كل 24 ساعة عند الحفظ، ونسخة قبل كل استيراد أو استعادة.</p>
