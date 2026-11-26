@@ -10,7 +10,7 @@ const todayNow=()=>{const d=new Date();return Date.UTC(d.getFullYear(),d.getMont
 let TODAY=todayNow();
 window.addEventListener('focus',()=>{const t=todayNow();if(t!==TODAY){TODAY=t;render()}});
 const sum=(a,f)=>a.reduce((s,x)=>s+f(x),0);
-const S={db:{v:1,projects:{},settings:{mode:'total'}},view:'dash',f:{p:'',s:'',q:''},due:{p:'',cs:'',mode:'exp',s:'open',from:'',to:'',m:'',g:'month',q:''},flow:{p:'',cs:'',mode:'exp',s:'all',from:'',to:'',m:'',g:'month',q:''},av:{p:'',q:'',s:'avail'},en:{p:'',q:''},rc:null,ren:{p:'',win:'u90',q:''},ow:{q:''},pr:{q:''},cur:null,ed:null,imp:null,dir:'',pm:null};
+const S={setTab:'g',db:{v:1,projects:{},settings:{mode:'total'}},view:'dash',f:{p:'',s:'',q:''},due:{p:'',cs:'',mode:'exp',s:'open',from:'',to:'',m:'',g:'month',q:''},flow:{p:'',cs:'',mode:'exp',s:'all',from:'',to:'',m:'',g:'month',q:''},av:{p:'',q:'',s:'avail'},en:{p:'',q:''},rc:null,ren:{p:'',win:'u90',q:''},ow:{q:''},pr:{q:''},cur:null,ed:null,imp:null,dir:'',pm:null};
 let tt;const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(tt);tt=setTimeout(()=>t.style.display='none',3200)};
 function arm(b,fn){if(b.dataset.armed){fn();return}b.dataset.t=b.textContent;b.dataset.armed=1;b.textContent='اضغط للتأكيد';setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent=b.dataset.t}},3000)}
 
@@ -620,25 +620,27 @@ function ownerDlg(name){
 /* ---------- الإعدادات ---------- */
 function vSettings(){
   return `<h1>الإعدادات</h1><p class="sub">تُحفظ البيانات تلقائيًا بعد كل تعديل داخل التطبيق على هذا الجهاز.</p>
-<div class="set">
-<div class="card"><h3>الاستيراد والتصدير (Excel)</h3><p>كل عمليات الاستيراد في مكان واحد. قبل أي استيراد تُؤخذ نسخة احتياطية تلقائيًا، وتظهر شاشة مراجعة قبل التطبيق.</p>
+<div class="tabs">${[['g','عامة'],['d','البيانات والاستيراد'],['c','السحابة والمستخدمون']].map(([k,l])=>`<button class="btn sm${S.setTab===k?' p':''}" data-a="setTab" data-t="${k}">${l}</button>`).join('')}</div>
+<div class="set" data-tab="${S.setTab}">
+<div class="card" data-t="d"><h3>الاستيراد والتصدير (Excel)</h3><p>كل عمليات الاستيراد في مكان واحد. قبل أي استيراد تُؤخذ نسخة احتياطية تلقائيًا، وتظهر شاشة مراجعة قبل التطبيق.</p>
 <div class="imps">
 <div class="ib"><b>العقود</b><span>يقبل «قالب الاستيراد» الفارغ أو ورقة «ورقه المعالجة». التصدير بنفس التخطيط مع ورقة «الدفعات».</span><div class="row"><button class="btn p" data-a="imp">استيراد عقود من Excel</button><button class="btn" data-a="tpl">تنزيل قالب العقود الفارغ</button><button class="btn" data-a="expX">تصدير كل العقود (Excel)</button></div></div>
 <div class="ib"><b>الرسوم والخدمات</b><span>وحدات وملاك ورسوم سنوية (الكهرباء، المياه، اتحاد الملاك…).</span><div class="row"><button class="btn p" data-a="svImp">استيراد وحدات وملاك ورسوم (Excel)</button><button class="btn" data-a="svTpl">تنزيل قالب الرسوم</button></div></div>
+<div class="ib"><b>تصدير كل البيانات</b><span>ملف Excel واحد بأوراق منفصلة لكل قسم: العقود، الأقساط والمستحقات، الدفعات، العقود الخارجية، المشاريع والوحدات، الملاك، المستأجرون، الصيانة، الرسوم والخدمات.</span><div class="row"><button class="btn p" data-a="expAll">تصدير كل البيانات (Excel)</button></div></div>
 <div class="ib"><b>حصر الوحدات والملاك</b><span>عدد الوحدات لكل مشروع ومالك، المباعة وغير المباعة.</span><div class="row"><button class="btn p" data-a="ivImp">استيراد حصر (Excel)</button></div></div>
 </div></div>
-<div class="card"><h3>طريقة احتساب العقود التي تزيد مدتها عن سنة</h3><div class="row"><label>قيمة الإيجار تمثل <select id="mode"><option value="total"${MODE()==='total'?' selected':''}>إجمالي قيمة العقد</option><option value="annual"${MODE()==='annual'?' selected':''}>إيجار سنة واحدة</option></select></label></div></div>
-<div class="card"><h3>الإعدادات المالية</h3><div class="row"><label>ضريبة القيمة المضافة % <input type="number" id="set_vat" step="0.01" value="${esc(S.db.settings.vat)}" style="width:90px"></label><label>اسم المشغّل <input id="set_op" value="${esc(S.db.settings.operator)}" style="min-width:260px"></label></div></div>
-<div class="card"><h3>النسخ الاحتياطي</h3><p>تؤخذ نسخة تلقائية كل 24 ساعة عند الحفظ، ونسخة قبل كل استيراد أو استعادة.</p>
+<div class="card" data-t="g"><h3>طريقة احتساب العقود التي تزيد مدتها عن سنة</h3><div class="row"><label>قيمة الإيجار تمثل <select id="mode"><option value="total"${MODE()==='total'?' selected':''}>إجمالي قيمة العقد</option><option value="annual"${MODE()==='annual'?' selected':''}>إيجار سنة واحدة</option></select></label></div></div>
+<div class="card" data-t="g"><h3>الإعدادات المالية</h3><div class="row"><label>ضريبة القيمة المضافة % <input type="number" id="set_vat" step="0.01" value="${esc(S.db.settings.vat)}" style="width:90px"></label><label>اسم المشغّل <input id="set_op" value="${esc(S.db.settings.operator)}" style="min-width:260px"></label></div></div>
+<div class="card" data-t="d"><h3>النسخ الاحتياطي</h3><p>تؤخذ نسخة تلقائية كل 24 ساعة عند الحفظ، ونسخة قبل كل استيراد أو استعادة.</p>
 <div class="row"><button class="btn p" data-a="bkNow">نسخة احتياطية الآن</button><button class="btn" data-a="bkList">استعادة من نسخة سابقة</button></div><div id="bklist"></div></div>
-<div class="card"><h3>أيقونة التطبيق (سطح المكتب وشريط المهام)</h3><p>الأيقونة الافتراضية هي شعار كثيب. يمكنك رفع صورة أخرى (PNG أو JPG، يفضَّل مربعة وبحجم 256 بكسل فأكثر). قد يحتاج ويندوز لبضع ثوانٍ أو لإعادة تحميل سطح المكتب (F5) ليُظهر الأيقونة الجديدة.</p>
+<div class="card" data-t="g"><h3>أيقونة التطبيق (سطح المكتب وشريط المهام)</h3><p>الأيقونة الافتراضية هي شعار كثيب. يمكنك رفع صورة أخرى (PNG أو JPG، يفضَّل مربعة وبحجم 256 بكسل فأكثر). قد يحتاج ويندوز لبضع ثوانٍ أو لإعادة تحميل سطح المكتب (F5) ليُظهر الأيقونة الجديدة.</p>
 <div class="row"><img id="iconprev" alt="" style="width:56px;height:56px;border:1px solid var(--line);border-radius:10px;object-fit:contain;background:#fff" src="assets/logo.svg"><button class="btn p" data-a="icoSet">رفع صورة الأيقونة…</button><button class="btn" data-a="icoReset">استعادة شعار كثيب</button></div></div>
-${auditCard()}
-<div class="card"><h3 data-noi18n>اللغة / Language</h3><div class="row"><select id="set_lang" data-noi18n><option value="ar"${window.LANG==='ar'?' selected':''}>العربية</option><option value="en"${window.LANG==='en'?' selected':''}>English</option></select></div></div>
-<div class="card"><h3>تكرار الحفظ على القرص</h3><p>لتقليل مزامنة الملف (مثل OneDrive) يُكتب الملف على القرص مرة كل المدة المختارة بحد أقصى، ويُحفظ فورًا عند إغلاق التطبيق أو تصغيره أو الاستيراد والتحديث.</p><div class="row"><label>الحفظ كل <select id="set_save">${[[0,'فورًا بعد كل تعديل'],[1,'دقيقة'],[5,'5 دقائق (الافتراضي)'],[15,'15 دقيقة']].map(([v,l])=>`<option value="${v}"${(S.db.settings.saveEvery??5)==v?' selected':''}>${l}</option>`).join('')}</select></label></div></div>
-<div class="card"><h3>إصدار التطبيق</h3><p>التاريخ المعتمد: <b class="num">${iso(TODAY)}</b></p><p>الإصدار الحالي: <b class="num">${esc(S.ver||'')}</b> — يتحقق التطبيق من التحديثات تلقائيًا عند التشغيل.</p><div class="row"><button class="btn" data-a="chkUpd">التحقق من التحديثات الآن</button></div></div>
-<div class="card"><h3>قاعدة البيانات السحابية</h3><p class="sub">ربط التطبيق بقاعدة Supabase لمشاركة البيانات بين المستخدمين والأجهزة.</p><div class="row"><button class="btn p" data-a="clOpen">إعداد السحابة</button>${S.cl&&S.cl.on&&S.cl.role==='admin'?'<button class="btn" data-a="clUsers">إدارة المستخدمين</button>':''}</div></div>
-<div class="card"><h3>موقع التخزين</h3><p class="num" id="dirp" style="direction:ltr;text-align:end">${esc(S.dir)}</p><div class="row"><button class="btn" data-a="openDir">فتح المجلد</button><button class="btn" data-a="chDir">تغيير المجلد (مثلًا OneDrive أو مجلد مشترك)</button></div></div>
+${auditCard().replace('<div class="card">','<div class="card" data-t="d">')}
+<div class="card" data-t="g"><h3 data-noi18n>اللغة / Language</h3><div class="row"><select id="set_lang" data-noi18n><option value="ar"${window.LANG==='ar'?' selected':''}>العربية</option><option value="en"${window.LANG==='en'?' selected':''}>English</option></select></div></div>
+<div class="card" data-t="d"><h3>تكرار الحفظ على القرص</h3><p>لتقليل مزامنة الملف (مثل OneDrive) يُكتب الملف على القرص مرة كل المدة المختارة بحد أقصى، ويُحفظ فورًا عند إغلاق التطبيق أو تصغيره أو الاستيراد والتحديث.</p><div class="row"><label>الحفظ كل <select id="set_save">${[[0,'فورًا بعد كل تعديل'],[1,'دقيقة'],[5,'5 دقائق (الافتراضي)'],[15,'15 دقيقة']].map(([v,l])=>`<option value="${v}"${(S.db.settings.saveEvery??5)==v?' selected':''}>${l}</option>`).join('')}</select></label></div></div>
+<div class="card" data-t="g"><h3>إصدار التطبيق</h3><p>التاريخ المعتمد: <b class="num">${iso(TODAY)}</b></p><p>الإصدار الحالي: <b class="num">${esc(S.ver||'')}</b> — يتحقق التطبيق من التحديثات تلقائيًا عند التشغيل.</p><div class="row"><button class="btn" data-a="chkUpd">التحقق من التحديثات الآن</button></div></div>
+<div class="card" data-t="c"><h3>قاعدة البيانات السحابية</h3><p class="sub">ربط التطبيق بقاعدة Supabase لمشاركة البيانات بين المستخدمين والأجهزة.</p><div class="row"><button class="btn p" data-a="clOpen">إعداد السحابة</button>${S.cl&&S.cl.on&&S.cl.role==='admin'?'<button class="btn" data-a="clUsers">إدارة المستخدمين</button>':''}</div></div>
+<div class="card" data-t="d"><h3>موقع التخزين</h3><p class="num" id="dirp" style="direction:ltr;text-align:end">${esc(S.dir)}</p><div class="row"><button class="btn" data-a="openDir">فتح المجلد</button><button class="btn" data-a="chDir">تغيير المجلد (مثلًا OneDrive أو مجلد مشترك)</button></div></div>
 </div>`;
 }
 
@@ -738,6 +740,7 @@ const act={
     const aoa=[['المشروع','الوحدة','المستأجر','بداية الإيجار','نهاية الإيجار','الإجمالي','المسدد','المتبقي','الرسوم'],...all.map(x=>[x.pn,x.c.unit,x.c.tenant,x.c.start,x.c.end,x.r.total,x.r.paid,x.r.rem,x.c.fee])];
     const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(aoa);ws['!views']=[{rightToLeft:true}];XLSX.utils.book_append_sheet(wb,ws,'كشف الحساب');saveWb('statement.xlsx',wb)},
   imp:openImp,iclose:()=>$('#imp').close(),ipick:pickImp,iapply:applyBtn,
+  setTab:b=>{S.setTab=b.dataset.t;render()},
   expX:()=>saveWb('rent-contracts-export.xlsx',buildWorkbook(XLSX,P(),MODE(),TODAY)),
   tpl:async()=>{const f=await native.saveTemplate();if(f)toast('تم حفظ القالب')},
   bkNow:async()=>{await flush();const f=await native.backupNow();toast(f?'تم إنشاء نسخة احتياطية':'لا توجد بيانات بعد')},

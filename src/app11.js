@@ -164,3 +164,27 @@ ${dup.length||bad.length?`<p class="sub" style="color:var(--late)">متجاهَ�
 Object.assign(act,{ivD:b=>ivDrill(b.dataset.p,b.dataset.m),ivGo:b=>{const m=b.dataset.m,p=b.dataset.p;$('#stm').close();if(p!=='*')S.iv.p=[p];S.iv.q='';if(m==='w'){S.iv.tab='own';S.iv.s=''}else{S.iv.tab='units';S.iv.s=({t:'',s:'sold',u:'unsold',r:'rented',f:'fee'})[m]||''}render()},ivImp:ivImport,ivClean:ivCleanDlg,ivTab:b=>{S.iv.tab=b.dataset.t;render()},ivOwner:b=>ivOwnerDlg(b.dataset.n)});
 document.addEventListener('input',e=>{if(e.target.id==='iv_q'){S.iv.q=e.target.value.trim();render()}});
 document.addEventListener('change',e=>{const m={iv_p:'p',iv_s:'s'}[e.target.id];if(m){S.iv[m]=e.target.value;render()}});
+
+/* ===== تصدير كل البيانات (Excel) — ورقة لكل قسم ===== */
+function exportAllData(){
+  const X=XLSX,D=v=>v?iso(v):'',N=v=>Math.round((+v||0)*100)/100,wb=X.utils.book_new();
+  const add=(name,head,rows,w)=>{const ws=X.utils.aoa_to_sheet([head,...rows]);ws['!views']=[{rightToLeft:true}];ws['!cols']=head.map((h,i)=>({wch:(w&&w[i])||Math.max(12,String(h).length+4)}));ws['!freeze']={xSplit:0,ySplit:1};if(rows.length)ws['!autofilter']={ref:X.utils.encode_range({s:{r:0,c:0},e:{r:rows.length,c:head.length-1}})};X.utils.book_append_sheet(wb,ws,name)};
+  const all=rows(),ci=all.filter(x=>!x.ext),ce=all.filter(x=>x.ext),SL={paid:'مسدد',late:'متأخر',part:'جزئي',partial:'جزئي',due:'مستحق',open:'مستحق',soon:'قريب الاستحقاق'};
+  const stL=i=>SL[i.status]||(i.late?'متأخر':i.paid>=i.amount-0.005?'مسدد':i.paid>0?'جزئي':'بانتظار السداد');
+  const os=ownerStatements(ci);
+  add('ملخص',['البند','القيمة'],[['تاريخ التصدير',D(TODAY)],['إصدار التطبيق',S.ver||''],['المشاريع',Object.keys(P()).length],['العقود (إيجار)',ci.length],['العقود الخارجية',ce.length],['إجمالي الإيجارات',N(sum(ci,x=>x.r.total))],['المحصَّل',N(sum(ci,x=>x.r.paid))],['المتبقي',N(sum(ci,x=>x.r.rem>0?x.r.rem:0))],['المتأخر',N(sum(ci,x=>x.r.late))],['طلبات الصيانة',MT().length],['الرسوم والخدمات',SV().length],['الأوراق','العقود · الأقساط · الدفعات · العقود الخارجية · المشاريع والوحدات · الملاك · المستأجرون · الصيانة · الرسوم والخدمات']],[26,40]);
+  add('العقود',['المشروع','الوحدة','المالك','المستأجر','البداية','النهاية','الحالة','إجمالي العقد','المسدد','المتبقي','المتأخر','عدد الأقساط','رسوم الإدارة','ملاحظات'],ci.map(x=>[x.pn,x.c.unit,x.c.owner||'',x.c.tenant||'',D(pd(x.c.start)),D(pd(x.c.end)),x.r.st,N(x.r.total),N(x.r.paid),N(x.r.rem>0?x.r.rem:0),N(x.r.late),x.r.inst.length,N(x.c.fee),x.c.notes||'']),[22,12,26,26,12,12,10,14,14,14,12,10,12,30]);
+  add('الأقساط والمستحقات',['المشروع','الوحدة','المستأجر','رقم القسط','تاريخ الاستحقاق','المبلغ','المسدد','المتبقي','الحالة'],ci.flatMap(x=>x.r.inst.map(i=>[x.pn,x.c.unit,x.c.tenant||'',i.n,D(i.date),N(i.amount),N(i.paid),N(Math.max(0,i.amount-i.paid)),stL(i)])),[22,12,26,10,14,14,14,14,14]);
+  add('الدفعات',['المشروع','الوحدة','المستأجر','تاريخ الدفعة','المبلغ','ملاحظة'],all.flatMap(x=>(x.c.payments||[]).map(p=>[x.pn,x.c.unit,x.c.tenant||'',D(pd(p.date)),N(p.amount),p.note||''])),[22,12,26,14,14,30]);
+  add('العقود الخارجية',['المشروع','الوحدة','المالك','المستأجر','البداية','النهاية','الحالة','الإيجار','رسوم الإدارة المستحقة','المحصَّل من الرسوم','المتبقي من الرسوم','المتأخر من الرسوم'],ce.map(x=>[x.pn,x.c.unit,x.c.owner||'',x.c.tenant||'',D(pd(x.c.start)),D(pd(x.c.end)),x.r.st,N(x.r.total),N(x.f.total),N(x.f.paid),N(x.f.rem),N(x.f.late)]),[22,12,26,26,12,12,10,14,16,16,16,16]);
+  const cu=new Set(all.map(x=>x.pid+'|'+ivKey(x.c.unit)));
+  add('المشاريع والوحدات',['المشروع','الوحدة','المالك','النوع','المساحة','ملاحظات','له عقد؟'],Object.entries(P()).flatMap(([pid,p])=>(p.units||[]).map(u=>[p.name,u.no,u.owner||'',u.type||'',u.area||'',u.notes||'',cu.has(pid+'|'+ivKey(u.no))?'نعم':'لا'])),[22,12,28,12,10,30,10]);
+  add('الملاك',['المالك','المشاريع','الوحدات','العقود','إجمالي الإيجار','المحصَّل','المتبقي','المتأخر','رسوم الأملاك','الصافي'],os.map(o=>[o.name,[...(o.projects||[])].join('، '),o.units&&o.units.size!=null?o.units.size:o.units,o.contracts,N(o.total),N(o.paid),N(o.rem),N(o.late),N(o.fees),N(o.net)]),[30,30,10,10,14,14,14,12,12,14]);
+  const tc={};for(const x of all){const k=String(x.c.tenant||'').trim();if(k)tc[k]=(tc[k]||0)+1}
+  add('المستأجرون',['الاسم','الجوال','الهوية / السجل','البريد','العنوان','عدد العقود','ملاحظات'],PR('tenants').map(t=>[t.name,t.phone||'',t.idno||'',t.email||'',t.addr||'',tc[String(t.name||'').trim()]||0,t.notes||'']),[28,14,16,24,24,10,30]);
+  const pl=Object.fromEntries(MT_PAYER),kl=Object.fromEntries(MT_KIND),pn=id=>P()[id]?.name||'';
+  add('الصيانة والنظافة',['رقم','المشروع','الوحدة','النوع','التصنيف','الحالة','يتحمّل','التكلفة','المسدد','المتبقي على المستأجر','تاريخ الإنشاء','الاستحقاق','الإنجاز','ملاحظات'],MT().map(x=>[x.no,pn(x.pid),x.unit,kl[x.kind]||x.kind||'',x.cat||'',MT_STL[x.status]||x.status||'',pl[x.payer]||x.payer||'',N(mtCost(x)),N(mtPaid(x)),N(mtRem(x)),x.created||'',x.due||'',x.done||'',(x.notes||[]).map?.(n=>n.t||n.text||n).join(' | ')||'']),[8,22,12,10,18,14,12,12,12,16,14,14,14,30]);
+  add('الرسوم والخدمات',['رقم','المشروع','الوحدة','النوع','السنة','على','الاسم','المبلغ قبل الضريبة','الإجمالي','المسدد','المتبقي','الاستحقاق','الجهة'],SV().map(x=>[x.no,pn(x.pid),x.unit,x.type||'',x.year||'',x.party==='tenant'?'المستأجر':'المالك',x.name||'',N(x.base),N(x.total),N(svPaid(x)),N(svRem(x)),x.due||'',x.payee||'']),[8,22,12,14,8,10,26,14,12,12,12,14,16]);
+  saveWb('kathib-all-data-'+D(TODAY)+'.xlsx',wb);
+}
+Object.assign(act,{expAll:exportAllData});
