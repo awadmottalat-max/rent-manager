@@ -457,3 +457,9 @@ dialog::backdrop{background:#0b153580;backdrop-filter:blur(3px)}
 #gsr p{padding:14px;color:var(--mut);text-align:center;margin:0}
 .hero{position:relative}.hero .dcb{position:absolute;inset-inline-end:16px;top:12px;background:#ffffff22;color:#fff;border-color:#ffffff55}
 @media print{body,body.pr{background:#fff!important}.kp::before{display:none}}
+/* مراجعة 1.35: ترتيب وتصحيحات */
+.hero .dcb{position:static;background:#fff;color:var(--acc);border-color:var(--line)}
+#view>.dcb{display:block;margin:0 0 10px auto}
+.kp.kf.on::after{bottom:auto!important;top:9px!important;inset-inline-start:9px!important;width:18px;height:18px;line-height:18px;font-size:11px}
+.side{width:236px}.brand{padding:8px 10px;margin-bottom:10px}.brand img{width:78px}
+@media screen{#nav button{padding:7px 12px;font-size:13.5px}#nav{gap:1px}#nav .lo{margin-top:8px;padding-top:8px}}

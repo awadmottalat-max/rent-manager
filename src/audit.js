@@ -73,8 +73,8 @@ function vAudit(){
   const rws=list.slice(0,400).map(x=>({cells:['<span class="num">'+auTime(x.t)+'</span>',esc(x.u),esc(x.k),'<b class="au-'+x.a+'">'+(AU_A[x.a]||x.a)+'</b>',esc(x.pn),esc(x.ref),esc(x.f),esc(x.o),esc(x.n)]}));
   S.pm={title:'سجل التعديلات',sub:list.length+' عملية',cols,rows:list.slice(0,2000).map(x=>({cells:[auTime(x.t),x.u,x.k,AU_A[x.a]||x.a,x.pn,x.ref,x.f,x.o,x.n]})),foot:null,footSpan:0};
   return `<h1>سجل التعديلات</h1><p class="sub">من عدّل ماذا ومتى مع القيمة قبل التعديل وبعده. يُسجَّل كل تعديل على العقود والدفعات والوحدات والملاك والمستأجرين والرسوم والصيانة. يُحتفظ بآخر ${AU_MAX} عملية.</p>
-<div class="bar">${msel('au.u',uniq('u').map(x=>[x,x]),'كل المستخدمين')}${msel('au.k',uniq('k').map(x=>[x,x]),'كل الأقسام')}${msel('au.a',Object.entries(AU_A),'كل العمليات')}${msel('au.p',uniq('pn').map(x=>[x,x]),'كل المشاريع')}<input type="date" id="au_d" value="${esc(A.d)}" title="اليوم"><input type="search" id="au_q" placeholder="بحث: وحدة، اسم، قيمة" value="${esc(A.q)}">${pbtn('list')}</div>
-<div class="kps"><div class="kp static"><span>عدد العمليات</span><b>${list.length}</b><i>${list.length>400?'يُعرض أحدث 400':''}</i></div></div>
+<div class="bar">${msel('au.u',uniq('u').map(x=>[x,x]),'كل المستخدمين')}${msel('au.k',uniq('k').map(x=>[x,x]),'كل الأقسام')}${msel('au.a',Object.entries(AU_A),'كل العمليات')}${msel('au.p',uniq('pn').map(x=>[x,x]),'كل المشاريع')}${dateField("au_d",A.d)}<input type="search" id="au_q" placeholder="بحث: وحدة، اسم، قيمة" value="${esc(A.q)}">${pbtn('list')}</div>
+<div class="kpis sm"><div class="kp static"><span>عدد العمليات</span><b>${list.length}</b><i>${list.length>400?'يُعرض أحدث 400':''}</i></div></div>
 ${rws.length?T(cols,rws):'<p class="empty">لا توجد عمليات مسجَّلة بعد.</p>'}`;
 }
 VF.audit=vAudit;

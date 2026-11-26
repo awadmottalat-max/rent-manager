@@ -13,8 +13,8 @@
   function apply(){
     if(S.view!=='dash')return;const hid=get(),I=items();
     I.forEach(([e,l])=>{e.style.display=hid.includes(l)?'none':''});
-    const hero=document.querySelector('#view .hero');
-    if(hero&&!hero.querySelector('.dcb')){const b=document.createElement('button');b.className='btn sm dcb';b.dataset.a='dcCfg';b.textContent='⚙ تخصيص اللوحة';hero.appendChild(b)}
+    const k=document.querySelector('#view .kpis.dk');
+    if(k&&!document.querySelector('#view .dcb')){const b=document.createElement('button');b.className='btn sm dcb';b.dataset.a='dcCfg';b.textContent='⚙ تخصيص اللوحة';k.parentNode.insertBefore(b,k)}
   }
   const r0=render;
   render=function(){r0.apply(this,arguments);try{apply()}catch(e){}};
